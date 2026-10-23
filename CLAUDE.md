@@ -1,0 +1,120 @@
+# CLAUDE.md
+
+Guía de trabajo para Claude Code (y cualquier colaborador) en **AXTTON CORE**.
+
+## 1. Qué es
+
+Sistema de gestión para talleres mecánicos: clientes, vehículos, citas, órdenes de trabajo, presupuestos, inventario básico y documentos generados, con un **portal privado** donde el cliente sigue la reparación y aprueba el presupuesto. Una instalación sirve a muchos talleres (multi-taller) o a uno solo. Es un proyecto de portfolio serio, hermano de Applications Tracker, del que hereda stack y convenciones.
+
+> **Estado (2026-10-23): fase de diseño. NO HAY CÓDIGO.** Existen la especificación (revisada), la arquitectura (v0.1, pendiente de revisión), el sitio de documentación y los agentes. Lo único que se puede ejecutar es el sitio de documentación. Todo lo que este fichero describe de backend, frontend, pruebas o despliegue es **diseño**: los comandos se añadirán aquí cuando existan, en F0. No ejecutes comandos de esas partes; fallarán.
+
+## 2. Documentación
+
+Sitio MkDocs en `docs/` (http://localhost:8001). Es la fuente de verdad del diseño; este fichero la resume sin duplicarla.
+
+| Documento | Para qué |
+|---|---|
+| `docs/producto/especificacion.md` | Requisitos (RF-xx, RNF-xx), roles y matriz de permisos, ciclos de vida, límite conocido, límites, fases, riesgos |
+| `docs/arquitectura/index.md` | Decisiones A1–A14 con alternativas descartadas, autenticación de tres actores, modelo de datos, RLS, flujos, segundo plano, entorno, pruebas, orden de implementación y riesgos |
+| `docs/decisiones/` | Bitácora de cambios de rumbo durante el desarrollo, con plantilla |
+| `docs/guias/`, `docs/referencia/` | Vacías a propósito hasta que haya código |
+
+**Si el código y un documento no coinciden, no se corrige el documento sin más.** Primero se averigua si el diseño evolucionó (se actualiza el documento dejando constancia) o si la implementación se lo saltó (y entonces es un fallo del código).
+
+## 3. Stack y servicios
+
+Hoy solo existe el servicio `docs`. El resto es el diseño (arquitectura §9), en la fase en que aparece:
+
+| Servicio | Puerto | Notas | Desde |
+|---|---|---|---|
+| `docs` | 8001 | MkDocs Material **fijado a la 9** (MkDocs 2.0 rompe plugins y temas) | **existe** |
+| `db` | 5432 | Postgres 17 con RLS y tres roles: `axtton_owner` (migraciones), `axtton_app` (API y worker, sin `BYPASSRLS`), `axtton_platform` (solo `app/platform/`) | F0 |
+| `api` | 8000 | FastAPI + SQLAlchemy async + Alembic (Python, uv) + SDK de SuperTokens + WeasyPrint | F0 |
+| `frontend` | 5173 | Vite con dos aplicaciones: `src/taller/` en `/` y `src/portal/` en `/portal`. React 19 + TS, TanStack Query, react-hook-form + zod, Tailwind v4 + shadcn/ui, i18next (es, en) | F0 |
+| `supertokens` + `supertokens-db` | — | Recetas `emailpassword` (personal y superadministrador) y `passwordless` (clientes) | F1 |
+| `valkey` | — | Cola de SAQ y rate limit | F1 |
+| `mailpit` | 8025 | Solo desarrollo: captura todo el correo | F1 |
+| `worker` | — | Misma imagen que `api`: avisos y tareas programadas | F5 |
+| `manual` | 3001 | Docusaurus, manual de producción en es y en | F9 |
+
+## 4. Comandos
+
+```bash
+docker compose up docs                       # sitio de documentación en http://localhost:8001
+docker compose run --rm docs build --strict  # compila el sitio; falla ante enlaces rotos o avisos
+```
+
+No hay más comandos todavía. Los del backend, el frontend, las pruebas y el despliegue llegan con F0 y se añaden aquí en el mismo commit.
+
+## 5. Estructura y capas
+
+Estructura prevista (arquitectura §6): `backend/app/` con `api/v1/{taller,portal,admin}/`, `core/`, `domain/`, `models/`, `repositories/`, `schemas/`, `services/`, `platform/`, `infra/`, `jobs/`, `templates/`, `scripts/`; `frontend/src/{taller,portal,shared}/`.
+
+**Backend:** `endpoints → services → repositories → models`, con `domain/` puro.
+
+| Capa | Puede | No puede |
+|---|---|---|
+| `api/v1/{taller,portal,admin}/` | Validar con schemas, `Depends`, llamar a **un** service | Consultar la BD, decidir permisos, `commit`, importar de otro prefijo |
+| `services/` | Reglas, `domain/`, repositories, `commit`/`rollback`, escribir en la bandeja de avisos | Importar FastAPI, construir SQL, importar `platform/` |
+| `repositories/` | Consultas con la sesión de `axtton_app`, siempre bajo RLS | `commit`, reglas de negocio, usar `axtton_platform` |
+| `platform/` | Usar `axtton_platform` y leer varios talleres | Devolver filas operativas al superadministrador; ser importado desde `/taller` o `/portal` (salvo la petición de enlace mágico) |
+| `domain/` | Enums, transiciones, cálculos de totales, días hábiles, matriz de permisos | Cualquier I/O |
+
+**Regla única:** *si habla con la BD, vive en `repositories/`; si decide, en `services/` o `domain/`; si cruza talleres, en `platform/` y en ningún otro sitio.*
+
+**Frontend:** por *features*, una vez en `taller/` y otra en `portal/`. **`taller/` y `portal/` no se importan entre sí**; lo común va a `shared/`.
+
+## 6. Convenciones
+
+- **Idioma:** identificadores, tablas, columnas, rutas y ficheros de código en inglés (`workshop`, `work_order`, `quote`); prosa, documentación y commits en español. La interfaz, en español e inglés por i18n desde el primer texto.
+- **Modelo de datos** (arquitectura §3): `id uuid`, `created_at` con `clock_timestamp()`, historiales ordenados por `seq` (nunca por fecha), enumerados como `varchar` + `CHECK`, importes en `bigint` de céntimos, IVA en puntos básicos, fechas en `timestamptz` y mostradas en la zona del taller, bloqueo optimista con `version`.
+- **Toda tabla de un taller** lleva `workshop_id`, `UNIQUE (id, workshop_id)`, FK compuestas hacia sus padres y la política `workshop_isolation` con RLS forzada.
+- **Requisitos citados por número** (RF-xx, RNF-xx, A-xx) en código, commits y pruebas cuando aporten.
+- **La documentación cambia en el mismo commit que el código.**
+
+## 7. Invariantes que no se rompen
+
+1. Ninguna consulta de `axtton_app` ve ni escribe filas de un taller distinto del fijado en la transacción; sin taller fijado, no ve ninguna.
+2. Solo `app/platform/` usa `axtton_platform`.
+3. Cada prefijo de API (`/taller`, `/portal`, `/admin`) rechaza las sesiones de los otros dos actores, por la dependencia de su router.
+4. `work_orders.status` es igual al `to_status` del cambio con el `seq` más alto de su historial.
+5. Una versión de presupuesto enviada, una decisión y una hoja de recepción firmada no se modifican jamás; sus totales y su contenido se guardaron al enviar o firmar.
+6. El cliente de una orden es el titular del vehículo al abrirla; el portal da acceso por `work_orders.client_id`, nunca por el vehículo.
+7. Los avisos se crean en la misma transacción que el cambio que los provoca y no salen dos veces por la misma `dedupe_key`.
+8. El stock es la suma de `stock_movements`.
+
+## 8. Trampas conocidas
+
+Ya identificadas en el diseño (arquitectura §2, §3, §4, §8 y §9); se ampliarán con las que aparezcan al construir:
+
+- **RLS no se aplica al dueño de las tablas.** La aplicación se conecta con `axtton_app`, nunca con `axtton_owner`, y las tablas llevan `FORCE ROW LEVEL SECURITY`. Si no, todas las políticas pasan sin que nada falle.
+- **El taller se fija con `set_config('app.workshop_ids', …, true)`**: el `true` lo limita a la transacción. Sin él, queda pegado a la conexión del pool y la siguiente petición ve el taller anterior.
+- **Revocar las sesiones de un cliente no es `revokeAllSessionsForUser`**: su usuario passwordless es uno por email, compartido entre talleres. Se cierran solo las sesiones con su `taller_id` y `client_id`.
+- **La numeración de órdenes** no sale de una secuencia ni de `MAX + 1`: `work_order_counters` con `INSERT … ON CONFLICT DO UPDATE … RETURNING`.
+- **Los scripts de inicio de Postgres solo corren con el volumen vacío**: los roles se crean también, de forma idempotente, en la primera migración.
+- **Siempre `localhost`, nunca `127.0.0.1`**: las cookies de sesión no viajan entre los dos.
+- Heredadas de Applications Tracker para SAQ y el correo: `retries` cuenta intentos totales, SAQ recuerda la clave de un trabajo unos 10 minutos, el mismo envío puede ejecutarse dos veces a la vez (`FOR UPDATE SKIP LOCKED`), un trabajo nunca lleva un token de acceso, la cola se crea dentro del event loop.
+
+## 9. Agentes
+
+Están en `.claude/agents/`. **No corren solos**: se invocan al cerrar una feature o una fase, con un encargo concreto.
+
+| Agente | Cuándo invocarlo |
+|---|---|
+| `docs-writer` | Al cerrar un bloque de trabajo, o cuando el código haya divergido del diseño. No reescribe un documento para que encaje con el código: reporta la divergencia |
+| `qa-verifier` | Antes de dar por terminado un bloque o una fase. Ejecuta, escribe las pruebas que faltan (sobre todo las adversas) y reporta; no arregla el código que evalúa |
+
+## 10. Fases
+
+| Fase | Contenido |
+|---|---|
+| F0 | Esqueleto vertical desechable: orden, presupuesto de una línea, aprobación por enlace secreto, un primer RLS de verdad y un PDF |
+| F1 | Autenticación del personal, superadministrador, alta de talleres, modo de instalación, roles, invitaciones, taller activo, auditoría, RLS completa con sus pruebas, CI |
+| F2 | Clientes, vehículos con titularidad, órdenes con historial, deshacer, búsqueda, borradores. Primer despliegue en Coolify |
+| F3 | Presupuestos versionados e inmutables, decisión registrada por el taller, PDF con los datos legales |
+| F4 | Portal del cliente con enlace mágico por taller y aprobación desde el portal |
+| F5 | Worker y bandeja de avisos (presupuesto enviado, vehículo listo) |
+| F6 | Hoja de recepción con firma, resumen de entrega, informe de actuaciones |
+| F7 | Inventario: catálogo, movimientos de stock, piezas usadas |
+| F8 | Citas, recordatorios, vencimientos, borrado de firmas |
+| F9 | Resumen entre talleres, exportaciones, demo, copias con restauración probada, rendimiento, manual |

@@ -1,7 +1,39 @@
 services:
+  # Postgres de la aplicación. En el paso 2 de F0 se crean aquí los tres roles de
+  # la arquitectura (§4); de momento la API entra con el usuario de la imagen.
+  db:
+    image: postgres:17
+    env_file:
+      - .env
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  # API (FastAPI) en http://localhost:8000; /docs es el OpenAPI.
+  api:
+    build:
+      context: ./backend
+    ports:
+      - "8000:8000"
+    volumes:
+      # El código del host se monta encima del de la imagen: --reload ve los cambios.
+      - ./backend:/app
+      # El .venv vive en un volumen propio para que el montaje anterior no lo tape.
+      - api_venv:/app/.venv
+    env_file:
+      - .env
+    depends_on:
+      db:
+        condition: service_healthy
+
   # Documentación de desarrollo (MkDocs Material), en http://localhost:8001.
   # Fijado a la 9: MkDocs 2.0 rompe plugins y temas (trampa heredada de Applications Tracker).
-  # Es el único servicio mientras no haya código; el resto aparece con F0 (arquitectura §9).
   docs:
     image: squidfunk/mkdocs-material:9
     command: serve --dev-addr 0.0.0.0:8000 --livereload
@@ -10,3 +42,7 @@ services:
     volumes:
       - ./mkdocs.yml:/docs/mkdocs.yml:ro
       - ./docs:/docs/docs:ro
+
+volumes:
+  postgres_data:
+  api_venv:

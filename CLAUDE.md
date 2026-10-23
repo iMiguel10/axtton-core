@@ -6,7 +6,7 @@ Guía de trabajo para Claude Code (y cualquier colaborador) en **AXTTON CORE**.
 
 Sistema de gestión para talleres mecánicos: clientes, vehículos, citas, órdenes de trabajo, presupuestos, inventario básico y documentos generados, con un **portal privado** donde el cliente sigue la reparación y aprueba el presupuesto. Una instalación sirve a muchos talleres (multi-taller) o a uno solo. Es un proyecto de portfolio serio, hermano de Applications Tracker, del que hereda stack y convenciones.
 
-> **Estado (2026-10-23): fase de diseño. NO HAY CÓDIGO.** Existen la especificación (revisada), la arquitectura (v0.1, pendiente de revisión), el sitio de documentación y los agentes. Lo único que se puede ejecutar es el sitio de documentación. Todo lo que este fichero describe de backend, frontend, pruebas o despliegue es **diseño**: los comandos se añadirán aquí cuando existan, en F0. No ejecutes comandos de esas partes; fallarán.
+> **Estado (2026-10-23): F0 en curso (esqueleto vertical desechable), paso 1 hecho.** Existen la especificación (revisada), la arquitectura (v0.1), el sitio de documentación, los agentes y un backend mínimo: `db` y `api` con `GET /api/health`. Todavía no hay migraciones, RLS, frontend, autenticación ni pruebas; lo que este fichero describe de eso es **diseño**, y sus comandos se añadirán aquí cuando existan.
 
 ## 2. Documentación
 
@@ -28,8 +28,8 @@ Hoy solo existe el servicio `docs`. El resto es el diseño (arquitectura §9), e
 | Servicio | Puerto | Notas | Desde |
 |---|---|---|---|
 | `docs` | 8001 | MkDocs Material **fijado a la 9** (MkDocs 2.0 rompe plugins y temas) | **existe** |
-| `db` | 5432 | Postgres 17 con RLS y tres roles: `axtton_owner` (migraciones), `axtton_app` (API y worker, sin `BYPASSRLS`), `axtton_platform` (solo `app/platform/`) | F0 |
-| `api` | 8000 | FastAPI + SQLAlchemy async + Alembic (Python, uv) + SDK de SuperTokens + WeasyPrint | F0 |
+| `db` | 5432 | **Existe** (aún sin roles ni RLS). Diseño: Postgres 17 con RLS y tres roles: `axtton_owner` (migraciones), `axtton_app` (API y worker, sin `BYPASSRLS`), `axtton_platform` (solo `app/platform/`) | F0 |
+| `api` | 8000 | **Existe**, solo con `/api/health`. Diseño: FastAPI + SQLAlchemy async + Alembic (Python, uv) + SDK de SuperTokens + WeasyPrint | F0 |
 | `frontend` | 5173 | Vite con dos aplicaciones: `src/taller/` en `/` y `src/portal/` en `/portal`. React 19 + TS, TanStack Query, react-hook-form + zod, Tailwind v4 + shadcn/ui, i18next (es, en) | F0 |
 | `supertokens` + `supertokens-db` | — | Recetas `emailpassword` (personal y superadministrador) y `passwordless` (clientes) | F1 |
 | `valkey` | — | Cola de SAQ y rate limit | F1 |
@@ -42,9 +42,17 @@ Hoy solo existe el servicio `docs`. El resto es el diseño (arquitectura §9), e
 ```bash
 docker compose up docs                       # sitio de documentación en http://localhost:8001
 docker compose run --rm docs build --strict  # compila el sitio; falla ante enlaces rotos o avisos
+
+cp .env.example .env                         # primera vez
+docker compose up -d --build db api          # Postgres y la API en http://localhost:8000 (/docs = OpenAPI)
+curl http://localhost:8000/api/health        # {"status":"ok"} si la API llega a la BD
+docker compose exec api ruff check .         # estilo
+docker compose exec api ruff format .        # formato
+docker compose exec api mypy app             # tipos
+docker compose exec api uv add <paquete>     # dependencias: siempre dentro del contenedor, nunca en el host
 ```
 
-No hay más comandos todavía. Los del backend, el frontend, las pruebas y el despliegue llegan con F0 y se añaden aquí en el mismo commit.
+Los de migraciones, frontend, pruebas y despliegue se añaden aquí en el mismo commit que los hace existir.
 
 ## 5. Estructura y capas
 

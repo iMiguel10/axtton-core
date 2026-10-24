@@ -1,0 +1,139 @@
+{
+  "common": {
+    "loading": "Loading…",
+    "toggleTheme": "Switch between light and dark theme",
+    "changeLanguage": "Change language",
+    "actions": "Actions",
+    "cancel": "Cancel",
+    "save": "Save"
+  },
+  "nav": {
+    "main": "Main navigation",
+    "home": "Home",
+    "employees": "Employees",
+    "account": "My account",
+    "workshops": "Workshops",
+    "signOut": "Sign out"
+  },
+  "auth": {
+    "tagline": "Run the workshop and follow every repair, in one place.",
+    "signInTitle": "Sign in",
+    "email": "Email",
+    "password": "Password",
+    "signIn": "Sign in",
+    "forgotPassword": "Forgot your password?",
+    "wrongCredentials": "The email or password is incorrect.",
+    "forgotTitle": "Reset your password",
+    "resetEmailSent": "If there is an account with that email, we have sent you a link to choose a new password.",
+    "sendResetLink": "Send link",
+    "backToSignIn": "Back to sign in",
+    "resetTitle": "New password",
+    "passwordChanged": "Password changed. Your open sessions have been closed.",
+    "newPassword": "New password",
+    "confirmPassword": "Repeat the password",
+    "resetLinkInvalid": "The link has expired or was already used. Request a new one.",
+    "savePassword": "Save password"
+  },
+  "validation": {
+    "email": "Enter a valid email.",
+    "required": "This field is required.",
+    "passwordLength": "At least 10 characters.",
+    "passwordsDiffer": "The passwords do not match.",
+    "amount": "Enter an amount, for example 25.50."
+  },
+  "invitation": {
+    "title": "Invitation",
+    "intro": "{{name}}, you have been invited to work at {{workshop}} with the email {{email}}.",
+    "existingAccountHint": "If you already work at another workshop with this email, enter your usual password.",
+    "accept": "Accept and sign in"
+  },
+  "workshop": {
+    "noWorkshops": "Your account has no access to any active workshop. Talk to your workshop's administrator.",
+    "chooseTitle": "Which workshop are you working in?",
+    "active": "Active workshop"
+  },
+  "roles": {
+    "admin": "Administrator",
+    "mechanic": "Mechanic"
+  },
+  "home": {
+    "yourRole": "Your role: {{role}}",
+    "comingSoon": "Work orders, clients and vehicles arrive in the next phase."
+  },
+  "employees": {
+    "title": "Employees",
+    "new": "New employee",
+    "name": "Name",
+    "position": "Position",
+    "role": "Role",
+    "roleOf": "Role of {{name}}",
+    "status": "Status",
+    "hourlyCost": "Hourly cost (€)",
+    "create": "Add",
+    "active": "Active",
+    "inactive": "Inactive",
+    "hasAccess": "Has access",
+    "invitationPending": "Invitation pending",
+    "activate": "Activate",
+    "deactivate": "Deactivate",
+    "invite": "Invite",
+    "reinvite": "Resend invitation",
+    "inviteEmail": "Email to invite {{name}}",
+    "send": "Send",
+    "removeAccess": "Remove access",
+    "confirmRemoveAccess": "{{name}} will no longer be able to sign in to this workshop. The record is kept. Continue?",
+    "invited": "Invitation sent to {{email}}.",
+    "invitedNoEmail": "Invitation created for {{email}}, but email is not configured and it was not sent."
+  },
+  "account": {
+    "title": "My account",
+    "changePassword": "Change password",
+    "currentPassword": "Current password",
+    "passwordChanged": "Password changed. Your other sessions have been closed.",
+    "sessions": "Open sessions",
+    "sessionSince": "Opened on {{date}}",
+    "thisSession": "this one",
+    "revokeOthers": "Close the other sessions"
+  },
+  "admin": {
+    "title": "Workshops",
+    "new": "New workshop",
+    "workshopName": "Workshop name",
+    "adminName": "Administrator's name",
+    "adminEmail": "Administrator's email",
+    "create": "Create",
+    "created": "Workshop created. Its administrator has received the invitation.",
+    "createdNoEmail": "Workshop created, but email is not configured and the invitation was not sent.",
+    "workshop": "Workshop",
+    "status": "Status",
+    "statuses": { "active": "Active", "inactive": "Inactive" },
+    "access": "With access",
+    "pendingInvitations": "Pending invitations",
+    "limit": "Access limit",
+    "limitOf": "Limit of employees with access for {{name}}",
+    "activate": "Reactivate",
+    "deactivate": "Deactivate"
+  },
+  "portal": {
+    "comingSoon": "The client portal will be available soon."
+  },
+  "errors": {
+    "unknown": "Something went wrong. Please try again.",
+    "invalid_input": "Some of the data is not valid. Check it, especially the email.",
+    "wrong_actor": "This account cannot use this part of the application.",
+    "workshop_not_found": "You do not have access to that workshop.",
+    "employee_not_found": "That employee no longer exists.",
+    "not_allowed": "Your role does not allow this.",
+    "last_admin": "The workshop needs at least one active administrator with access.",
+    "modified_by_someone_else": "Someone else changed this in the meantime. We have loaded the latest version: review it and repeat the change.",
+    "wrong_password": "The current password is incorrect.",
+    "weak_password": "The password is too weak: use at least 10 characters.",
+    "invitation_not_found": "The invitation does not exist or has expired. Ask for it to be resent.",
+    "invitation_already_accepted": "This invitation was already accepted. Sign in.",
+    "employee_limit_reached": "The workshop has reached its limit of employees with access.",
+    "employee_already_has_access": "This employee already has access.",
+    "superadmin_cannot_be_employee": "A superadmin account cannot be an employee of a workshop.",
+    "already_an_employee": "That account already has access to this workshop with another record.",
+    "single_workshop_installation": "This is a single-workshop installation and the workshop already exists."
+  }
+}

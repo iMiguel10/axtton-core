@@ -1,0 +1,104 @@
+@import "tailwindcss";
+@import "tw-animate-css";
+@import "shadcn/tailwind.css";
+@import "@fontsource-variable/geist";
+
+@custom-variant dark (&:is(.dark *));
+
+@theme inline {
+  --font-heading: var(--font-sans);
+  --font-sans: "Geist Variable", system-ui, sans-serif;
+  --color-brand: var(--brand);
+  --color-brand-foreground: var(--brand-foreground);
+  --color-brand-accent: var(--brand-accent);
+  --color-ring: var(--ring);
+  --color-input: var(--input);
+  --color-border: var(--border);
+  --color-destructive: var(--destructive);
+  --color-success: var(--success);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-accent: var(--accent);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-muted: var(--muted);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-secondary: var(--secondary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-primary: var(--primary);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-popover: var(--popover);
+  --color-card-foreground: var(--card-foreground);
+  --color-card: var(--card);
+  --color-foreground: var(--foreground);
+  --color-background: var(--background);
+  --radius-sm: calc(var(--radius) * 0.6);
+  --radius-md: calc(var(--radius) * 0.8);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) * 1.4);
+}
+
+/* Paleta de la guía de marca de AXTTON CORE: casi negro y grafito, plata
+   (#C9CED6), dorado (#C9A96A) y marfil (#F7F7F7).
+
+   El dorado de marca sobre blanco o marfil tiene un contraste de ~2:1, por debajo
+   del 4.5:1 que pide WCAG para texto (RNF-23). En el tema claro se usa como acento
+   (anillo de foco, bordes, el panel de acceso) y nunca como color de texto; para
+   texto dorado se usa --accent-foreground, una variante oscurecida que sí pasa.
+   En el tema oscuro el dorado sobre casi negro pasa de sobra (~8:1) y es el color
+   principal de los botones. */
+:root {
+  --radius: 0.625rem;
+  --background: #f7f7f7;
+  --foreground: #15181d;
+  --card: #ffffff;
+  --card-foreground: #15181d;
+  --popover: #ffffff;
+  --popover-foreground: #15181d;
+  --primary: #15181d;
+  --primary-foreground: #f7f7f7;
+  --secondary: #eef0f2;
+  --secondary-foreground: #15181d;
+  --muted: #eef0f2;
+  --muted-foreground: #5b6168;
+  --accent: #f3eee3;
+  --accent-foreground: #7a5e26;
+  --destructive: #b91c1c;
+  --success: #047857;
+  --border: #e3e5e8;
+  --input: #e3e5e8;
+  --ring: #c9a96a;
+  /* Panel de las pantallas de acceso: igual en los dos temas. */
+  --brand: #0e1116;
+  --brand-foreground: #f7f7f7;
+  --brand-accent: #c9a96a;
+}
+
+.dark {
+  --background: #0e1116;
+  --foreground: #f7f7f7;
+  --card: #171a20;
+  --card-foreground: #f7f7f7;
+  --popover: #171a20;
+  --popover-foreground: #f7f7f7;
+  --primary: #c9a96a;
+  --primary-foreground: #0e1116;
+  --secondary: #1f232a;
+  --secondary-foreground: #f7f7f7;
+  --muted: #1f232a;
+  --muted-foreground: #a3a9b1;
+  --accent: #2a2518;
+  --accent-foreground: #e2c98f;
+  --destructive: #f87171;
+  --success: #34d399;
+  --border: #2a2e35;
+  --input: #2a2e35;
+  --ring: #c9a96a;
+}
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+  body {
+    @apply bg-background text-foreground font-sans antialiased;
+  }
+}

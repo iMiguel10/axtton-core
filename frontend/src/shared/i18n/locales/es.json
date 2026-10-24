@@ -1,0 +1,139 @@
+{
+  "common": {
+    "loading": "Cargando…",
+    "toggleTheme": "Cambiar entre tema claro y oscuro",
+    "changeLanguage": "Cambiar idioma",
+    "actions": "Acciones",
+    "cancel": "Cancelar",
+    "save": "Guardar"
+  },
+  "nav": {
+    "main": "Navegación principal",
+    "home": "Inicio",
+    "employees": "Empleados",
+    "account": "Mi cuenta",
+    "workshops": "Talleres",
+    "signOut": "Cerrar sesión"
+  },
+  "auth": {
+    "tagline": "Gestión del taller y seguimiento de cada reparación, en un solo sitio.",
+    "signInTitle": "Iniciar sesión",
+    "email": "Email",
+    "password": "Contraseña",
+    "signIn": "Entrar",
+    "forgotPassword": "¿Has olvidado la contraseña?",
+    "wrongCredentials": "El email o la contraseña no son correctos.",
+    "forgotTitle": "Recuperar la contraseña",
+    "resetEmailSent": "Si hay una cuenta con ese email, te hemos enviado un enlace para elegir una contraseña nueva.",
+    "sendResetLink": "Enviar enlace",
+    "backToSignIn": "Volver a iniciar sesión",
+    "resetTitle": "Contraseña nueva",
+    "passwordChanged": "Contraseña cambiada. Se han cerrado tus sesiones abiertas.",
+    "newPassword": "Contraseña nueva",
+    "confirmPassword": "Repite la contraseña",
+    "resetLinkInvalid": "El enlace ha caducado o ya se usó. Pide otro.",
+    "savePassword": "Guardar contraseña"
+  },
+  "validation": {
+    "email": "Escribe un email válido.",
+    "required": "Este campo es obligatorio.",
+    "passwordLength": "Al menos 10 caracteres.",
+    "passwordsDiffer": "Las contraseñas no coinciden.",
+    "amount": "Escribe un importe, por ejemplo 25,50."
+  },
+  "invitation": {
+    "title": "Invitación",
+    "intro": "{{name}}, te han invitado a trabajar en {{workshop}} con el email {{email}}.",
+    "existingAccountHint": "Si ya trabajas en otro taller con este email, escribe tu contraseña de siempre.",
+    "accept": "Aceptar y entrar"
+  },
+  "workshop": {
+    "noWorkshops": "Tu cuenta no tiene acceso a ningún taller activo. Habla con el administrador de tu taller.",
+    "chooseTitle": "¿En qué taller vas a trabajar?",
+    "active": "Taller activo"
+  },
+  "roles": {
+    "admin": "Administrador",
+    "mechanic": "Mecánico"
+  },
+  "home": {
+    "yourRole": "Tu rol: {{role}}",
+    "comingSoon": "Las órdenes de trabajo, los clientes y los vehículos llegan en la próxima fase."
+  },
+  "employees": {
+    "title": "Empleados",
+    "new": "Nuevo empleado",
+    "name": "Nombre",
+    "position": "Puesto",
+    "role": "Rol",
+    "roleOf": "Rol de {{name}}",
+    "status": "Estado",
+    "hourlyCost": "Coste por hora (€)",
+    "create": "Añadir",
+    "active": "Activo",
+    "inactive": "Inactivo",
+    "hasAccess": "Con acceso",
+    "invitationPending": "Invitación pendiente",
+    "activate": "Activar",
+    "deactivate": "Desactivar",
+    "invite": "Invitar",
+    "reinvite": "Reenviar invitación",
+    "inviteEmail": "Email al que invitar a {{name}}",
+    "send": "Enviar",
+    "removeAccess": "Quitar acceso",
+    "confirmRemoveAccess": "{{name}} dejará de poder entrar en este taller. La ficha se conserva. ¿Seguir?",
+    "invited": "Invitación enviada a {{email}}.",
+    "invitedNoEmail": "Invitación creada para {{email}}, pero el correo no está configurado y no se ha enviado."
+  },
+  "account": {
+    "title": "Mi cuenta",
+    "changePassword": "Cambiar la contraseña",
+    "currentPassword": "Contraseña actual",
+    "passwordChanged": "Contraseña cambiada. Se han cerrado tus otras sesiones.",
+    "sessions": "Sesiones abiertas",
+    "sessionSince": "Abierta el {{date}}",
+    "thisSession": "esta",
+    "revokeOthers": "Cerrar las demás sesiones"
+  },
+  "admin": {
+    "title": "Talleres",
+    "new": "Nuevo taller",
+    "workshopName": "Nombre del taller",
+    "adminName": "Nombre del administrador",
+    "adminEmail": "Email del administrador",
+    "create": "Dar de alta",
+    "created": "Taller creado. Su administrador ha recibido la invitación.",
+    "createdNoEmail": "Taller creado, pero el correo no está configurado y la invitación no se ha enviado.",
+    "workshop": "Taller",
+    "status": "Estado",
+    "statuses": { "active": "Activo", "inactive": "Inactivo" },
+    "access": "Con acceso",
+    "pendingInvitations": "Invitaciones pendientes",
+    "limit": "Límite de acceso",
+    "limitOf": "Límite de empleados con acceso de {{name}}",
+    "activate": "Reactivar",
+    "deactivate": "Desactivar"
+  },
+  "portal": {
+    "comingSoon": "El portal del cliente estará disponible próximamente."
+  },
+  "errors": {
+    "unknown": "Algo ha fallado. Inténtalo de nuevo.",
+    "invalid_input": "Algún dato no es válido. Revísalo, sobre todo el email.",
+    "wrong_actor": "Esta cuenta no puede usar esta parte de la aplicación.",
+    "workshop_not_found": "No tienes acceso a ese taller.",
+    "employee_not_found": "Ese empleado ya no existe.",
+    "not_allowed": "Tu rol no permite hacer esto.",
+    "last_admin": "El taller necesita al menos un administrador activo con acceso.",
+    "modified_by_someone_else": "Otra persona ha cambiado esto mientras tanto. Hemos cargado lo último: revísalo y repite el cambio.",
+    "wrong_password": "La contraseña actual no es correcta.",
+    "weak_password": "La contraseña es demasiado débil: usa al menos 10 caracteres.",
+    "invitation_not_found": "La invitación no existe o ha caducado. Pide que te la reenvíen.",
+    "invitation_already_accepted": "Esta invitación ya se aceptó. Inicia sesión.",
+    "employee_limit_reached": "El taller ha llegado a su límite de empleados con acceso.",
+    "employee_already_has_access": "Este empleado ya tiene acceso.",
+    "superadmin_cannot_be_employee": "Una cuenta de superadministrador no puede ser empleado de un taller.",
+    "already_an_employee": "Esa cuenta ya tiene acceso a este taller con otra ficha.",
+    "single_workshop_installation": "Esta instalación es de un solo taller y ya existe."
+  }
+}

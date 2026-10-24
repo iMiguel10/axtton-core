@@ -1,5 +1,6 @@
 import { defineConfig, type Plugin } from "vite";
 import react from "@vitejs/plugin-react";
+import tailwindcss from "@tailwindcss/vite";
 import path from "node:path";
 
 /**
@@ -10,7 +11,7 @@ import path from "node:path";
  * En desarrollo, Vite sirve index.html para cualquier ruta desconocida. Eso vale
  * para una sola aplicación, pero aquí una URL como /portal/quotes/<taller>/<token>
  * debe servir portal/index.html, no el del taller. Este plugin hace esa elección.
- * En producción lo hará el proxy (F2).
+ * En producción lo hará el proxy (arquitectura §9).
  */
 function portalFallback(): Plugin {
   return {
@@ -29,7 +30,7 @@ function portalFallback(): Plugin {
 }
 
 export default defineConfig({
-  plugins: [react(), portalFallback()],
+  plugins: [react(), tailwindcss(), portalFallback()],
   resolve: {
     alias: {
       "@": path.resolve(import.meta.dirname, "./src"),
@@ -47,9 +48,10 @@ export default defineConfig({
     host: true,
     port: 5173,
     strictPort: true,
-    // Las peticiones a /api las reenvía Vite a la API: para el navegador todo es
-    // el mismo origen (localhost:5173), así que no hace falta CORS, igual que en
-    // producción con un solo dominio (arquitectura §5).
+    // Las peticiones a /api (incluido /api/auth de SuperTokens) las reenvía Vite a
+    // la API: para el navegador todo es el mismo origen (localhost:5173), así que
+    // las cookies de sesión son de primera parte y no hace falta CORS, igual que
+    // en producción con un solo dominio (arquitectura §5).
     proxy: {
       "/api": process.env.API_PROXY_TARGET ?? "http://api:8000",
     },

@@ -1,0 +1,13 @@
+FROM node:24-alpine
+
+WORKDIR /app
+
+# Primero solo las dependencias, para que Docker reutilice esta capa mientras no cambien.
+COPY package*.json ./
+RUN npm install
+
+COPY . .
+
+EXPOSE 5173
+
+CMD ["npm", "run", "dev", "--", "--host"]

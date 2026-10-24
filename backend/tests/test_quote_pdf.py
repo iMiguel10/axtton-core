@@ -40,7 +40,8 @@ async def send(client: AsyncClient, two_workshops: TwoWorkshops, quote_id: str) 
         f"/api/v1/workshop/quotes/{quote_id}/send",
         headers={"X-Workshop-Id": str(two_workshops.a)},
     )
-    return urlparse(sent.json()["approval_url"]).path
+    # La página del portal (/portal/quotes/…) llama a la API en /api/v1/portal/quotes/….
+    return "/api/v1" + urlparse(sent.json()["approval_url"]).path
 
 
 def pdf_text(content: bytes) -> str:

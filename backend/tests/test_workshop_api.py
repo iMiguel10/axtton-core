@@ -40,3 +40,16 @@ async def test_each_workshop_sees_only_its_clients(
 async def test_without_workshop_header_is_rejected(client: AsyncClient) -> None:
     response = await client.get("/api/v1/workshop/clients")
     assert response.status_code == 422
+
+
+@pytest.mark.asyncio
+async def test_work_orders_list_only_shows_the_active_workshop(
+    client: AsyncClient, two_workshops: TwoWorkshops
+) -> None:
+    response = await client.get(
+        "/api/v1/workshop/work-orders", headers={"X-Workshop-Id": str(two_workshops.a)}
+    )
+    orders = response.json()
+    assert [order["id"] for order in orders] == [str(two_workshops.order_a)]
+    assert orders[0]["client_name"] == "Cliente A"
+    assert orders[0]["quote_id"] is None

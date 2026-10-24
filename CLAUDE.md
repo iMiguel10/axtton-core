@@ -6,7 +6,7 @@ Guía de trabajo para Claude Code (y cualquier colaborador) en **AXTTON CORE**.
 
 Sistema de gestión para talleres mecánicos: clientes, vehículos, citas, órdenes de trabajo, presupuestos, inventario básico y documentos generados, con un **portal privado** donde el cliente sigue la reparación y aprueba el presupuesto. Una instalación sirve a muchos talleres (multi-taller) o a uno solo. Es un proyecto de portfolio serio, hermano de Applications Tracker, del que hereda stack y convenciones.
 
-> **Estado (2026-10-24): F0 en curso (esqueleto vertical desechable), pasos 1 a 4 hechos.** Existen la especificación (revisada), la arquitectura (v0.1), el sitio de documentación, los agentes y un backend mínimo: `db` con los tres roles y RLS; `api` con Alembic, presupuestos de una línea (borrador, envío que congela el total, aprobación o rechazo por enlace secreto) triggers que impiden tocar un presupuesto enviado y su PDF (WeasyPrint, generado al pedirlo); taller por cabecera, **sin autenticación**; pruebas de RLS, de dominio y del flujo. Todavía no hay frontend ni autenticación; lo que este fichero describe de eso es **diseño**.
+> **Estado (2026-10-24): F0 en curso (esqueleto vertical desechable), pasos 1 a 5 hechos (esqueleto completo).** Existen la especificación (revisada), la arquitectura (v0.1), el sitio de documentación, los agentes y un backend mínimo: `db` con los tres roles y RLS; `api` con Alembic, presupuestos de una línea (borrador, envío que congela el total, aprobación o rechazo por enlace secreto) triggers que impiden tocar un presupuesto enviado y su PDF (WeasyPrint, generado al pedirlo); taller por cabecera, **sin autenticación**; pruebas de RLS, de dominio y del flujo. Y un `frontend` mínimo, sin diseño, con la aplicación del taller y el portal del cliente recorriendo el flujo. Todavía no hay autenticación; lo que este fichero describe de eso es **diseño**.
 
 ## 2. Documentación
 
@@ -23,14 +23,14 @@ Sitio MkDocs en `docs/` (http://localhost:8001). Es la fuente de verdad del dise
 
 ## 3. Stack y servicios
 
-Existen `docs`, `db` y `api`. El resto es el diseño (arquitectura §9), en la fase en que aparece:
+Existen `docs`, `db`, `api` y `frontend`. El resto es el diseño (arquitectura §9), en la fase en que aparece:
 
 | Servicio | Puerto | Notas | Desde |
 |---|---|---|---|
 | `docs` | 8001 | MkDocs Material **fijado a la 9** (MkDocs 2.0 rompe plugins y temas) | **existe** |
 | `db` | 5432 | **Existe.** Postgres 17 con RLS y tres roles, creados por `deploy/postgres/initdb/01-roles.sh` junto con la base `axtton_test`: `axtton_owner` (migraciones), `axtton_app` (API y worker, sin `BYPASSRLS`), `axtton_platform` (solo `app/platform/`) | F0 |
 | `api` | 8000 | **Existe**, con Alembic (aplica las migraciones al arrancar). Diseño completo: FastAPI + SQLAlchemy async + Alembic (Python, uv) + SDK de SuperTokens + WeasyPrint | F0 |
-| `frontend` | 5173 | Vite con dos aplicaciones: `src/workshop/` en `/` y `src/portal/` en `/portal`. React 19 + TS, TanStack Query, react-hook-form + zod, Tailwind v4 + shadcn/ui, i18next (es, en) | F0 |
+| `frontend` | 5173 | **Existe** (F0, sin Tailwind ni i18n todavía). Vite con dos aplicaciones: `src/workshop/` en `/` y `src/portal/` en `/portal`. React 19 + TS, TanStack Query, react-hook-form + zod, Tailwind v4 + shadcn/ui, i18next (es, en) | F0 |
 | `supertokens` + `supertokens-db` | — | Recetas `emailpassword` (personal y superadministrador) y `passwordless` (clientes) | F1 |
 | `valkey` | — | Cola de SAQ y rate limit | F1 |
 | `mailpit` | 8025 | Solo desarrollo: captura todo el correo | F1 |
@@ -44,7 +44,7 @@ docker compose up docs                       # sitio de documentación en http:/
 docker compose run --rm docs build --strict  # compila el sitio; falla ante enlaces rotos o avisos
 
 cp .env.example .env                         # primera vez
-docker compose up -d --build db api          # Postgres y la API en http://localhost:8000 (/docs = OpenAPI)
+docker compose up -d --build db api frontend # Postgres, la API en http://localhost:8000 (/docs = OpenAPI) y el frontend en http://localhost:5173
 curl http://localhost:8000/api/health        # {"status":"ok"} si la API llega a la BD
 docker compose exec api ruff check .         # estilo
 docker compose exec api ruff format .        # formato
@@ -55,9 +55,13 @@ curl -H "X-Workshop-Id: <id>" http://localhost:8000/api/v1/workshop/clients   # 
 # F0, flujo del presupuesto: POST /api/v1/workshop/work-orders/<orden>/quotes → POST /api/v1/workshop/quotes/<id>/send (devuelve approval_url) → GET approval_url → POST approval_url/decision {"outcome":"approved"}; PDF en GET /api/v1/workshop/quotes/<id>/pdf o approval_url/pdf
 docker compose down -v                       # borra los volúmenes: necesario si cambia deploy/postgres/initdb
 docker compose exec api uv add <paquete>     # dependencias: siempre dentro del contenedor, nunca en el host
+docker compose exec frontend npx tsc -b        # tipos del frontend
+docker compose exec frontend npm run lint     # ESLint, incluida la regla que separa src/workshop y src/portal
+docker compose exec frontend npm run build    # compila las dos aplicaciones (dist/index.html y dist/portal/index.html)
+docker compose exec frontend npm install <paquete>   # exec, nunca run: con run se instala en otro contenedor
 ```
 
-Las migraciones se escriben a mano en `backend/migrations/versions/` (autogenerate no sabe de RLS ni de políticas) y se aplican solas al arrancar `api`. Los comandos de frontend y despliegue se añaden aquí en el mismo commit que los hace existir.
+Las migraciones se escriben a mano en `backend/migrations/versions/` (autogenerate no sabe de RLS ni de políticas) y se aplican solas al arrancar `api`. Los comandos de despliegue se añaden aquí en el mismo commit que los hace existir. F0 en el navegador: `seed_f0`, pega el id del taller en http://localhost:5173, «Crear y enviar» y abre el enlace del portal.
 
 ## 5. Estructura y capas
 
@@ -111,6 +115,9 @@ Ya identificadas en el diseño (arquitectura §2, §3, §4, §8 y §9); se ampli
 - **Bloquear la orden antes de cambiar su presupuesto** (`SELECT … FOR UPDATE`): sin el bloqueo, dos envíos simultáneos acaban en un 500 al chocar con el trigger; con él, el segundo espera y recibe un 409.
 - **WeasyPrint es síncrono y lento**: se ejecuta con `run_in_threadpool` y como mucho dos a la vez (`app/infra/pdf.py`). Llamarlo directamente en un endpoint `async` bloquearía todas las peticiones mientras maqueta. Su fetcher (`NoExternalResources`) no carga nada externo: las plantillas llevan el CSS dentro.
 - **La imagen necesita una tipografía** (`fonts-dejavu-core`): la imagen slim de Python no trae ninguna, y sin fuentes el PDF sale con cuadrados.
+- **El portal necesita su propio fallback en desarrollo**: Vite sirve `index.html` (el taller) para cualquier ruta desconocida, así que `/portal/quotes/…` cargaría la aplicación equivocada. Lo corrige el plugin `portalFallback` de `vite.config.ts`; en producción, el proxy (F2).
+- **Cargar datos en un `useEffect` lleva un indicador `ignore`** que descarta respuestas de una petición ya obsoleta (el taller cambió mientras tanto). Sin él, una respuesta lenta pisa a la buena. TanStack Query lo resolverá desde F1.
+- **Docker en Windows no avisa de cambios de fichero**: Vite usa `usePolling` para recargar dentro del contenedor.
 - **Siempre `localhost`, nunca `127.0.0.1`**: las cookies de sesión no viajan entre los dos.
 - Heredadas de Applications Tracker para SAQ y el correo: `retries` cuenta intentos totales, SAQ recuerda la clave de un trabajo unos 10 minutos, el mismo envío puede ejecutarse dos veces a la vez (`FOR UPDATE SKIP LOCKED`), un trabajo nunca lleva un token de acceso, la cola se crea dentro del event loop.
 

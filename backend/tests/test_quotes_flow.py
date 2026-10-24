@@ -51,7 +51,8 @@ async def create_and_send(
     )
     assert sent.status_code == 200
     assert sent.json()["total_cents"] == 10346
-    return quote_id, urlparse(sent.json()["approval_url"]).path
+    # La página del portal (/portal/quotes/…) llama a la API en /api/v1/portal/quotes/….
+    return quote_id, "/api/v1" + urlparse(sent.json()["approval_url"]).path
 
 
 async def work_order_status(engines: Engines, work_order_id: object) -> str | None:

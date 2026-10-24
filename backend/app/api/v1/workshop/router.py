@@ -1,11 +1,14 @@
 from uuid import UUID
 
-from fastapi import APIRouter, Request, Response, status
+from fastapi import APIRouter, Response, status
 
 from app.api.responses import pdf_response
 from app.api.v1.workshop.deps import Workshop
+from app.core.config import get_settings
 from app.repositories.clients import list_client_names
+from app.repositories.work_orders import list_work_order_rows
 from app.schemas.quotes import QuoteCreate, QuoteCreated, QuoteSent
+from app.schemas.work_orders import WorkOrderRead
 from app.services import quotes as quote_service
 
 router = APIRouter(prefix="/api/v1/workshop", tags=["workshop"])
@@ -48,12 +51,21 @@ async def quote_pdf(quote_id: UUID, workshop: Workshop) -> Response:
 
 
 @router.post("/quotes/{quote_id}/send")
-async def send_quote(quote_id: UUID, workshop: Workshop, request: Request) -> QuoteSent:
-    """Congela el presupuesto, guarda su total y genera el enlace de aprobación."""
+async def send_quote(quote_id: UUID, workshop: Workshop) -> QuoteSent:
+    """Congela el presupuesto, guarda su total y genera el enlace de aprobación.
+
+    El enlace es una página del portal (frontend), que a su vez llama a
+    /api/v1/portal/quotes/{workshop_id}/{token}.
+    """
     sent = await quote_service.send(workshop.session, quote_id)
-    url = request.url_for(
-        "view_quote", workshop_id=workshop.workshop_id, token=sent.token
-    )
+    url = f"{get_settings().app_url}/portal/quotes/{workshop.workshop_id}/{sent.token}"
     return QuoteSent(
-        quote_id=sent.quote_id, total_cents=sent.total_cents, approval_url=str(url)
+        quote_id=sent.quote_id, total_cents=sent.total_cents, approval_url=url
     )
+
+
+@router.get("/work-orders")
+async def list_work_orders(workshop: Workshop) -> list[WorkOrderRead]:
+    """F0: las órdenes del taller, para elegir una desde la pantalla."""
+    rows = await list_work_order_rows(workshop.session)
+    return [WorkOrderRead(**row._asdict()) for row in rows]

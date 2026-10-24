@@ -16,6 +16,9 @@ class Settings(BaseSettings):
     database_url: str
     # Rol axtton_platform, que se salta RLS. Solo lo usa app/platform/.
     platform_database_url: str
+    # Dirección pública del frontend: los enlaces que se envían al cliente
+    # apuntan a páginas del portal, no a la API.
+    app_url: str = "http://localhost:5173"
 
 
 @lru_cache

@@ -37,6 +37,22 @@ services:
       db:
         condition: service_healthy
 
+  # Frontend (Vite) en http://localhost:5173: la aplicación del taller en "/" y el
+  # portal del cliente en "/portal". Vite reenvía /api a la API (vite.config.ts).
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile.dev
+    ports:
+      - "5173:5173"
+    volumes:
+      - ./frontend:/app
+      # node_modules en un volumen anónimo: el del host (si lo hubiera) no tapa
+      # el que se instaló dentro de la imagen, que es Linux y no Windows.
+      - /app/node_modules
+    depends_on:
+      - api
+
   # Documentación de desarrollo (MkDocs Material), en http://localhost:8001.
   # Fijado a la 9: MkDocs 2.0 rompe plugins y temas (trampa heredada de Applications Tracker).
   docs:

@@ -75,6 +75,22 @@ services:
         condition: service_healthy
       supertokens:
         condition: service_healthy
+      valkey:
+        condition: service_healthy
+
+  # Contadores del límite de peticiones (RNF-06) y, desde F5, la cola de SAQ.
+  # Sin puertos publicados: solo lo alcanza la red interna. appendonly: reiniciar
+  # el contenedor no pierde los trabajos encolados.
+  valkey:
+    image: valkey/valkey:9.1-alpine
+    command: ["valkey-server", "--appendonly", "yes"]
+    volumes:
+      - valkey_data:/data
+    healthcheck:
+      test: ["CMD", "valkey-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
 
   # Solo desarrollo: captura todo el correo (SMTP interno en mailpit:1025) y no
   # envía nada fuera. Los emails se ven en http://localhost:8025. En producción el
@@ -115,3 +131,4 @@ volumes:
   postgres_data:
   supertokens_data:
   api_venv:
+  valkey_data:

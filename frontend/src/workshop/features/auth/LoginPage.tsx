@@ -8,6 +8,7 @@ import { z } from "zod";
 
 import { Field } from "@/shared/components/form/Field";
 import { Button } from "@/shared/components/ui/button";
+import { errorMessage } from "@/shared/lib/errors";
 
 import { AuthLayout } from "./AuthLayout";
 
@@ -27,12 +28,19 @@ export function LoginPage() {
 
   async function onSubmit(values: LoginForm) {
     setError(null);
-    const response = await EmailPassword.signIn({
-      formFields: [
-        { id: "email", value: values.email },
-        { id: "password", value: values.password },
-      ],
-    });
+    let response;
+    try {
+      response = await EmailPassword.signIn({
+        formFields: [
+          { id: "email", value: values.email },
+          { id: "password", value: values.password },
+        ],
+      });
+    } catch (failure) {
+      // Demasiados intentos (RNF-06) o un fallo de red.
+      setError(errorMessage(t, failure));
+      return;
+    }
     if (response.status === "OK") {
       navigate("/", { replace: true });
     } else {

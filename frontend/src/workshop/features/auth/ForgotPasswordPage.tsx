@@ -8,6 +8,7 @@ import { z } from "zod";
 
 import { Field } from "@/shared/components/form/Field";
 import { Button } from "@/shared/components/ui/button";
+import { errorMessage } from "@/shared/lib/errors";
 
 import { AuthLayout } from "./AuthLayout";
 
@@ -17,13 +18,20 @@ type ForgotForm = z.infer<typeof schema>;
 export function ForgotPasswordPage() {
   const { t } = useTranslation();
   const [sent, setSent] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const form = useForm<ForgotForm>({ resolver: zodResolver(schema) });
   const { errors, isSubmitting } = form.formState;
 
   async function onSubmit(values: ForgotForm) {
-    await EmailPassword.sendPasswordResetEmail({
-      formFields: [{ id: "email", value: values.email }],
-    });
+    setError(null);
+    try {
+      await EmailPassword.sendPasswordResetEmail({
+        formFields: [{ id: "email", value: values.email }],
+      });
+    } catch (failure) {
+      setError(errorMessage(t, failure));
+      return;
+    }
     // Siempre el mismo mensaje, exista o no la cuenta (RF-121).
     setSent(true);
   }
@@ -42,6 +50,11 @@ export function ForgotPasswordPage() {
             error={errors.email && t(errors.email.message ?? "")}
             {...form.register("email")}
           />
+          {error && (
+            <p role="alert" className="text-destructive text-sm">
+              {error}
+            </p>
+          )}
           <Button type="submit" disabled={isSubmitting}>
             {t("auth.sendResetLink")}
           </Button>

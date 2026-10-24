@@ -12,6 +12,7 @@ from fastapi import APIRouter, Depends, status
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.api.rate_limit import limit_invitation_accept, limit_invitation_view
 from app.core.db import workshop_transaction
 from app.core.errors import ConflictError
 from app.schemas.invitations import InvitationAccept, InvitationRead
@@ -33,13 +34,18 @@ async def invitation_session(workshop_id: UUID) -> AsyncIterator[AsyncSession]:
 InvitationSession = Annotated[AsyncSession, Depends(invitation_session)]
 
 
-@router.get("/{workshop_id}/{token}")
+# Las dependencias del límite van antes que la sesión: un 429 no abre transacción.
+@router.get("/{workshop_id}/{token}", dependencies=[Depends(limit_invitation_view)])
 async def view_invitation(token: str, session: InvitationSession) -> InvitationRead:
     view = await invitation_service.view(session, token)
     return InvitationRead(**view.__dict__)
 
 
-@router.post("/{workshop_id}/{token}/accept", status_code=status.HTTP_204_NO_CONTENT)
+@router.post(
+    "/{workshop_id}/{token}/accept",
+    status_code=status.HTTP_204_NO_CONTENT,
+    dependencies=[Depends(limit_invitation_accept)],
+)
 async def accept_invitation(
     workshop_id: UUID, token: str, body: InvitationAccept, session: InvitationSession
 ) -> None:

@@ -36,3 +36,14 @@ class ConflictError(AppError):
     """La petición es válida, pero el estado actual no la permite."""
 
     status_code = 409
+
+
+class RateLimitedError(AppError):
+    """Demasiadas peticiones (RNF-06). `retry_after`, en segundos, va en el cuerpo
+    y en la cabecera Retry-After para que la interfaz diga cuánto esperar."""
+
+    status_code = 429
+
+    def __init__(self, retry_after: int) -> None:
+        super().__init__("rate_limited")
+        self.retry_after = retry_after

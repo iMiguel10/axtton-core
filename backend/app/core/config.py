@@ -38,6 +38,12 @@ class Settings(BaseSettings):
     # Modo de instalación (RF-111): un solo taller o varios.
     installation_mode: Literal["multi", "single"] = "multi"
 
+    # Límite de peticiones (RNF-06). Sin Valkey configurado, no se limita.
+    valkey_url: str | None = None
+    rate_limit_enabled: bool = True
+    # Proxies propios cuyo X-Forwarded-For es de fiar (IPs o CIDR, por comas).
+    trusted_proxies: str = ""
+
 
 @lru_cache
 def get_settings() -> Settings:

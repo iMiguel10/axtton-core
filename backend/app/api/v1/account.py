@@ -13,7 +13,9 @@ from pydantic import BaseModel, Field, SecretStr
 from supertokens_python.recipe.session import SessionContainer
 from supertokens_python.recipe.session.framework.fastapi import verify_session
 
+from app.api.rate_limit import enforce
 from app.core.errors import ForbiddenError, ValidationFailedError
+from app.domain.rate_limits import PASSWORD_CHANGE_PER_USER
 from app.infra import identity
 
 router = APIRouter(prefix="/account", tags=["account"])
@@ -36,6 +38,8 @@ class SessionRead(BaseModel):
 async def change_password(body: PasswordChange, session: CurrentSession) -> None:
     """Exige la contraseña actual y cierra las DEMÁS sesiones (RF-122): si alguien
     tenía una abierta en otro dispositivo, deja de tenerla."""
+    # Antes de comprobar la contraseña: si no, el límite no frenaría a quien la adivina.
+    await enforce(PASSWORD_CHANGE_PER_USER, session.get_user_id())
     try:
         await identity.change_password(
             session.get_user_id(),

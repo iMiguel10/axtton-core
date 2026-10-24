@@ -94,6 +94,23 @@ Cada prefijo es un router con su dependencia. Esa dependencia, además de compro
 | T10 | Consumir un enlace mágico, también con un email que es a la vez de personal en otro taller | La sesión creada es siempre `actor: client`, con el taller del enlace |
 | T11 | Buscar en el código llamadas que modifiquen el contenido de una sesión ya creada | Ninguna fuera de `app/core/sessions.py`; la prueba revisa el código, como R8 revisa los imports |
 
+### Límite de peticiones (RNF-06)
+
+Hecho en F1, heredado de Applications Tracker: la librería `limits` con **ventana deslizante** sobre Valkey (`app/infra/rate_limit.py`), reglas puras en `app/domain/rate_limits.py`. Al superar una regla se responde 429 `rate_limited` con `Retry-After`; nunca se bloquea la cuenta, porque bastaría saber un email para dejar a alguien sin acceso.
+
+| Qué | Reglas |
+|---|---|
+| Inicio de sesión | 10 por hora por email; 30 por minuto por IP (holgado: el personal de un taller comparte IP) |
+| Recuperación de contraseña | 3 por hora por email; 10 por hora por IP |
+| Ver una invitación | 60 por hora por IP |
+| Aceptar una invitación | 5 cada 15 minutos por enlace; 20 por hora por IP. Aceptar con una cuenta existente exige su contraseña (RF-07): sin límite, un enlace serviría para probarlas |
+| Cambiar la contraseña | 5 cada 15 minutos por usuario, contados **antes** de comprobar la actual |
+| Pedir un enlace mágico | Llega con el portal, en F4 |
+
+- Las rutas de SuperTokens no admiten dependencias de FastAPI: las limita un middleware colocado **por fuera** del suyo, que reconoce todas sus formas equivalentes (`/api/auth/signin/`, `/api/auth/public/signin`, `;x`) para que cambiar la URL no salte el límite.
+- La IP es la de la conexión; `X-Forwarded-For` solo cuenta si viene de un proxy de `TRUSTED_PROXIES`, leído por la derecha.
+- Si Valkey no responde, **se deja pasar** durante 30 s: mejor un rato sin límite que nadie pueda entrar.
+
 ### Trampas ya identificadas
 
 - **Revocar las sesiones de un cliente no es revocar las de su usuario de SuperTokens.** El usuario passwordless es uno por email, compartido entre talleres. Anonimizar a un cliente o cambiarle el email (RF-47) debe cerrar solo las sesiones cuyo `workshop_id` y `client_id` coinciden; `revokeAllSessionsForUser` cerraría también las de otros talleres. Por lo mismo, anonimizar nunca borra el usuario de SuperTokens si ese email sigue siendo cliente de otro taller (T7).

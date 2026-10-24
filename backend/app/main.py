@@ -7,15 +7,17 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm.exc import StaleDataError
 from supertokens_python.framework.fastapi import get_middleware
 
+from app.api.rate_limit import AuthRateLimitMiddleware, retry_after_headers
 from app.api.v1.admin.router import router as admin_router
 from app.api.v1.invitations.router import router as invitations_router
 from app.api.v1.portal.router import router as portal_router
 from app.api.v1.workshop.router import router as workshop_router
 from app.core.config import get_settings
 from app.core.db import get_session
-from app.core.errors import AppError
+from app.core.errors import AppError, RateLimitedError
 from app.core.supertokens import init_supertokens
 from app.infra.email import build_email_sender, set_email_sender
+from app.infra.rate_limit import build_rate_limiter, set_rate_limiter
 
 # Antes de crear la app: el middleware necesita el SDK ya inicializado.
 init_supertokens()
@@ -24,9 +26,14 @@ app = FastAPI(title="AXTTON CORE API", version="0.1.0")
 # La implementación del correo se elige una vez, al arrancar; los endpoints la
 # reciben por dependencia (app/api/deps.py) y las pruebas la sustituyen.
 set_email_sender(build_email_sender(get_settings()))
+# Igual el límite de peticiones (RNF-06): las pruebas lo apagan y ponen el suyo.
+set_rate_limiter(build_rate_limiter(get_settings()))
 # Atiende /api/auth/* (inicio y cierre de sesión, renovación). Sin CORS: con un
 # solo dominio, el navegador nunca hace peticiones a otro origen (arquitectura §5).
 app.add_middleware(get_middleware())
+# En Starlette el ÚLTIMO add_middleware es el más externo: este alcanza
+# /api/auth/* antes que SuperTokens, que si no lo atendería sin pasar por aquí.
+app.add_middleware(AuthRateLimitMiddleware)
 
 app.include_router(workshop_router)
 app.include_router(portal_router)
@@ -37,6 +44,12 @@ app.include_router(invitations_router)
 @app.exception_handler(AppError)
 async def app_error_handler(request: Request, exc: AppError) -> JSONResponse:
     """El único sitio donde un error de la aplicación se convierte en HTTP."""
+    if isinstance(exc, RateLimitedError):
+        return JSONResponse(
+            status_code=exc.status_code,
+            content={"code": exc.code, "retry_after": exc.retry_after},
+            headers=retry_after_headers(exc.retry_after),
+        )
     return JSONResponse(status_code=exc.status_code, content={"code": exc.code})
 
 

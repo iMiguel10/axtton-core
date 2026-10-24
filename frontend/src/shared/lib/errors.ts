@@ -4,6 +4,11 @@ import { ApiError } from "./apiClient";
 
 /** Mensaje para la persona: el código estable de la API, traducido (errors.<code>). */
 export function errorMessage(t: TFunction, error: unknown): string {
+  // El SDK de SuperTokens no envuelve los errores HTTP: lanza la propia Response.
+  // Un 429 ahí es el límite de peticiones del inicio de sesión o la recuperación.
+  if (error instanceof Response && error.status === 429) {
+    return t("errors.rate_limited");
+  }
   if (error instanceof ApiError && error.code) {
     return t(`errors.${error.code}`, { defaultValue: t("errors.unknown") });
   }

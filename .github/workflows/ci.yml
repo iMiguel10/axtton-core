@@ -36,7 +36,7 @@ jobs:
       - name: Levantar Postgres, SuperTokens, Mailpit y la API
         # La API aplica las migraciones al arrancar (entrypoint.sh): si una
         # migración falla, falla aquí.
-        run: docker compose up -d --build --wait db supertokens mailpit api
+        run: docker compose up -d --build --wait db supertokens valkey mailpit api
 
       - name: Estilo
         run: |

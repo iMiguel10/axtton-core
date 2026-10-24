@@ -15,6 +15,9 @@ from uuid import UUID, uuid4
 TEST_DB = os.environ.get("POSTGRES_TEST_DB", "axtton_test")
 for _var in ("DATABASE_URL", "PLATFORM_DATABASE_URL", "MIGRATIONS_DATABASE_URL"):
     os.environ[_var] = os.environ[_var].rpartition("/")[0] + f"/{TEST_DB}"
+# Sin límite de peticiones: las pruebas inician sesión muchas veces seguidas desde
+# la misma "IP". Las que prueban el límite ponen el suyo (test_rate_limit.py).
+os.environ["RATE_LIMIT_ENABLED"] = "false"
 
 import pytest
 import pytest_asyncio

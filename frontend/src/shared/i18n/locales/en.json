@@ -119,7 +119,8 @@
   },
   "errors": {
     "unknown": "Something went wrong. Please try again.",
-    "invalid_input": "Some of the data is not valid. Check it, especially the email.",
+    "rate_limited": "Too many attempts in a row. Wait a few minutes and try again.",
+    "invalid_input":"Some of the data is not valid. Check it, especially the email.",
     "wrong_actor": "This account cannot use this part of the application.",
     "workshop_not_found": "You do not have access to that workshop.",
     "employee_not_found": "That employee no longer exists.",

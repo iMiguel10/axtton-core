@@ -6,7 +6,7 @@ Guía de trabajo para Claude Code (y cualquier colaborador) en **AXTTON CORE**.
 
 Sistema de gestión para talleres mecánicos: clientes, vehículos, citas, órdenes de trabajo, presupuestos, inventario básico y documentos generados, con un **portal privado** donde el cliente sigue la reparación y aprueba el presupuesto. Una instalación sirve a muchos talleres (multi-taller) o a uno solo. Es un proyecto de portfolio serio, hermano de Applications Tracker, del que hereda stack y convenciones.
 
-> **Estado (2026-10-24): F1 en curso, pasos 1 a 5 hechos.** F0 está cerrada ([lo aprendido](docs/arquitectura/f0-cierre.md)) y su código desechable retirado. Existen `db` con los tres roles, `api` con la migración inicial definitiva (`users`, `workshops`, `employees`, `invitations`, `audit_log`, con RLS y modelos de SQLAlchemy) y pruebas de RLS; SuperTokens con inicio de sesión del personal y del superadministrador, el actor en la sesión y los tres prefijos de API cerrados entre sí; el comando que crea el superadministrador y, en `/admin`, el alta de talleres con invitación al primer administrador, el listado con recuentos, la desactivación y los límites; la aceptación de invitaciones (ruta pública `/api/v1/invitations`), el taller activo validado en cada petición, el selector de talleres y la gestión de empleados y roles con la matriz de permisos; recuperar y cambiar la contraseña y gestionar sesiones; Mailpit; CI en GitHub Actions; y en el `frontend` (Tailwind + shadcn con la paleta de marca, i18n es/en, TanStack Query) las pantallas de acceso, invitación, selector de taller, empleados, mi cuenta y talleres del superadministrador. Falta el límite de peticiones (RNF-06, con Valkey) y que el superadministrador invite a otro desde la aplicación (RF-110, hoy por comando).
+> **Estado (2026-10-24): F1 en curso, pasos 1 a 6 hechos.** F0 está cerrada ([lo aprendido](docs/arquitectura/f0-cierre.md)) y su código desechable retirado. Existen `db` con los tres roles, `api` con la migración inicial definitiva (`users`, `workshops`, `employees`, `invitations`, `audit_log`, con RLS y modelos de SQLAlchemy) y pruebas de RLS; SuperTokens con inicio de sesión del personal y del superadministrador, el actor en la sesión y los tres prefijos de API cerrados entre sí; el comando que crea el superadministrador y, en `/admin`, el alta de talleres con invitación al primer administrador, el listado con recuentos, la desactivación y los límites; la aceptación de invitaciones (ruta pública `/api/v1/invitations`), el taller activo validado en cada petición, el selector de talleres y la gestión de empleados y roles con la matriz de permisos; recuperar y cambiar la contraseña y gestionar sesiones; Mailpit; CI en GitHub Actions; y en el `frontend` (Tailwind + shadcn con la paleta de marca, i18n es/en, TanStack Query) las pantallas de acceso, invitación, selector de taller, empleados, mi cuenta y talleres del superadministrador; y el límite de peticiones (RNF-06) con Valkey (arquitectura §2). Falta consultar el registro de auditoría (RNF-16) y que el superadministrador invite a otro desde la aplicación (RF-110, hoy por comando).
 
 ## 2. Documentación
 
@@ -24,7 +24,7 @@ Sitio MkDocs en `docs/` (http://localhost:8001). Es la fuente de verdad del dise
 
 ## 3. Stack y servicios
 
-Existen `docs`, `db`, `supertokens` + `supertokens-db`, `api`, `mailpit` y `frontend`. El resto es el diseño (arquitectura §9), en la fase en que aparece:
+Existen `docs`, `db`, `supertokens` + `supertokens-db`, `api`, `valkey`, `mailpit` y `frontend`. El resto es el diseño (arquitectura §9), en la fase en que aparece:
 
 | Servicio | Puerto | Notas | Desde |
 |---|---|---|---|
@@ -33,7 +33,7 @@ Existen `docs`, `db`, `supertokens` + `supertokens-db`, `api`, `mailpit` y `fron
 | `api` | 8000 | **Existe**, con Alembic (aplica las migraciones al arrancar). Diseño completo: FastAPI + SQLAlchemy async + Alembic (Python, uv) + SDK de SuperTokens + WeasyPrint | F0 |
 | `frontend` | 5173 | **Existe**, con las pantallas de F1 (el portal es un marcador hasta F4). Vite con dos aplicaciones: `src/workshop/` en `/` y `src/portal/` en `/portal`. React 19 + TS, TanStack Query, react-hook-form + zod, Tailwind v4 + shadcn/ui, i18next (es, en) | F0 |
 | `supertokens` + `supertokens-db` | — | **Existe** (core fijado a 12.2.0, SDK a 0.31.3). Receta `emailpassword` (personal y superadministrador); `passwordless` (clientes) llega en F4. Rutas en `/api/auth`, sin registro público | F1 |
-| `valkey` | — | Cola de SAQ y límite de peticiones (RNF-06). **Aún no existe**: llega con el límite de peticiones y el worker | F1–F5 |
+| `valkey` | — | **Existe.** Contadores del límite de peticiones (RNF-06); la cola de SAQ llega con el worker en F5. Sin `VALKEY_URL` o con `RATE_LIMIT_ENABLED=false`, no se limita nada | F1 |
 | `mailpit` | 8025 | **Existe.** Solo desarrollo: captura todo el correo (http://localhost:8025). Sin `SMTP_HOST`, la aplicación arranca y no envía emails | F1 |
 | `worker` | — | Misma imagen que `api`: avisos y tareas programadas | F5 |
 | `manual` | 3001 | Docusaurus, manual de producción en es y en | F9 |
@@ -133,6 +133,10 @@ Ya identificadas en el diseño (arquitectura §2, §3, §4, §8 y §9); se ampli
 - **Los `.sh` tienen que ser ejecutables en git, no solo en tu disco**: Windows no tiene ese permiso y git los guarda como `100644`. En local funciona porque Docker Desktop monta los ficheros de Windows como ejecutables; en la CI (Linux) falla con `permission denied`. Un `.sh` nuevo se marca con `git update-index --chmod=+x <fichero>`.
 - **En la CI el código montado no es de `appuser`**: el runner es uid 1001 y la API corre como uid 1000, así que no podría crear las cachés de ruff, mypy y pytest. La CI hace `chmod -R a+rwX backend` antes de levantar los servicios.
 - **Siempre `localhost`, nunca `127.0.0.1`**: las cookies de sesión no viajan entre los dos.
+- **El límite de las rutas de SuperTokens va en un middleware, no en una dependencia**: SuperTokens las atiende antes que el router. `AuthRateLimitMiddleware` se añade **después** de `get_middleware()` (en Starlette, el último añadido es el más externo); al revés, nunca se ejecutaría. Lee el cuerpo para sacar el email y se lo vuelve a entregar a SuperTokens.
+- **Las pruebas corren sin límite de peticiones** (`RATE_LIMIT_ENABLED=false` en `conftest.py`): inician sesión muchas veces desde la misma "IP". `test_rate_limit.py` pone uno real con almacén en memoria.
+- **El SDK de SuperTokens del navegador lanza la propia `Response`** ante un HTTP no 2xx (un 429): `signIn` y `sendPasswordResetEmail` van en `try/catch` y `errorMessage` la reconoce.
+- **Un `.env` creado antes de un servicio nuevo no tiene sus variables**: al añadir una a `.env.example`, añádela también a tu `.env` (sin `VALKEY_URL`, la API arranca sin límite de peticiones).
 - **La caché de TanStack Query se vacía al crear, cerrar o perder la sesión** (`src/workshop/lib/supertokens.ts`). Sin el vaciado al crearla, el "sin sesión" cacheado antes del login devuelve a `/login` justo después de entrar; sin los otros dos, la siguiente persona del navegador vería datos de la anterior.
 - **El backend rechaza emails de dominios reservados** como `.local` (422 de validación, sin `code`): para pruebas, `@example.com`. El frontend traduce cualquier 422 sin código como `errors.invalid_input`.
 - **Ningún texto de interfaz va escrito a mano en un componente**: todo pasa por `t()` con su clave en `src/shared/i18n/locales/{es,en}.json`, y cada `code` de error de la API tiene su `errors.<code>`.

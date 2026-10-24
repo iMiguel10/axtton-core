@@ -119,7 +119,8 @@
   },
   "errors": {
     "unknown": "Algo ha fallado. Inténtalo de nuevo.",
-    "invalid_input": "Algún dato no es válido. Revísalo, sobre todo el email.",
+    "rate_limited": "Demasiados intentos seguidos. Espera unos minutos y vuelve a probar.",
+    "invalid_input":"Algún dato no es válido. Revísalo, sobre todo el email.",
     "wrong_actor": "Esta cuenta no puede usar esta parte de la aplicación.",
     "workshop_not_found": "No tienes acceso a ese taller.",
     "employee_not_found": "Ese empleado ya no existe.",

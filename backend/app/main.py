@@ -4,9 +4,11 @@ from fastapi import Depends, FastAPI, Request
 from fastapi.responses import JSONResponse
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm.exc import StaleDataError
 from supertokens_python.framework.fastapi import get_middleware
 
 from app.api.v1.admin.router import router as admin_router
+from app.api.v1.invitations.router import router as invitations_router
 from app.api.v1.portal.router import router as portal_router
 from app.api.v1.workshop.router import router as workshop_router
 from app.core.config import get_settings
@@ -29,12 +31,20 @@ app.add_middleware(get_middleware())
 app.include_router(workshop_router)
 app.include_router(portal_router)
 app.include_router(admin_router)
+app.include_router(invitations_router)
 
 
 @app.exception_handler(AppError)
 async def app_error_handler(request: Request, exc: AppError) -> JSONResponse:
     """El único sitio donde un error de la aplicación se convierte en HTTP."""
     return JSONResponse(status_code=exc.status_code, content={"code": exc.code})
+
+
+@app.exception_handler(StaleDataError)
+async def stale_data_handler(request: Request, exc: StaleDataError) -> JSONResponse:
+    """Bloqueo optimista (RNF-15): otra persona guardó antes. El cambio no se
+    aplica y quien guardaba recibe un aviso para decidir, nunca un 500."""
+    return JSONResponse(status_code=409, content={"code": "modified_by_someone_else"})
 
 
 @app.get("/api/health")

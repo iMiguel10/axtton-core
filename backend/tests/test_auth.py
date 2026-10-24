@@ -85,7 +85,8 @@ async def test_staff_session_carries_the_staff_actor(
     response = await client.get(
         "/api/v1/workshop/me", headers={"Authorization": f"Bearer {token}"}
     )
-    assert response.json() == {"actor": "staff"}
+    # Una cuenta de personal recién creada aún no trabaja en ningún taller.
+    assert response.json() == {"actor": "staff", "workshops": []}
 
 
 def _forge_actor(token: str, actor: str) -> str:

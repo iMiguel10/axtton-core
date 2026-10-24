@@ -26,6 +26,11 @@ from app.core.db import SessionFactory
 from app.domain.actors import ACTOR_CLAIM, Actor
 from app.repositories import users as user_repo
 
+# Marca que el backend pone en user_context cuando solo quiere comprobar una
+# contraseña (al aceptar una invitación), no iniciar sesión: en ese caso la
+# cuenta propia puede no existir todavía, y es justo lo que se va a crear.
+PASSWORD_CHECK_ONLY = "axtton_password_check_only"
+
 
 class NoAccountError(Exception):
     """Un usuario de SuperTokens sin cuenta propia intentó obtener una sesión."""
@@ -100,7 +105,9 @@ def emailpassword_override(original: EmailPasswordRecipe) -> EmailPasswordRecipe
             should_try_linking_with_session_user,
             user_context,
         )
-        if isinstance(result, SignInOkResult):
+        if isinstance(result, SignInOkResult) and not user_context.get(
+            PASSWORD_CHECK_ONLY
+        ):
             try:
                 await actor_for(result.user.id)
             except NoAccountError:

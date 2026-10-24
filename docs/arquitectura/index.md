@@ -13,6 +13,7 @@ Este documento recoge **qué se ha decidido y contra qué alternativa**. La espe
 | A3 | Frontend | **Un proyecto Vite con dos aplicaciones**: `src/workshop/` y `src/portal/`, con lo común en `src/shared/`. React 19 + TS, TanStack Query, react-hook-form + zod, Tailwind v4 + shadcn/ui, i18next. Cada aplicación es una entrada de Vite con su propio paquete | **Una sola SPA con dos árboles de rutas**: el cliente descargaría el código del taller y compartirían estado global. **Dos proyectos**: doble mantenimiento de dependencias y componentes para la misma interfaz. |
 | A4 | Autenticación | **SuperTokens para los tres actores**: email y contraseña (receta `emailpassword`) para el personal y el superadministrador; enlace mágico (receta `passwordless`) para los clientes. Detalle en §2 | **Zitadel**: OIDC estándar, passkeys y MFA gratis y consola de identidades, pero **no tiene enlace mágico**: el portal necesitaría un sistema de sesión propio aparte, y en el navegador exige que el backend haga de intermediario para no exponer tokens; además pesa más en infraestructura. Gana en lo que aquí está pospuesto. **Revisar esta decisión si** las apps móviles pasan a ser una fase real, el 2FA pasa a ser obligatorio o un taller quiere entrar con la cuenta de su empresa (SSO). **Híbrido** (SuperTokens para el personal, sesión propia para el portal): dos sistemas de sesión que mantener. **Autenticación propia**: habría que escribir y probar uno mismo la rotación, la revocación y el CSRF. |
 | A5 | Separación de actores en la API | **Tres prefijos**: `/api/v1/workshop/*`, `/api/v1/portal/*` y `/api/v1/admin/*`. Cada uno tiene una dependencia **a nivel de router** que exige su actor y rechaza cualquier otro | **Comprobar el actor en cada endpoint**: basta con olvidarlo una vez. Con el router, un endpoint nuevo queda protegido por construcción. |
+| A5b | Rutas sin sesión | **Un cuarto prefijo, `/api/v1/invitations`**, para aceptar una invitación: quien la usa aún no tiene cuenta. El taller viaja en la URL y se fija para RLS antes de buscar el token. Añadida en F1 | **Meterla en `/workshop`** exigiría una sesión que esa persona todavía no tiene. **Un prefijo genérico `/public`** invitaría a añadir ahí cualquier cosa sin pensar en quién la usa. |
 | A6 | Taller activo | **Llega en cada petición** del personal (cabecera `X-Workshop-Id`) y se valida contra los empleados activos del usuario (RNF-09) | **Guardarlo en la sesión**: cambiar de taller obligaría a renovar la sesión, y dos pestañas no podrían trabajar en talleres distintos. |
 | A7 | Aislamiento entre talleres | **Dos capas en la base de datos además del filtro de la aplicación**: claves foráneas compuestas `(workshop_id, id)`, que impiden enlazar datos de dos talleres, y **Row-Level Security**, que impide leer o escribir filas de otro taller aunque una consulta olvide filtrar | **Solo FK compuestas** (como Applications Tracker): un filtro olvidado devolvería datos de otro taller, y solo lo cazarían las pruebas. Con varios talleres, ese error es el más probable y el más grave. |
 | A8 | Trabajo en segundo plano | **Valkey + SAQ** con un servicio `worker`, también para los trabajos programados (recordatorios, vencimientos, caducidad de presupuestos, borrado de firmas). Heredado | **Celery**: más pesado para el mismo uso. **cron del sistema**: fuera de Docker, sin reintentos ni registro. |
@@ -325,7 +326,7 @@ La tabla `workshops` tiene la misma política sobre su `id`, para que el persona
 
 ### Las vías que cruzan talleres
 
-Son exactamente cuatro, y todas usan `axtton_platform` desde un único módulo (`app/platform/`). Ningún endpoint de `/workshop` ni de `/portal` lo importa, con **una sola excepción con nombre**: la petición de enlace mágico (§7.2).
+Son exactamente cinco, y todas usan `axtton_platform` desde un único módulo (`app/platform/`). Ningún endpoint de `/workshop` ni de `/portal` lo importa, salvo **dos excepciones con nombre**: el selector de talleres (F1) y la petición de enlace mágico (§7.2, F4). Están escritas, con su fichero y su módulo, en la propia prueba R8 (`R8_EXCEPTIONS`), así que añadir otra es una decisión visible, no un descuido.
 
 | Vía | Qué lee | Por qué no puede ir por la política normal |
 |---|---|---|
@@ -333,6 +334,7 @@ Son exactamente cuatro, y todas usan `axtton_platform` desde un único módulo (
 | Planificador del `worker` | Qué hay pendiente en todos los talleres: avisos por enviar, presupuestos por caducar, firmas por borrar | Tiene que encontrar trabajo sin saber de antemano de qué taller es |
 | Comandos de servidor | Crear el primer superadministrador (RF-110), restaurar copias | Operación |
 | Petición de enlace mágico (`POST /portal/auth/request-link`, §7.2) | Los pares (taller, cliente) activos con un email | Hay que buscar en todos los talleres antes de saber de cuál es el cliente. Devuelve solo esos pares, que nunca salen en la respuesta |
+| Selector de talleres (`GET /workshop/me`, RF-08; añadida en F1) | Los talleres en los que la persona de la sesión es empleada activa, con su nombre y su rol | Hay que saber cuáles son antes de poder fijar ninguno para RLS. Solo devuelve los de la propia persona (`app/platform/memberships.py`) |
 
 El planificador **solo busca** (devuelve ids y su `workshop_id`). Cada trabajo concreto se procesa después **en el contexto de su taller**, con `axtton_app` y la política normal. Así, un fallo en el código que procesa un aviso no puede tocar otro taller.
 
@@ -347,7 +349,7 @@ El planificador **solo busca** (devuelve ids y su `workshop_id`). Cada trabajo c
 | R5 | `UPDATE` o `DELETE` sobre una tabla append-only con `axtton_app` | Error de permisos |
 | R6 | Modificar una línea de un presupuesto enviado, incluso con `axtton_owner` | Lo rechaza el trigger |
 | R7 | Dos conexiones del pool: la primera fija el taller A y termina; la segunda reutiliza la conexión sin fijar nada | Cero filas: el valor era de la transacción, no de la conexión |
-| R8 | Un endpoint de `/workshop` o `/portal` importa algo de `app/platform/`, salvo la petición de enlace mágico | Falla una prueba de arquitectura que revisa los imports, con esa única excepción escrita en la propia prueba |
+| R8 | Un endpoint de `/workshop` o `/portal` importa algo de `app/platform/`, salvo las excepciones con nombre | Falla una prueba de arquitectura que lee los imports con el analizador de Python; las excepciones están escritas en la propia prueba (`R8_EXCEPTIONS`) |
 
 ## 5. Vista general
 

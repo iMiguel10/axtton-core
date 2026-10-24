@@ -16,3 +16,10 @@ async def get_by_supertokens_id(
         select(User).where(User.supertokens_user_id == supertokens_user_id)
     )
     return result.one_or_none()
+
+
+async def create_staff(session: AsyncSession, supertokens_user_id: str) -> User:
+    user = User(supertokens_user_id=supertokens_user_id, kind="staff")
+    session.add(user)
+    await session.flush()
+    return user

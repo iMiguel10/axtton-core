@@ -6,7 +6,7 @@ solo datos de cuenta y recuentos (RNF-08).
 """
 
 from dataclasses import dataclass
-from datetime import UTC, datetime, timedelta
+from datetime import UTC, datetime
 from uuid import UUID
 
 from sqlalchemy import func, select
@@ -15,11 +15,14 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.config import get_settings
 from app.core.errors import ConflictError, NotFoundError
 from app.core.tokens import hash_token, new_token
+from app.domain.invitations import (
+    INVITATION_VALIDITY,
+    invitation_email,
+    invitation_path,
+)
 from app.infra.email import Email, EmailSender
 from app.models import AuditEntry, Employee, Invitation, User, Workshop
 from app.platform.db import platform_transaction
-
-INVITATION_VALIDITY = timedelta(days=7)  # especificación §10
 
 
 async def _user_id(session: AsyncSession, supertokens_user_id: str) -> UUID | None:
@@ -90,20 +93,13 @@ async def create_workshop(
 
     sent = False
     if email_sender.enabled:
-        link = f"{get_settings().app_url}/invitations/{workshop_id}/{token}"
-        await email_sender.send(
-            Email(
-                to=admin_email,
-                subject=f"Te han dado acceso a {name} en AXTTON CORE",
-                body=(
-                    f"Hola, {admin_name}:\n\n"
-                    f"Se ha dado de alta el taller «{name}» y eres su administrador.\n"
-                    f"Para activar tu acceso, abre este enlace (caduca en 7 días):\n\n"
-                    f"{link}\n\n"
-                    "Si no esperabas este mensaje, ignóralo."
-                ),
-            )
+        subject, body = invitation_email(
+            employee_name=admin_name,
+            workshop_name=name,
+            link=get_settings().app_url + invitation_path(workshop_id, token),
+            first_admin=True,
         )
+        await email_sender.send(Email(to=admin_email, subject=subject, body=body))
         sent = True
     return CreatedWorkshop(workshop_id=workshop_id, invitation_email_sent=sent)
 

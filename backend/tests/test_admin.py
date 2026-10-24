@@ -206,21 +206,35 @@ def _imports(path: Path) -> set[str]:
     return modules
 
 
+# Las únicas excepciones a R8, con nombre (arquitectura §4, "Las vías que cruzan
+# talleres"): (fichero relativo a app/api/v1, módulo de plataforma que importa).
+# Añadir una aquí es una decisión de diseño, no un arreglo para que pase la prueba.
+R8_EXCEPTIONS = {
+    # Selector de taller: saber en qué talleres trabaja la persona (RF-08).
+    ("workshop/router.py", "app.platform.memberships"),
+}
+
+
 def test_r8_workshop_and_portal_never_import_the_platform_module() -> None:
     """Solo /admin (y los comandos de servidor) pueden usar el rol que se salta RLS.
 
     Se leen los imports con el analizador de Python, no con una búsqueda de
     texto: un comentario que mencione app.platform no cuenta, y un import
-    partido en varias líneas sí. En F4 la petición de enlace mágico será la
-    única excepción, escrita aquí con nombre.
+    partido en varias líneas sí. Las excepciones están en R8_EXCEPTIONS, cada
+    una con su fichero y su módulo exactos.
     """
     api_dir = Path(__file__).resolve().parent.parent / "app" / "api" / "v1"
     checked = 0
     for prefix in ("workshop", "portal"):
         for path in (api_dir / prefix).rglob("*.py"):
             checked += 1
-            offending = {m for m in _imports(path) if m.startswith("app.platform")}
-            assert offending == set(), f"{path.name} importa {offending}"
-    assert (
-        checked >= 2
-    )  # prueba de control: si no encontrara ficheros, no probaría nada
+            relative = path.relative_to(api_dir).as_posix()
+            offending = {
+                module
+                for module in _imports(path)
+                if module.startswith("app.platform")
+                and (relative, module) not in R8_EXCEPTIONS
+            }
+            assert offending == set(), f"{relative} importa {offending}"
+    # Prueba de control: si no encontrara ficheros, no probaría nada.
+    assert checked >= 2

@@ -19,6 +19,12 @@ class NotFoundError(AppError):
     status_code = 404
 
 
+class ForbiddenError(AppError):
+    """Hay sesión, pero no es de quien puede usar esta ruta (otro actor)."""
+
+    status_code = 403
+
+
 class ConflictError(AppError):
     """La petición es válida, pero el estado actual no la permite."""
 

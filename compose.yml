@@ -16,6 +16,43 @@ services:
       timeout: 5s
       retries: 5
 
+  # Base de datos exclusiva del core de SuperTokens (arquitectura A4). Sin env_file:
+  # con el .env completo tomaría POSTGRES_DB/USER de la aplicación.
+  supertokens-db:
+    image: postgres:17
+    environment:
+      POSTGRES_DB: ${SUPERTOKENS_DB_NAME}
+      POSTGRES_USER: ${SUPERTOKENS_DB_USER}
+      POSTGRES_PASSWORD: ${SUPERTOKENS_DB_PASSWORD}
+    volumes:
+      - supertokens_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  # Core de autenticación. Sin puertos publicados: solo `api` habla con él por la
+  # red interna. Versión fijada: debe implementar la versión del protocolo (CDI)
+  # que usa supertokens-python; se heredan las dos de Applications Tracker.
+  supertokens:
+    image: supertokens/supertokens-postgresql:12.2.0
+    environment:
+      POSTGRESQL_CONNECTION_URI: postgresql://${SUPERTOKENS_DB_USER}:${SUPERTOKENS_DB_PASSWORD}@supertokens-db:5432/${SUPERTOKENS_DB_NAME}
+      API_KEYS: ${SUPERTOKENS_API_KEY}
+      # Access token de 5 minutos: se valida sin consultar al core, así que tras
+      # cerrar sesión seguiría sirviendo hasta caducar. 5 minutos acotan esa
+      # ventana (decisión 0002 de Applications Tracker).
+      ACCESS_TOKEN_VALIDITY: 300
+    depends_on:
+      supertokens-db:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "bash -c 'exec 3<>/dev/tcp/127.0.0.1/3567 && echo -e \"GET /hello HTTP/1.1\r\nhost: 127.0.0.1\r\nConnection: close\r\n\r\n\" >&3 && cat <&3 | grep Hello'"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
   # API (FastAPI) en http://localhost:8000; /docs es el OpenAPI.
   api:
     build:
@@ -35,6 +72,8 @@ services:
       - .env
     depends_on:
       db:
+        condition: service_healthy
+      supertokens:
         condition: service_healthy
 
   # Frontend (Vite) en http://localhost:5173: la aplicación del taller en "/" y el
@@ -66,4 +105,5 @@ services:
 
 volumes:
   postgres_data:
+  supertokens_data:
   api_venv:

@@ -6,9 +6,9 @@ de cada rol no existirían, y las pruebas pasarían en verde sin probar nada.
 
 import os
 import subprocess
-from collections.abc import AsyncIterator
+from collections.abc import AsyncIterator, Awaitable, Callable
 from dataclasses import dataclass
-from uuid import UUID
+from uuid import UUID, uuid4
 
 # Antes de importar nada de la aplicación: Settings lee estas variables al crear
 # el engine, y tienen que apuntar a la base de pruebas, no a la de desarrollo.
@@ -18,6 +18,7 @@ for _var in ("DATABASE_URL", "PLATFORM_DATABASE_URL", "MIGRATIONS_DATABASE_URL")
 
 import pytest
 import pytest_asyncio
+from httpx import ASGITransport, AsyncClient
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncEngine, create_async_engine
 
@@ -48,6 +49,76 @@ async def engines() -> AsyncIterator[Engines]:
     yield created
     for engine in (created.app, created.platform, created.owner):
         await engine.dispose()
+
+
+@dataclass(frozen=True)
+class Account:
+    email: str
+    password: str
+    supertokens_user_id: str
+
+
+@pytest_asyncio.fixture
+async def make_account(
+    engines: Engines,
+) -> Callable[[str], Awaitable[Account]]:
+    """Crea cuentas como lo hará la aplicación: usuario en SuperTokens y fila en users.
+
+    La base de datos de SuperTokens no se vacía entre pruebas, así que cada email
+    es único.
+    """
+    from supertokens_python.recipe.emailpassword.asyncio import sign_up
+    from supertokens_python.recipe.emailpassword.interfaces import SignUpOkResult
+
+    import app.main  # noqa: F401  (inicializa el SDK de SuperTokens)
+
+    async def create(kind: str) -> Account:
+        email = f"{kind}-{uuid4().hex[:12]}@example.com"
+        password = "una-contraseña-larga-1"
+        result = await sign_up("public", email, password)
+        assert isinstance(result, SignUpOkResult)
+        if kind != "orphan":
+            async with engines.platform.begin() as conn:
+                await conn.execute(
+                    text(
+                        "INSERT INTO users (supertokens_user_id, kind) VALUES (:s, :k)"
+                    ),
+                    {"s": result.user.id, "k": kind},
+                )
+        return Account(email, password, result.user.id)
+
+    return create
+
+
+@pytest_asyncio.fixture
+async def client() -> AsyncIterator[AsyncClient]:
+    """Cliente HTTP contra la app en memoria (sin red), con el middleware de SuperTokens."""
+    from app.core import db
+    from app.main import app
+
+    async with AsyncClient(
+        transport=ASGITransport(app=app), base_url="http://test"
+    ) as http:
+        yield http
+    # El engine de la aplicación es global: sus conexiones quedan ligadas al
+    # event loop de esta prueba y la siguiente usa otro. Se cierran aquí.
+    await db.engine.dispose()
+
+
+async def sign_in(client: AsyncClient, account: Account) -> str:
+    """Inicia sesión en modo cabecera y devuelve el access token (Bearer)."""
+    response = await client.post(
+        "/api/auth/signin",
+        headers={"st-auth-mode": "header"},
+        json={
+            "formFields": [
+                {"id": "email", "value": account.email},
+                {"id": "password", "value": account.password},
+            ]
+        },
+    )
+    assert response.json()["status"] == "OK", response.text
+    return response.headers["st-access-token"]
 
 
 @dataclass(frozen=True)

@@ -48,11 +48,14 @@ En este proyecto "rol" quiere decir tres cosas distintas, en tres capas que no s
 | Superadministrador | `emailpassword` | Email y contraseña | `actor: "superadmin"` | `/api/v1/admin/*` |
 | Cliente | `passwordless` (enlace mágico) | Enlace por email | `actor: "client"`, `workshop_id`, `client_id` | `/api/v1/portal/*`, solo de ese taller y ese cliente |
 
-- **El actor lo escribe el backend una sola vez: al crear la sesión**, desde una única función (`create_session_for`), y nunca cambia durante la vida de la sesión. Ningún otro código modifica el contenido de una sesión ya creada (la función de SuperTokens que lo permite no se usa fuera de ahí, T11). El actor se lee siempre de la sesión verificada, nunca de una cabecera ni del cuerpo de la petición. El token va firmado: un actor editado a mano invalida la firma (T9).
+- **El actor lo escribe el backend una sola vez: al crear la sesión**, en un único sitio, `app/core/sessions.py`, y nunca cambia durante la vida de la sesión. Ningún otro código modifica el contenido de una sesión ya creada (la función de SuperTokens que lo permite no se usa fuera de ahí, T11). Ese sitio sobrescribe `create_new_session`, la función interna de SuperTokens que **todas** las recetas llaman al crear una sesión: así no hay ninguna vía para crear una sesión sin pasar por él. El diseño original hablaba de una función propia (`create_session_for`); al construirlo en F1 resultó más seguro engancharse a la de SuperTokens. El actor se lee siempre de la sesión verificada, nunca de una cabecera ni del cuerpo de la petición. El token va firmado: un actor editado a mano invalida la firma (T9).
 - **Superadministradores y personal son cuentas distintas.** Un superadministrador no es un empleado con un permiso de más: si la misma persona trabaja también en un taller, usa otra cuenta. Así RNF-08 se cumple sin excepciones.
 - **Un mismo email en las dos recetas son dos usuarios distintos** de SuperTokens. No se usa la vinculación de cuentas (*account linking*), que además es de pago: activarla uniría la cuenta de cliente de alguien con su cuenta de personal, y exigiría una decisión nueva en la bitácora. Que Ana sea mecánica en un taller y clienta de otro no mezcla nada.
 - **Una sesión de cliente vale para un solo taller.** El enlace mágico lleva el taller (RF-45), y al consumirlo el backend comprueba que ese email es un cliente activo de ese taller antes de crear la sesión con su `workshop_id` y su `client_id`. Si el email es cliente de varios talleres, recibe un enlace por taller y cada uno crea una sesión distinta.
 - **Cookies httpOnly en el navegador y token Bearer fuera de él**, como en Applications Tracker (su decisión 0003). Es la costura para las apps móviles.
+- **Las rutas de SuperTokens cuelgan de `/api/auth`**, como el resto de la API, para que el proxy solo tenga que reenviar `/api`.
+- **No hay registro público** (RF-01): la operación de registro de SuperTokens está anulada y responde `signup_disabled` en todas sus rutas. Las cuentas las crea el backend con la función de la receta: el comando del superadministrador y la aceptación de invitaciones.
+- **Una cuenta de SuperTokens sin fila en `users` no inicia sesión**, y responde como una contraseña incorrecta. Puede quedar una si algo falla a medias al aceptar una invitación.
 
 ### Cómo se cierra cada puerta
 
@@ -88,7 +91,7 @@ Cada prefijo es un router con su dependencia. Esa dependencia, además de compro
 | T8 | Desactivar a un empleado con la sesión abierta | Su siguiente petición se rechaza (RF-06) |
 | T9 | Una petición con el contenido del token modificado a mano (por ejemplo, `actor` cambiado de `client` a `staff`) | 401: la firma no coincide |
 | T10 | Consumir un enlace mágico, también con un email que es a la vez de personal en otro taller | La sesión creada es siempre `actor: client`, con el taller del enlace |
-| T11 | Buscar en el código llamadas que modifiquen el contenido de una sesión ya creada | Ninguna fuera de `create_session_for`; la prueba revisa el código, como R8 revisa los imports |
+| T11 | Buscar en el código llamadas que modifiquen el contenido de una sesión ya creada | Ninguna fuera de `app/core/sessions.py`; la prueba revisa el código, como R8 revisa los imports |
 
 ### Trampas ya identificadas
 

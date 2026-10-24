@@ -6,7 +6,7 @@ Guía de trabajo para Claude Code (y cualquier colaborador) en **AXTTON CORE**.
 
 Sistema de gestión para talleres mecánicos: clientes, vehículos, citas, órdenes de trabajo, presupuestos, inventario básico y documentos generados, con un **portal privado** donde el cliente sigue la reparación y aprueba el presupuesto. Una instalación sirve a muchos talleres (multi-taller) o a uno solo. Es un proyecto de portfolio serio, hermano de Applications Tracker, del que hereda stack y convenciones.
 
-> **Estado (2026-10-24): F1 en curso, paso 1 hecho.** F0 está cerrada ([lo aprendido](docs/arquitectura/f0-cierre.md)) y su código desechable retirado. Existen `db` con los tres roles, `api` con la migración inicial definitiva (`users`, `workshops`, `employees`, `invitations`, `audit_log`, con RLS y modelos de SQLAlchemy) y pruebas de RLS, y un `frontend` vacío a la espera del paso 5. Todavía **no hay autenticación ni endpoints de negocio**; lo que este fichero describe de eso es **diseño**.
+> **Estado (2026-10-24): F1 en curso, pasos 1 y 2 hechos.** F0 está cerrada ([lo aprendido](docs/arquitectura/f0-cierre.md)) y su código desechable retirado. Existen `db` con los tres roles, `api` con la migración inicial definitiva (`users`, `workshops`, `employees`, `invitations`, `audit_log`, con RLS y modelos de SQLAlchemy) y pruebas de RLS; SuperTokens con inicio de sesión del personal y del superadministrador, el actor en la sesión y los tres prefijos de API cerrados entre sí (solo `/me` en cada uno); y un `frontend` vacío a la espera del paso 5. Todavía **no hay endpoints de negocio ni forma de crear cuentas** (llega en los pasos 3 y 4); lo que este fichero describe de eso es **diseño**.
 
 ## 2. Documentación
 
@@ -24,7 +24,7 @@ Sitio MkDocs en `docs/` (http://localhost:8001). Es la fuente de verdad del dise
 
 ## 3. Stack y servicios
 
-Existen `docs`, `db`, `api` y `frontend`. El resto es el diseño (arquitectura §9), en la fase en que aparece:
+Existen `docs`, `db`, `supertokens` + `supertokens-db`, `api` y `frontend`. El resto es el diseño (arquitectura §9), en la fase en que aparece:
 
 | Servicio | Puerto | Notas | Desde |
 |---|---|---|---|
@@ -32,7 +32,7 @@ Existen `docs`, `db`, `api` y `frontend`. El resto es el diseño (arquitectura �
 | `db` | 5432 | **Existe.** Postgres 17 con RLS y tres roles, creados por `deploy/postgres/initdb/01-roles.sh` junto con la base `axtton_test`: `axtton_owner` (migraciones), `axtton_app` (API y worker, sin `BYPASSRLS`), `axtton_platform` (solo `app/platform/`) | F0 |
 | `api` | 8000 | **Existe**, con Alembic (aplica las migraciones al arrancar). Diseño completo: FastAPI + SQLAlchemy async + Alembic (Python, uv) + SDK de SuperTokens + WeasyPrint | F0 |
 | `frontend` | 5173 | **Existe** (F0, sin Tailwind ni i18n todavía). Vite con dos aplicaciones: `src/workshop/` en `/` y `src/portal/` en `/portal`. React 19 + TS, TanStack Query, react-hook-form + zod, Tailwind v4 + shadcn/ui, i18next (es, en) | F0 |
-| `supertokens` + `supertokens-db` | — | Recetas `emailpassword` (personal y superadministrador) y `passwordless` (clientes) | F1 |
+| `supertokens` + `supertokens-db` | — | **Existe** (core fijado a 12.2.0, SDK a 0.31.3). Receta `emailpassword` (personal y superadministrador); `passwordless` (clientes) llega en F4. Rutas en `/api/auth`, sin registro público | F1 |
 | `valkey` | — | Cola de SAQ y rate limit | F1 |
 | `mailpit` | 8025 | Solo desarrollo: captura todo el correo | F1 |
 | `worker` | — | Misma imagen que `api`: avisos y tareas programadas | F5 |
@@ -45,7 +45,7 @@ docker compose up docs                       # sitio de documentación en http:/
 docker compose run --rm docs build --strict  # compila el sitio; falla ante enlaces rotos o avisos
 
 cp .env.example .env                         # primera vez
-docker compose up -d --build db api frontend # Postgres, la API en http://localhost:8000 (/docs = OpenAPI) y el frontend en http://localhost:5173
+docker compose up -d --build                 # todo: Postgres, SuperTokens, la API en http://localhost:8000 (/docs = OpenAPI) y el frontend en http://localhost:5173
 curl http://localhost:8000/api/health        # {"status":"ok"} si la API llega a la BD
 docker compose exec api ruff check .         # estilo
 docker compose exec api ruff format .        # formato
@@ -117,6 +117,8 @@ Ya identificadas en el diseño (arquitectura §2, §3, §4, §8 y §9); se ampli
 - **Cargar datos en un `useEffect` lleva un indicador `ignore`** que descarta respuestas de una petición ya obsoleta (el taller cambió mientras tanto). Sin él, una respuesta lenta pisa a la buena. TanStack Query lo resolverá desde F1.
 - **Docker en Windows no avisa de cambios de fichero**: Vite usa `usePolling` para recargar dentro del contenedor.
 - **SQLAlchemy convierte `datetime` en `timestamp` sin zona horaria** salvo que se diga otra cosa. `Base.type_annotation_map` (`app/models/base.py`) lo fija a `timestamptz`; revisando la primera migración generada se vio que faltaba.
+- **El registro público se anula en la operación, no en una URL**: SuperTokens atiende el registro en varias rutas (`/api/auth/signup`, `/api/auth/public/signup`…). Una prueba las recorre.
+- **Las pruebas usan el core real de SuperTokens**, cuya base de datos no se vacía entre pruebas: cada cuenta de prueba lleva un email único (`make_account` en `conftest.py`).
 - **Siempre `localhost`, nunca `127.0.0.1`**: las cookies de sesión no viajan entre los dos.
 - Heredadas de Applications Tracker para SAQ y el correo: `retries` cuenta intentos totales, SAQ recuerda la clave de un trabajo unos 10 minutos, el mismo envío puede ejecutarse dos veces a la vez (`FOR UPDATE SKIP LOCKED`), un trabajo nunca lleva un token de acceso, la cola se crea dentro del event loop.
 

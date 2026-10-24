@@ -10,6 +10,15 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
     UV_LINK_MODE=copy \
     UV_COMPILE_BYTECODE=1
 
+# Librerías de sistema de WeasyPrint (A9, A14): sin ellas, `import weasyprint`
+# falla al cargar Pango. Y una tipografía: la imagen slim no trae ninguna, y sin
+# fuentes el PDF sale con cuadrados en lugar de letras. En F3 las tipografías
+# viajarán con la plantilla, para que el PDF no dependa de la imagen.
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends \
+        libpango-1.0-0 libpangoft2-1.0-0 libharfbuzz-subset0 fonts-dejavu-core \
+    && rm -rf /var/lib/apt/lists/*
+
 # Usuario no privilegiado, dueño de /app y del .venv para poder ejecutar
 # `uv add` y escribir cachés dentro del contenedor.
 RUN useradd --create-home --uid 1000 appuser \

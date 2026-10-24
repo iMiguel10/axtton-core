@@ -11,10 +11,12 @@ import secrets
 from dataclasses import dataclass
 from decimal import Decimal
 from uuid import UUID
+from zoneinfo import ZoneInfo
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.errors import ConflictError, NotFoundError
+from app.domain.money import format_eur, format_quantity, format_vat
 from app.domain.quotes import (
     WORK_ORDER_AFTER_DECISION,
     WORK_ORDER_AFTER_SEND,
@@ -24,6 +26,7 @@ from app.domain.quotes import (
     line_total_cents,
     quote_total_cents,
 )
+from app.infra.pdf import render_pdf
 from app.repositories import quotes as repo
 
 
@@ -105,6 +108,58 @@ async def view_by_token(session: AsyncSession, token: str) -> QuoteView:
         raise NotFoundError("quote_not_found")
     lines = await repo.list_lines(session, quote.id)
     return QuoteView(status=quote.status, total_cents=quote.total_cents, lines=lines)
+
+
+# F0: los talleres aún no tienen zona horaria (llega en F1, R10 de la
+# especificación). La fecha se muestra en la de España peninsular.
+F0_TIMEZONE = ZoneInfo("Europe/Madrid")
+
+STATUS_LABELS = {
+    QuoteStatus.SENT: "pendiente de respuesta",
+    QuoteStatus.APPROVED: "aprobado",
+    QuoteStatus.REJECTED: "rechazado",
+}
+
+
+async def render_quote_pdf(session: AsyncSession, quote_id: UUID) -> bytes:
+    """PDF de una versión enviada, generado siempre desde sus datos congelados.
+
+    Un borrador no tiene PDF: sus líneas aún pueden cambiar y no tiene total.
+    """
+    header = await repo.get_quote_header(session, quote_id)
+    if header is None:
+        raise NotFoundError("quote_not_found")
+    if header.status == QuoteStatus.DRAFT or header.total_cents is None:
+        raise ConflictError("quote_is_draft")
+    assert header.sent_at is not None  # garantizado por el CHECK de la tabla
+    lines = await repo.list_lines(session, quote_id)
+    context = {
+        "workshop_name": header.workshop_name,
+        "client_name": header.client_name,
+        "plate": header.plate,
+        "status": STATUS_LABELS[QuoteStatus(header.status)],
+        "sent_at": header.sent_at.astimezone(F0_TIMEZONE).strftime("%d/%m/%Y"),
+        "lines": [
+            {
+                "description": line.description,
+                "quantity": format_quantity(line.quantity),
+                "unit_price": format_eur(line.unit_price_cents),
+                "vat": format_vat(line.vat_bp),
+                # El total de la línea es el GUARDADO al enviar, no uno recalculado.
+                "total": format_eur(line.line_total_cents or 0),
+            }
+            for line in lines
+        ],
+        "total": format_eur(header.total_cents),
+    }
+    return await render_pdf("quote.html", context)
+
+
+async def render_quote_pdf_by_token(session: AsyncSession, token: str) -> bytes:
+    quote = await repo.get_quote_by_token_hash(session, hash_token(token))
+    if quote is None:
+        raise NotFoundError("quote_not_found")
+    return await render_quote_pdf(session, quote.id)
 
 
 async def decide_by_token(

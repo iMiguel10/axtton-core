@@ -1,7 +1,8 @@
 from uuid import UUID
 
-from fastapi import APIRouter, Request, status
+from fastapi import APIRouter, Request, Response, status
 
+from app.api.responses import pdf_response
 from app.api.v1.workshop.deps import Workshop
 from app.repositories.clients import list_client_names
 from app.schemas.quotes import QuoteCreate, QuoteCreated, QuoteSent
@@ -34,6 +35,16 @@ async def create_quote(
         body.vat_bp,
     )
     return QuoteCreated(quote_id=quote_id)
+
+
+@router.get(
+    "/quotes/{quote_id}/pdf",
+    response_class=Response,
+    responses={200: {"content": {"application/pdf": {}}}},
+)
+async def quote_pdf(quote_id: UUID, workshop: Workshop) -> Response:
+    pdf = await quote_service.render_quote_pdf(workshop.session, quote_id)
+    return pdf_response(pdf, f"presupuesto-{quote_id}.pdf")
 
 
 @router.post("/quotes/{quote_id}/send")

@@ -9,9 +9,10 @@ from collections.abc import AsyncIterator
 from typing import Annotated
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, Request, status
+from fastapi import APIRouter, Depends, Request, Response, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.api.responses import pdf_response
 from app.core.db import workshop_transaction
 from app.schemas.quotes import DecisionCreate, LineRead, PortalQuoteRead
 from app.services import quotes as quote_service
@@ -49,6 +50,16 @@ async def view_quote(token: str, session: PortalSession) -> PortalQuoteRead:
             for line in view.lines
         ],
     )
+
+
+@router.get(
+    "/quotes/{workshop_id}/{token}/pdf",
+    response_class=Response,
+    responses={200: {"content": {"application/pdf": {}}}},
+)
+async def quote_pdf(token: str, session: PortalSession) -> Response:
+    pdf = await quote_service.render_quote_pdf_by_token(session, token)
+    return pdf_response(pdf, "presupuesto.pdf")
 
 
 @router.post(

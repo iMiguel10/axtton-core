@@ -5,6 +5,7 @@ SQLAlchemy llegan con F1.
 """
 
 from dataclasses import dataclass
+from datetime import datetime
 from decimal import Decimal
 from uuid import UUID
 
@@ -115,6 +116,41 @@ async def get_quote_by_token_hash(
         )
     ).one_or_none()
     return QuoteRow(*row) if row else None
+
+
+@dataclass(frozen=True)
+class QuoteHeaderRow:
+    status: str
+    total_cents: int | None
+    sent_at: datetime | None
+    workshop_name: str
+    client_name: str
+    plate: str
+
+
+async def get_quote_header(
+    session: AsyncSession, quote_id: UUID
+) -> QuoteHeaderRow | None:
+    """Lo que necesita la cabecera del PDF. Los JOIN también pasan por RLS:
+    cada tabla filtra por el taller fijado."""
+    row = (
+        await session.execute(
+            text(
+                """
+                SELECT q.status, q.total_cents, q.sent_at,
+                       w.name, c.name, v.plate
+                FROM quotes q
+                JOIN work_orders o ON o.id = q.work_order_id
+                JOIN workshops w ON w.id = q.workshop_id
+                JOIN clients c ON c.id = o.client_id
+                JOIN vehicles v ON v.id = o.vehicle_id
+                WHERE q.id = :id
+                """
+            ),
+            {"id": quote_id},
+        )
+    ).one_or_none()
+    return QuoteHeaderRow(*row) if row else None
 
 
 async def list_lines(session: AsyncSession, quote_id: UUID) -> list[LineRow]:

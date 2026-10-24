@@ -6,7 +6,7 @@ Guía de trabajo para Claude Code (y cualquier colaborador) en **AXTTON CORE**.
 
 Sistema de gestión para talleres mecánicos: clientes, vehículos, citas, órdenes de trabajo, presupuestos, inventario básico y documentos generados, con un **portal privado** donde el cliente sigue la reparación y aprueba el presupuesto. Una instalación sirve a muchos talleres (multi-taller) o a uno solo. Es un proyecto de portfolio serio, hermano de Applications Tracker, del que hereda stack y convenciones.
 
-> **Estado (2026-10-24): F0 en curso (esqueleto vertical desechable), pasos 1 a 3 hechos.** Existen la especificación (revisada), la arquitectura (v0.1), el sitio de documentación, los agentes y un backend mínimo: `db` con los tres roles y RLS; `api` con Alembic, presupuestos de una línea (borrador, envío que congela el total, aprobación o rechazo por enlace secreto) y triggers que impiden tocar un presupuesto enviado; taller por cabecera, **sin autenticación**; pruebas de RLS, de dominio y del flujo. Todavía no hay PDF, frontend ni autenticación; lo que este fichero describe de eso es **diseño**.
+> **Estado (2026-10-24): F0 en curso (esqueleto vertical desechable), pasos 1 a 4 hechos.** Existen la especificación (revisada), la arquitectura (v0.1), el sitio de documentación, los agentes y un backend mínimo: `db` con los tres roles y RLS; `api` con Alembic, presupuestos de una línea (borrador, envío que congela el total, aprobación o rechazo por enlace secreto) triggers que impiden tocar un presupuesto enviado y su PDF (WeasyPrint, generado al pedirlo); taller por cabecera, **sin autenticación**; pruebas de RLS, de dominio y del flujo. Todavía no hay frontend ni autenticación; lo que este fichero describe de eso es **diseño**.
 
 ## 2. Documentación
 
@@ -52,7 +52,7 @@ docker compose exec api mypy app tests       # tipos
 docker compose exec api pytest               # pruebas, contra la base axtton_test con los roles reales
 docker compose exec api python -m app.scripts.seed_f0   # F0: vacía la BD y crea dos talleres de prueba; imprime sus ids y los de sus órdenes
 curl -H "X-Workshop-Id: <id>" http://localhost:8000/api/v1/workshop/clients   # F0: clientes de ese taller (RLS)
-# F0, flujo del presupuesto: POST /api/v1/workshop/work-orders/<orden>/quotes → POST /api/v1/workshop/quotes/<id>/send (devuelve approval_url) → GET approval_url → POST approval_url/decision {"outcome":"approved"}
+# F0, flujo del presupuesto: POST /api/v1/workshop/work-orders/<orden>/quotes → POST /api/v1/workshop/quotes/<id>/send (devuelve approval_url) → GET approval_url → POST approval_url/decision {"outcome":"approved"}; PDF en GET /api/v1/workshop/quotes/<id>/pdf o approval_url/pdf
 docker compose down -v                       # borra los volúmenes: necesario si cambia deploy/postgres/initdb
 docker compose exec api uv add <paquete>     # dependencias: siempre dentro del contenedor, nunca en el host
 ```
@@ -109,6 +109,8 @@ Ya identificadas en el diseño (arquitectura §2, §3, §4, §8 y §9); se ampli
 - **Vaciar tablas solo lo puede hacer el dueño.** Ningún rol de la aplicación tiene `TRUNCATE`, y nadie tiene `DELETE` sobre las tablas append-only (`quote_decisions`). Para pruebas y datos de desarrollo, `app/scripts/reset_data.py` usa `axtton_owner` con `TRUNCATE`, que no dispara triggers de fila ni pasa por RLS.
 - **Un presupuesto enviado no se puede tocar ni por SQL**: los triggers `quote_lines_frozen` y `quotes_frozen_after_send` lo rechazan con cualquier rol. Por eso, al enviar, los totales de las líneas se escriben **antes** de marcar el presupuesto como `sent`.
 - **Bloquear la orden antes de cambiar su presupuesto** (`SELECT … FOR UPDATE`): sin el bloqueo, dos envíos simultáneos acaban en un 500 al chocar con el trigger; con él, el segundo espera y recibe un 409.
+- **WeasyPrint es síncrono y lento**: se ejecuta con `run_in_threadpool` y como mucho dos a la vez (`app/infra/pdf.py`). Llamarlo directamente en un endpoint `async` bloquearía todas las peticiones mientras maqueta. Su fetcher (`NoExternalResources`) no carga nada externo: las plantillas llevan el CSS dentro.
+- **La imagen necesita una tipografía** (`fonts-dejavu-core`): la imagen slim de Python no trae ninguna, y sin fuentes el PDF sale con cuadrados.
 - **Siempre `localhost`, nunca `127.0.0.1`**: las cookies de sesión no viajan entre los dos.
 - Heredadas de Applications Tracker para SAQ y el correo: `retries` cuenta intentos totales, SAQ recuerda la clave de un trabajo unos 10 minutos, el mismo envío puede ejecutarse dos veces a la vez (`FOR UPDATE SKIP LOCKED`), un trabajo nunca lleva un token de acceso, la cola se crea dentro del event loop.
 

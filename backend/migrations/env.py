@@ -5,15 +5,20 @@ from alembic import context
 from sqlalchemy.engine import Connection
 from sqlalchemy.ext.asyncio import create_async_engine
 
+import app.models  # noqa: F401  (registra todos los modelos en Base.metadata)
+from app.models.base import Base
+
 # Las migraciones se conectan SIEMPRE como dueño de las tablas (axtton_owner),
 # nunca con el rol de la aplicación: axtton_app no puede crear tablas ni políticas.
 # Se lee del entorno (y no de Settings) para que las pruebas puedan apuntar a la
 # base de pruebas sin tocar la configuración de la API.
 URL = os.environ["MIGRATIONS_DATABASE_URL"]
 
-# Sin target_metadata: las migraciones de F0 se escriben a mano, porque
-# --autogenerate no sabe de RLS, políticas ni triggers.
-target_metadata = None
+# Los modelos sirven para que --autogenerate proponga las tablas y para que
+# `alembic check` detecte si un modelo y la base de datos dejan de coincidir.
+# Lo que --autogenerate no sabe hacer (RLS, políticas, triggers, permisos) se
+# escribe a mano en la migración. Revisar SIEMPRE el fichero generado.
+target_metadata = Base.metadata
 
 
 def run_migrations_offline() -> None:

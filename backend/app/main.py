@@ -5,14 +5,10 @@ from fastapi.responses import JSONResponse
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.api.v1.portal.router import router as portal_router
-from app.api.v1.workshop.router import router as workshop_router
 from app.core.db import get_session
 from app.core.errors import AppError
 
 app = FastAPI(title="AXTTON CORE API", version="0.1.0")
-app.include_router(workshop_router)
-app.include_router(portal_router)
 
 
 @app.exception_handler(AppError)

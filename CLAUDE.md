@@ -6,7 +6,7 @@ Guía de trabajo para Claude Code (y cualquier colaborador) en **AXTTON CORE**.
 
 Sistema de gestión para talleres mecánicos: clientes, vehículos, citas, órdenes de trabajo, presupuestos, inventario básico y documentos generados, con un **portal privado** donde el cliente sigue la reparación y aprueba el presupuesto. Una instalación sirve a muchos talleres (multi-taller) o a uno solo. Es un proyecto de portfolio serio, hermano de Applications Tracker, del que hereda stack y convenciones.
 
-> **Estado (2026-10-24): F0 hecha y cerrada** ([lo aprendido](docs/arquitectura/f0-cierre.md)). El repositorio contiene el esqueleto vertical **desechable** de F0: `db` con los tres roles y RLS, `api` con presupuestos de una línea, envío, aprobación por enlace secreto y PDF, y un `frontend` mínimo sin diseño (taller y portal), **sin autenticación** (el taller llega por cabecera sin comprobar). F1 empieza **reiniciando el historial de migraciones** (decisión 0002) y reescribiendo lo que el cierre de F0 marca como "se tira". Lo que este fichero describe de autenticación, avisos, citas o inventario es **diseño**.
+> **Estado (2026-10-24): F1 en curso, paso 1 hecho.** F0 está cerrada ([lo aprendido](docs/arquitectura/f0-cierre.md)) y su código desechable retirado. Existen `db` con los tres roles, `api` con la migración inicial definitiva (`users`, `workshops`, `employees`, `invitations`, `audit_log`, con RLS y modelos de SQLAlchemy) y pruebas de RLS, y un `frontend` vacío a la espera del paso 5. Todavía **no hay autenticación ni endpoints de negocio**; lo que este fichero describe de eso es **diseño**.
 
 ## 2. Documentación
 
@@ -51,9 +51,6 @@ docker compose exec api ruff check .         # estilo
 docker compose exec api ruff format .        # formato
 docker compose exec api mypy app tests       # tipos
 docker compose exec api pytest               # pruebas, contra la base axtton_test con los roles reales
-docker compose exec api python -m app.scripts.seed_f0   # F0: vacía la BD y crea dos talleres de prueba; imprime sus ids y los de sus órdenes
-curl -H "X-Workshop-Id: <id>" http://localhost:8000/api/v1/workshop/clients   # F0: clientes de ese taller (RLS)
-# F0, flujo del presupuesto: POST /api/v1/workshop/work-orders/<orden>/quotes → POST /api/v1/workshop/quotes/<id>/send (devuelve approval_url) → GET approval_url → POST approval_url/decision {"outcome":"approved"}; PDF en GET /api/v1/workshop/quotes/<id>/pdf o approval_url/pdf
 docker compose down -v                       # borra los volúmenes: necesario si cambia deploy/postgres/initdb
 docker compose exec api uv add <paquete>     # dependencias: siempre dentro del contenedor, nunca en el host
 docker compose exec frontend npx tsc -b        # tipos del frontend
@@ -62,7 +59,7 @@ docker compose exec frontend npm run build    # compila las dos aplicaciones (di
 docker compose exec frontend npm install <paquete>   # exec, nunca run: con run se instala en otro contenedor
 ```
 
-Las migraciones se escriben a mano en `backend/migrations/versions/` (autogenerate no sabe de RLS ni de políticas) y se aplican solas al arrancar `api`. Los comandos de despliegue se añaden aquí en el mismo commit que los hace existir. F0 en el navegador: `seed_f0`, pega el id del taller en http://localhost:5173, «Crear y enviar» y abre el enlace del portal.
+**Migraciones:** se cambia el modelo en `app/models/`, se genera con `docker compose exec api alembic revision --autogenerate -m "…"`, **se revisa siempre el fichero generado** y se le añade a mano lo que el generador no sabe (RLS, políticas, triggers, permisos). Se aplican solas al arrancar `api`. La prueba `test_models_match_the_migrations` (`alembic check`) falla si un modelo y las migraciones no coinciden. Los comandos de despliegue se añaden aquí en el mismo commit que los hace existir.
 
 ## 5. Estructura y capas
 
@@ -119,6 +116,7 @@ Ya identificadas en el diseño (arquitectura §2, §3, §4, §8 y §9); se ampli
 - **El portal necesita su propio fallback en desarrollo**: Vite sirve `index.html` (el taller) para cualquier ruta desconocida, así que `/portal/quotes/…` cargaría la aplicación equivocada. Lo corrige el plugin `portalFallback` de `vite.config.ts`; en producción, el proxy (F2).
 - **Cargar datos en un `useEffect` lleva un indicador `ignore`** que descarta respuestas de una petición ya obsoleta (el taller cambió mientras tanto). Sin él, una respuesta lenta pisa a la buena. TanStack Query lo resolverá desde F1.
 - **Docker en Windows no avisa de cambios de fichero**: Vite usa `usePolling` para recargar dentro del contenedor.
+- **SQLAlchemy convierte `datetime` en `timestamp` sin zona horaria** salvo que se diga otra cosa. `Base.type_annotation_map` (`app/models/base.py`) lo fija a `timestamptz`; revisando la primera migración generada se vio que faltaba.
 - **Siempre `localhost`, nunca `127.0.0.1`**: las cookies de sesión no viajan entre los dos.
 - Heredadas de Applications Tracker para SAQ y el correo: `retries` cuenta intentos totales, SAQ recuerda la clave de un trabajo unos 10 minutos, el mismo envío puede ejecutarse dos veces a la vez (`FOR UPDATE SKIP LOCKED`), un trabajo nunca lleva un token de acceso, la cola se crea dentro del event loop.
 

@@ -54,47 +54,34 @@ async def engines() -> AsyncIterator[Engines]:
 class TwoWorkshops:
     a: UUID
     b: UUID
-    order_a: UUID
-    order_b: UUID
+    admin_a: UUID
+    admin_b: UUID
 
 
 @pytest_asyncio.fixture
 async def two_workshops(engines: Engines) -> TwoWorkshops:
-    """Dos talleres con un cliente, un vehículo y una orden cada uno.
+    """Dos talleres con un empleado administrador cada uno.
 
     Se crean con la conexión de plataforma: es la única que puede escribir en
     los dos a la vez.
     """
     await truncate_all()
+    workshops, admins = [], []
     async with engines.platform.begin() as conn:
-        ids = []
-        work_orders = []
         for name in ("A", "B"):
             workshop_id = await conn.scalar(
                 text("INSERT INTO workshops (name) VALUES (:n) RETURNING id"),
                 {"n": f"Taller {name}"},
             )
-            client_id = await conn.scalar(
+            employee_id = await conn.scalar(
                 text(
-                    "INSERT INTO clients (workshop_id, name) VALUES (:w, :n) RETURNING id"
+                    "INSERT INTO employees (workshop_id, name, role)"
+                    " VALUES (:w, :n, 'admin') RETURNING id"
                 ),
-                {"w": workshop_id, "n": f"Cliente {name}"},
+                {"w": workshop_id, "n": f"Admin {name}"},
             )
-            vehicle_id = await conn.scalar(
-                text(
-                    "INSERT INTO vehicles (workshop_id, plate) VALUES (:w, :p) RETURNING id"
-                ),
-                {"w": workshop_id, "p": f"0000{name}"},
-            )
-            work_order_id = await conn.scalar(
-                text(
-                    "INSERT INTO work_orders (workshop_id, vehicle_id, client_id)"
-                    " VALUES (:w, :v, :c) RETURNING id"
-                ),
-                {"w": workshop_id, "v": vehicle_id, "c": client_id},
-            )
-            ids.append(workshop_id)
-            work_orders.append(work_order_id)
+            workshops.append(workshop_id)
+            admins.append(employee_id)
     return TwoWorkshops(
-        a=ids[0], b=ids[1], order_a=work_orders[0], order_b=work_orders[1]
+        a=workshops[0], b=workshops[1], admin_a=admins[0], admin_b=admins[1]
     )

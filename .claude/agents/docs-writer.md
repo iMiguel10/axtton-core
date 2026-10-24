@@ -69,11 +69,12 @@ Presta atención especial a estas invariantes, porque su incumplimiento es un fa
 
 1. Toda tabla de un taller tiene `workshop_id`, FK compuestas hacia sus padres, RLS forzada y la política `workshop_isolation` (arquitectura §3 y §4).
 2. Solo `app/platform/` usa el rol `axtton_platform`; ningún endpoint de `/workshop` o `/portal` lo importa, salvo la petición de enlace mágico.
-3. `work_orders.status` es igual al `to_status` del cambio con el `seq` más alto de su historial.
-4. Un presupuesto enviado, una decisión y una hoja de recepción firmada no cambian; sus totales y su contenido se guardaron al enviarlos o firmarlos.
-5. El cliente de una orden es el titular del vehículo al abrirla, y el portal da acceso por `work_orders.client_id`, nunca por el vehículo.
-6. Los avisos se crean en la misma transacción que el cambio que los provoca y no salen nunca dos veces por la misma `dedupe_key`.
-7. El stock es la suma de `stock_movements`; nada lo guarda como un número editable.
+3. El actor de una sesión lo escribe una única función al crearla y no cambia nunca; nada más modifica el contenido de una sesión.
+4. `work_orders.status` es igual al `to_status` del cambio con el `seq` más alto de su historial.
+5. Un presupuesto enviado, una decisión y una hoja de recepción firmada no cambian; sus totales y su contenido se guardaron al enviarlos o firmarlos.
+6. El cliente de una orden es el titular del vehículo al abrirla, y el portal da acceso por `work_orders.client_id`, nunca por el vehículo.
+7. Los avisos se crean en la misma transacción que el cambio que los provoca y no salen nunca dos veces por la misma `dedupe_key`.
+8. El stock es la suma de `stock_movements`; nada lo guarda como un número editable.
 
 ## Docstrings
 

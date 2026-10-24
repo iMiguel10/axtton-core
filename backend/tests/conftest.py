@@ -21,6 +21,8 @@ import pytest_asyncio
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncEngine, create_async_engine
 
+from app.scripts.reset_data import truncate_all
+
 
 @pytest.fixture(scope="session", autouse=True)
 def migrated_database() -> None:
@@ -52,6 +54,8 @@ async def engines() -> AsyncIterator[Engines]:
 class TwoWorkshops:
     a: UUID
     b: UUID
+    order_a: UUID
+    order_b: UUID
 
 
 @pytest_asyncio.fixture
@@ -61,10 +65,10 @@ async def two_workshops(engines: Engines) -> TwoWorkshops:
     Se crean con la conexión de plataforma: es la única que puede escribir en
     los dos a la vez.
     """
+    await truncate_all()
     async with engines.platform.begin() as conn:
-        for table in ("work_orders", "vehicles", "clients", "workshops"):
-            await conn.execute(text(f"DELETE FROM {table}"))
         ids = []
+        work_orders = []
         for name in ("A", "B"):
             workshop_id = await conn.scalar(
                 text("INSERT INTO workshops (name) VALUES (:n) RETURNING id"),
@@ -82,12 +86,15 @@ async def two_workshops(engines: Engines) -> TwoWorkshops:
                 ),
                 {"w": workshop_id, "p": f"0000{name}"},
             )
-            await conn.execute(
+            work_order_id = await conn.scalar(
                 text(
                     "INSERT INTO work_orders (workshop_id, vehicle_id, client_id)"
-                    " VALUES (:w, :v, :c)"
+                    " VALUES (:w, :v, :c) RETURNING id"
                 ),
                 {"w": workshop_id, "v": vehicle_id, "c": client_id},
             )
             ids.append(workshop_id)
-    return TwoWorkshops(a=ids[0], b=ids[1])
+            work_orders.append(work_order_id)
+    return TwoWorkshops(
+        a=ids[0], b=ids[1], order_a=work_orders[0], order_b=work_orders[1]
+    )

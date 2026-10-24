@@ -6,7 +6,7 @@ Guía de trabajo para Claude Code (y cualquier colaborador) en **AXTTON CORE**.
 
 Sistema de gestión para talleres mecánicos: clientes, vehículos, citas, órdenes de trabajo, presupuestos, inventario básico y documentos generados, con un **portal privado** donde el cliente sigue la reparación y aprueba el presupuesto. Una instalación sirve a muchos talleres (multi-taller) o a uno solo. Es un proyecto de portfolio serio, hermano de Applications Tracker, del que hereda stack y convenciones.
 
-> **Estado (2026-10-23): F0 en curso (esqueleto vertical desechable), pasos 1 y 2 hechos.** Existen la especificación (revisada), la arquitectura (v0.1), el sitio de documentación, los agentes y un backend mínimo: `db` con los tres roles y RLS, `api` con Alembic, `GET /api/health` y `GET /api/v1/workshop/clients` (taller por cabecera, **sin autenticación**), y pruebas de RLS. Todavía no hay presupuestos, PDF, frontend ni autenticación; lo que este fichero describe de eso es **diseño**.
+> **Estado (2026-10-24): F0 en curso (esqueleto vertical desechable), pasos 1 a 3 hechos.** Existen la especificación (revisada), la arquitectura (v0.1), el sitio de documentación, los agentes y un backend mínimo: `db` con los tres roles y RLS; `api` con Alembic, presupuestos de una línea (borrador, envío que congela el total, aprobación o rechazo por enlace secreto) y triggers que impiden tocar un presupuesto enviado; taller por cabecera, **sin autenticación**; pruebas de RLS, de dominio y del flujo. Todavía no hay PDF, frontend ni autenticación; lo que este fichero describe de eso es **diseño**.
 
 ## 2. Documentación
 
@@ -50,8 +50,9 @@ docker compose exec api ruff check .         # estilo
 docker compose exec api ruff format .        # formato
 docker compose exec api mypy app tests       # tipos
 docker compose exec api pytest               # pruebas, contra la base axtton_test con los roles reales
-docker compose exec api python -m app.scripts.seed_f0   # F0: dos talleres de prueba; imprime sus ids
+docker compose exec api python -m app.scripts.seed_f0   # F0: vacía la BD y crea dos talleres de prueba; imprime sus ids y los de sus órdenes
 curl -H "X-Workshop-Id: <id>" http://localhost:8000/api/v1/workshop/clients   # F0: clientes de ese taller (RLS)
+# F0, flujo del presupuesto: POST /api/v1/workshop/work-orders/<orden>/quotes → POST /api/v1/workshop/quotes/<id>/send (devuelve approval_url) → GET approval_url → POST approval_url/decision {"outcome":"approved"}
 docker compose down -v                       # borra los volúmenes: necesario si cambia deploy/postgres/initdb
 docker compose exec api uv add <paquete>     # dependencias: siempre dentro del contenedor, nunca en el host
 ```
@@ -89,11 +90,12 @@ Estructura prevista (arquitectura §6): `backend/app/` con `api/v1/{workshop,por
 1. Ninguna consulta de `axtton_app` ve ni escribe filas de un taller distinto del fijado en la transacción; sin taller fijado, no ve ninguna.
 2. Solo `app/platform/` usa `axtton_platform`.
 3. Cada prefijo de API (`/workshop`, `/portal`, `/admin`) rechaza las sesiones de los otros dos actores, por la dependencia de su router.
-4. `work_orders.status` es igual al `to_status` del cambio con el `seq` más alto de su historial.
-5. Una versión de presupuesto enviada, una decisión y una hoja de recepción firmada no se modifican jamás; sus totales y su contenido se guardaron al enviar o firmar.
-6. El cliente de una orden es el titular del vehículo al abrirla; el portal da acceso por `work_orders.client_id`, nunca por el vehículo.
-7. Los avisos se crean en la misma transacción que el cambio que los provoca y no salen dos veces por la misma `dedupe_key`.
-8. El stock es la suma de `stock_movements`.
+4. El actor de una sesión se escribe solo al crearla, en una única función, y no cambia nunca; se lee siempre de la sesión verificada.
+5. `work_orders.status` es igual al `to_status` del cambio con el `seq` más alto de su historial.
+6. Una versión de presupuesto enviada, una decisión y una hoja de recepción firmada no se modifican jamás; sus totales y su contenido se guardaron al enviar o firmar.
+7. El cliente de una orden es el titular del vehículo al abrirla; el portal da acceso por `work_orders.client_id`, nunca por el vehículo.
+8. Los avisos se crean en la misma transacción que el cambio que los provoca y no salen dos veces por la misma `dedupe_key`.
+9. El stock es la suma de `stock_movements`.
 
 ## 8. Trampas conocidas
 
@@ -103,7 +105,10 @@ Ya identificadas en el diseño (arquitectura §2, §3, §4, §8 y §9); se ampli
 - **El taller se fija con `set_config('app.workshop_ids', …, true)`**: el `true` lo limita a la transacción. Sin él, queda pegado a la conexión del pool y la siguiente petición ve el taller anterior.
 - **Revocar las sesiones de un cliente no es `revokeAllSessionsForUser`**: su usuario passwordless es uno por email, compartido entre talleres. Se cierran solo las sesiones con su `workshop_id` y `client_id`.
 - **La numeración de órdenes** no sale de una secuencia ni de `MAX + 1`: `work_order_counters` con `INSERT … ON CONFLICT DO UPDATE … RETURNING`.
-- **Los scripts de inicio de Postgres solo corren con el volumen vacío.** Los roles se crean solo en `deploy/postgres/initdb/01-roles.sh` (decisión 0001): si lo cambias, `docker compose down -v`. Y `TRUNCATE` es un privilegio que ningún rol de la aplicación tiene: para vaciar tablas, `DELETE`.
+- **Los scripts de inicio de Postgres solo corren con el volumen vacío.** Los roles se crean solo en `deploy/postgres/initdb/01-roles.sh` (decisión 0001): si lo cambias, `docker compose down -v`.
+- **Vaciar tablas solo lo puede hacer el dueño.** Ningún rol de la aplicación tiene `TRUNCATE`, y nadie tiene `DELETE` sobre las tablas append-only (`quote_decisions`). Para pruebas y datos de desarrollo, `app/scripts/reset_data.py` usa `axtton_owner` con `TRUNCATE`, que no dispara triggers de fila ni pasa por RLS.
+- **Un presupuesto enviado no se puede tocar ni por SQL**: los triggers `quote_lines_frozen` y `quotes_frozen_after_send` lo rechazan con cualquier rol. Por eso, al enviar, los totales de las líneas se escriben **antes** de marcar el presupuesto como `sent`.
+- **Bloquear la orden antes de cambiar su presupuesto** (`SELECT … FOR UPDATE`): sin el bloqueo, dos envíos simultáneos acaban en un 500 al chocar con el trigger; con él, el segundo espera y recibe un 409.
 - **Siempre `localhost`, nunca `127.0.0.1`**: las cookies de sesión no viajan entre los dos.
 - Heredadas de Applications Tracker para SAQ y el correo: `retries` cuenta intentos totales, SAQ recuerda la clave de un trabajo unos 10 minutos, el mismo envío puede ejecutarse dos veces a la vez (`FOR UPDATE SKIP LOCKED`), un trabajo nunca lleva un token de acceso, la cola se crea dentro del event loop.
 

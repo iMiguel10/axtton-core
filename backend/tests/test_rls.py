@@ -8,7 +8,15 @@ from sqlalchemy.pool import AsyncAdaptedQueuePool
 
 from tests.conftest import Engines, TwoWorkshops
 
-WORKSHOP_TABLES = ("workshops", "clients", "vehicles", "work_orders")
+WORKSHOP_TABLES = (
+    "workshops",
+    "clients",
+    "vehicles",
+    "work_orders",
+    "quotes",
+    "quote_lines",
+    "quote_decisions",
+)
 
 
 async def set_workshops(conn: AsyncConnection, *workshop_ids: object) -> None:

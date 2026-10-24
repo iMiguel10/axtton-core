@@ -33,4 +33,7 @@ RUN --mount=type=cache,target=/home/appuser/.cache/uv,uid=1000,gid=1000 \
 
 COPY --chown=appuser:appuser . .
 
+RUN chmod +x /app/entrypoint.sh
+
+ENTRYPOINT ["/app/entrypoint.sh"]
 CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000", "--reload"]

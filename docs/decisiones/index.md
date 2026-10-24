@@ -6,7 +6,11 @@ Se registra una entrada cuando cambia algo ya documentado, cuando se eligió ent
 
 Ficheros con el formato `NNNN-titulo-corto.md`, añadidos también a la navegación de `mkdocs.yml`.
 
-Todavía no hay entradas: el proyecto está en fase de diseño.
+## Entradas
+
+| # | Decisión | Fase |
+|---|---|---|
+| [0001](0001-roles-solo-en-el-script-de-inicio.md) | Los roles de base de datos se crean solo en el script de inicio | F0 |
 
 ## Plantilla
 

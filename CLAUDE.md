@@ -6,7 +6,7 @@ Guía de trabajo para Claude Code (y cualquier colaborador) en **AXTTON CORE**.
 
 Sistema de gestión para talleres mecánicos: clientes, vehículos, citas, órdenes de trabajo, presupuestos, inventario básico y documentos generados, con un **portal privado** donde el cliente sigue la reparación y aprueba el presupuesto. Una instalación sirve a muchos talleres (multi-taller) o a uno solo. Es un proyecto de portfolio serio, hermano de Applications Tracker, del que hereda stack y convenciones.
 
-> **Estado (2026-10-23): F0 en curso (esqueleto vertical desechable), paso 1 hecho.** Existen la especificación (revisada), la arquitectura (v0.1), el sitio de documentación, los agentes y un backend mínimo: `db` y `api` con `GET /api/health`. Todavía no hay migraciones, RLS, frontend, autenticación ni pruebas; lo que este fichero describe de eso es **diseño**, y sus comandos se añadirán aquí cuando existan.
+> **Estado (2026-10-23): F0 en curso (esqueleto vertical desechable), pasos 1 y 2 hechos.** Existen la especificación (revisada), la arquitectura (v0.1), el sitio de documentación, los agentes y un backend mínimo: `db` con los tres roles y RLS, `api` con Alembic, `GET /api/health` y `GET /api/v1/workshop/clients` (taller por cabecera, **sin autenticación**), y pruebas de RLS. Todavía no hay presupuestos, PDF, frontend ni autenticación; lo que este fichero describe de eso es **diseño**.
 
 ## 2. Documentación
 
@@ -23,14 +23,14 @@ Sitio MkDocs en `docs/` (http://localhost:8001). Es la fuente de verdad del dise
 
 ## 3. Stack y servicios
 
-Hoy solo existe el servicio `docs`. El resto es el diseño (arquitectura §9), en la fase en que aparece:
+Existen `docs`, `db` y `api`. El resto es el diseño (arquitectura §9), en la fase en que aparece:
 
 | Servicio | Puerto | Notas | Desde |
 |---|---|---|---|
 | `docs` | 8001 | MkDocs Material **fijado a la 9** (MkDocs 2.0 rompe plugins y temas) | **existe** |
-| `db` | 5432 | **Existe** (aún sin roles ni RLS). Diseño: Postgres 17 con RLS y tres roles: `axtton_owner` (migraciones), `axtton_app` (API y worker, sin `BYPASSRLS`), `axtton_platform` (solo `app/platform/`) | F0 |
-| `api` | 8000 | **Existe**, solo con `/api/health`. Diseño: FastAPI + SQLAlchemy async + Alembic (Python, uv) + SDK de SuperTokens + WeasyPrint | F0 |
-| `frontend` | 5173 | Vite con dos aplicaciones: `src/taller/` en `/` y `src/portal/` en `/portal`. React 19 + TS, TanStack Query, react-hook-form + zod, Tailwind v4 + shadcn/ui, i18next (es, en) | F0 |
+| `db` | 5432 | **Existe.** Postgres 17 con RLS y tres roles, creados por `deploy/postgres/initdb/01-roles.sh` junto con la base `axtton_test`: `axtton_owner` (migraciones), `axtton_app` (API y worker, sin `BYPASSRLS`), `axtton_platform` (solo `app/platform/`) | F0 |
+| `api` | 8000 | **Existe**, con Alembic (aplica las migraciones al arrancar). Diseño completo: FastAPI + SQLAlchemy async + Alembic (Python, uv) + SDK de SuperTokens + WeasyPrint | F0 |
+| `frontend` | 5173 | Vite con dos aplicaciones: `src/workshop/` en `/` y `src/portal/` en `/portal`. React 19 + TS, TanStack Query, react-hook-form + zod, Tailwind v4 + shadcn/ui, i18next (es, en) | F0 |
 | `supertokens` + `supertokens-db` | — | Recetas `emailpassword` (personal y superadministrador) y `passwordless` (clientes) | F1 |
 | `valkey` | — | Cola de SAQ y rate limit | F1 |
 | `mailpit` | 8025 | Solo desarrollo: captura todo el correo | F1 |
@@ -48,33 +48,37 @@ docker compose up -d --build db api          # Postgres y la API en http://local
 curl http://localhost:8000/api/health        # {"status":"ok"} si la API llega a la BD
 docker compose exec api ruff check .         # estilo
 docker compose exec api ruff format .        # formato
-docker compose exec api mypy app             # tipos
+docker compose exec api mypy app tests       # tipos
+docker compose exec api pytest               # pruebas, contra la base axtton_test con los roles reales
+docker compose exec api python -m app.scripts.seed_f0   # F0: dos talleres de prueba; imprime sus ids
+curl -H "X-Workshop-Id: <id>" http://localhost:8000/api/v1/workshop/clients   # F0: clientes de ese taller (RLS)
+docker compose down -v                       # borra los volúmenes: necesario si cambia deploy/postgres/initdb
 docker compose exec api uv add <paquete>     # dependencias: siempre dentro del contenedor, nunca en el host
 ```
 
-Los de migraciones, frontend, pruebas y despliegue se añaden aquí en el mismo commit que los hace existir.
+Las migraciones se escriben a mano en `backend/migrations/versions/` (autogenerate no sabe de RLS ni de políticas) y se aplican solas al arrancar `api`. Los comandos de frontend y despliegue se añaden aquí en el mismo commit que los hace existir.
 
 ## 5. Estructura y capas
 
-Estructura prevista (arquitectura §6): `backend/app/` con `api/v1/{taller,portal,admin}/`, `core/`, `domain/`, `models/`, `repositories/`, `schemas/`, `services/`, `platform/`, `infra/`, `jobs/`, `templates/`, `scripts/`; `frontend/src/{taller,portal,shared}/`.
+Estructura prevista (arquitectura §6): `backend/app/` con `api/v1/{workshop,portal,admin}/`, `core/`, `domain/`, `models/`, `repositories/`, `schemas/`, `services/`, `platform/`, `infra/`, `jobs/`, `templates/`, `scripts/`; `frontend/src/{workshop,portal,shared}/`.
 
 **Backend:** `endpoints → services → repositories → models`, con `domain/` puro.
 
 | Capa | Puede | No puede |
 |---|---|---|
-| `api/v1/{taller,portal,admin}/` | Validar con schemas, `Depends`, llamar a **un** service | Consultar la BD, decidir permisos, `commit`, importar de otro prefijo |
+| `api/v1/{workshop,portal,admin}/` | Validar con schemas, `Depends`, llamar a **un** service | Consultar la BD, decidir permisos, `commit`, importar de otro prefijo |
 | `services/` | Reglas, `domain/`, repositories, `commit`/`rollback`, escribir en la bandeja de avisos | Importar FastAPI, construir SQL, importar `platform/` |
 | `repositories/` | Consultas con la sesión de `axtton_app`, siempre bajo RLS | `commit`, reglas de negocio, usar `axtton_platform` |
-| `platform/` | Usar `axtton_platform` y leer varios talleres | Devolver filas operativas al superadministrador; ser importado desde `/taller` o `/portal` (salvo la petición de enlace mágico) |
+| `platform/` | Usar `axtton_platform` y leer varios talleres | Devolver filas operativas al superadministrador; ser importado desde `/workshop` o `/portal` (salvo la petición de enlace mágico) |
 | `domain/` | Enums, transiciones, cálculos de totales, días hábiles, matriz de permisos | Cualquier I/O |
 
 **Regla única:** *si habla con la BD, vive en `repositories/`; si decide, en `services/` o `domain/`; si cruza talleres, en `platform/` y en ningún otro sitio.*
 
-**Frontend:** por *features*, una vez en `taller/` y otra en `portal/`. **`taller/` y `portal/` no se importan entre sí**; lo común va a `shared/`.
+**Frontend:** por *features*, una vez en `workshop/` y otra en `portal/`. **`workshop/` y `portal/` no se importan entre sí**; lo común va a `shared/`.
 
 ## 6. Convenciones
 
-- **Idioma:** identificadores, tablas, columnas, rutas y ficheros de código en inglés (`workshop`, `work_order`, `quote`); prosa, documentación y commits en español. La interfaz, en español e inglés por i18n desde el primer texto.
+- **Idioma:** identificadores, tablas, columnas, rutas, cabeceras, carpetas y ficheros de código en inglés (`workshop`, `work_order`, `quote`): "taller" solo aparece en la prosa, nunca en un nombre de código (ni `/taller` ni `X-Taller-Id`); prosa, documentación y commits en español. La interfaz, en español e inglés por i18n desde el primer texto.
 - **Modelo de datos** (arquitectura §3): `id uuid`, `created_at` con `clock_timestamp()`, historiales ordenados por `seq` (nunca por fecha), enumerados como `varchar` + `CHECK`, importes en `bigint` de céntimos, IVA en puntos básicos, fechas en `timestamptz` y mostradas en la zona del taller, bloqueo optimista con `version`.
 - **Toda tabla de un taller** lleva `workshop_id`, `UNIQUE (id, workshop_id)`, FK compuestas hacia sus padres y la política `workshop_isolation` con RLS forzada.
 - **Requisitos citados por número** (RF-xx, RNF-xx, A-xx) en código, commits y pruebas cuando aporten.
@@ -84,7 +88,7 @@ Estructura prevista (arquitectura §6): `backend/app/` con `api/v1/{taller,porta
 
 1. Ninguna consulta de `axtton_app` ve ni escribe filas de un taller distinto del fijado en la transacción; sin taller fijado, no ve ninguna.
 2. Solo `app/platform/` usa `axtton_platform`.
-3. Cada prefijo de API (`/taller`, `/portal`, `/admin`) rechaza las sesiones de los otros dos actores, por la dependencia de su router.
+3. Cada prefijo de API (`/workshop`, `/portal`, `/admin`) rechaza las sesiones de los otros dos actores, por la dependencia de su router.
 4. `work_orders.status` es igual al `to_status` del cambio con el `seq` más alto de su historial.
 5. Una versión de presupuesto enviada, una decisión y una hoja de recepción firmada no se modifican jamás; sus totales y su contenido se guardaron al enviar o firmar.
 6. El cliente de una orden es el titular del vehículo al abrirla; el portal da acceso por `work_orders.client_id`, nunca por el vehículo.
@@ -97,9 +101,9 @@ Ya identificadas en el diseño (arquitectura §2, §3, §4, §8 y §9); se ampli
 
 - **RLS no se aplica al dueño de las tablas.** La aplicación se conecta con `axtton_app`, nunca con `axtton_owner`, y las tablas llevan `FORCE ROW LEVEL SECURITY`. Si no, todas las políticas pasan sin que nada falle.
 - **El taller se fija con `set_config('app.workshop_ids', …, true)`**: el `true` lo limita a la transacción. Sin él, queda pegado a la conexión del pool y la siguiente petición ve el taller anterior.
-- **Revocar las sesiones de un cliente no es `revokeAllSessionsForUser`**: su usuario passwordless es uno por email, compartido entre talleres. Se cierran solo las sesiones con su `taller_id` y `client_id`.
+- **Revocar las sesiones de un cliente no es `revokeAllSessionsForUser`**: su usuario passwordless es uno por email, compartido entre talleres. Se cierran solo las sesiones con su `workshop_id` y `client_id`.
 - **La numeración de órdenes** no sale de una secuencia ni de `MAX + 1`: `work_order_counters` con `INSERT … ON CONFLICT DO UPDATE … RETURNING`.
-- **Los scripts de inicio de Postgres solo corren con el volumen vacío**: los roles se crean también, de forma idempotente, en la primera migración.
+- **Los scripts de inicio de Postgres solo corren con el volumen vacío.** Los roles se crean solo en `deploy/postgres/initdb/01-roles.sh` (decisión 0001): si lo cambias, `docker compose down -v`. Y `TRUNCATE` es un privilegio que ningún rol de la aplicación tiene: para vaciar tablas, `DELETE`.
 - **Siempre `localhost`, nunca `127.0.0.1`**: las cookies de sesión no viajan entre los dos.
 - Heredadas de Applications Tracker para SAQ y el correo: `retries` cuenta intentos totales, SAQ recuerda la clave de un trabajo unos 10 minutos, el mismo envío puede ejecutarse dos veces a la vez (`FOR UPDATE SKIP LOCKED`), un trabajo nunca lleva un token de acceso, la cola se crea dentro del event loop.
 

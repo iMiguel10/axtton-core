@@ -12,9 +12,10 @@ class Settings(BaseSettings):
 
     model_config = SettingsConfigDict(env_file=".env", extra="ignore")
 
-    # URL con el rol de la aplicación (axtton_app desde el paso 2, arquitectura §4),
-    # nunca con el dueño de las tablas.
+    # Rol axtton_app: todo lo que hace la API pasa por RLS (arquitectura §4).
     database_url: str
+    # Rol axtton_platform, que se salta RLS. Solo lo usa app/platform/.
+    platform_database_url: str
 
 
 @lru_cache

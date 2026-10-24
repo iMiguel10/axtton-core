@@ -10,11 +10,11 @@ Este documento recoge **qué se ha decidido y contra qué alternativa**. La espe
 |---|---|---|---|
 | A1 | Backend | **FastAPI + SQLAlchemy async + Alembic**, Python con uv, monolito en capas. Heredado de Applications Tracker | **Cambiar de framework** (Django, NestJS): no hay un requisito que lo pida, y se perderían las convenciones y las trampas ya documentadas. **Microservicios**: un taller no tiene la escala ni el equipo que los justifiquen. |
 | A2 | Base de datos | **PostgreSQL 17**, una sola base para la aplicación | Ninguna seria: Postgres además da RLS (A7). |
-| A3 | Frontend | **Un proyecto Vite con dos aplicaciones**: `src/taller/` y `src/portal/`, con lo común en `src/shared/`. React 19 + TS, TanStack Query, react-hook-form + zod, Tailwind v4 + shadcn/ui, i18next. Cada aplicación es una entrada de Vite con su propio paquete | **Una sola SPA con dos árboles de rutas**: el cliente descargaría el código del taller y compartirían estado global. **Dos proyectos**: doble mantenimiento de dependencias y componentes para la misma interfaz. |
+| A3 | Frontend | **Un proyecto Vite con dos aplicaciones**: `src/workshop/` y `src/portal/`, con lo común en `src/shared/`. React 19 + TS, TanStack Query, react-hook-form + zod, Tailwind v4 + shadcn/ui, i18next. Cada aplicación es una entrada de Vite con su propio paquete | **Una sola SPA con dos árboles de rutas**: el cliente descargaría el código del taller y compartirían estado global. **Dos proyectos**: doble mantenimiento de dependencias y componentes para la misma interfaz. |
 | A4 | Autenticación | **SuperTokens para los tres actores**: email y contraseña (receta `emailpassword`) para el personal y el superadministrador; enlace mágico (receta `passwordless`) para los clientes. Detalle en §2 | **Zitadel**: OIDC estándar, passkeys y MFA gratis y consola de identidades, pero **no tiene enlace mágico**: el portal necesitaría un sistema de sesión propio aparte, y en el navegador exige que el backend haga de intermediario para no exponer tokens; además pesa más en infraestructura. Gana en lo que aquí está pospuesto. **Revisar esta decisión si** las apps móviles pasan a ser una fase real, el 2FA pasa a ser obligatorio o un taller quiere entrar con la cuenta de su empresa (SSO). **Híbrido** (SuperTokens para el personal, sesión propia para el portal): dos sistemas de sesión que mantener. **Autenticación propia**: habría que escribir y probar uno mismo la rotación, la revocación y el CSRF. |
-| A5 | Separación de actores en la API | **Tres prefijos**: `/api/v1/taller/*`, `/api/v1/portal/*` y `/api/v1/admin/*`. Cada uno tiene una dependencia **a nivel de router** que exige su actor y rechaza cualquier otro | **Comprobar el actor en cada endpoint**: basta con olvidarlo una vez. Con el router, un endpoint nuevo queda protegido por construcción. |
-| A6 | Taller activo | **Llega en cada petición** del personal (cabecera `X-Taller-Id`) y se valida contra los empleados activos del usuario (RNF-09) | **Guardarlo en la sesión**: cambiar de taller obligaría a renovar la sesión, y dos pestañas no podrían trabajar en talleres distintos. |
-| A7 | Aislamiento entre talleres | **Dos capas en la base de datos además del filtro de la aplicación**: claves foráneas compuestas `(taller_id, id)`, que impiden enlazar datos de dos talleres, y **Row-Level Security**, que impide leer o escribir filas de otro taller aunque una consulta olvide filtrar | **Solo FK compuestas** (como Applications Tracker): un filtro olvidado devolvería datos de otro taller, y solo lo cazarían las pruebas. Con varios talleres, ese error es el más probable y el más grave. |
+| A5 | Separación de actores en la API | **Tres prefijos**: `/api/v1/workshop/*`, `/api/v1/portal/*` y `/api/v1/admin/*`. Cada uno tiene una dependencia **a nivel de router** que exige su actor y rechaza cualquier otro | **Comprobar el actor en cada endpoint**: basta con olvidarlo una vez. Con el router, un endpoint nuevo queda protegido por construcción. |
+| A6 | Taller activo | **Llega en cada petición** del personal (cabecera `X-Workshop-Id`) y se valida contra los empleados activos del usuario (RNF-09) | **Guardarlo en la sesión**: cambiar de taller obligaría a renovar la sesión, y dos pestañas no podrían trabajar en talleres distintos. |
+| A7 | Aislamiento entre talleres | **Dos capas en la base de datos además del filtro de la aplicación**: claves foráneas compuestas `(workshop_id, id)`, que impiden enlazar datos de dos talleres, y **Row-Level Security**, que impide leer o escribir filas de otro taller aunque una consulta olvide filtrar | **Solo FK compuestas** (como Applications Tracker): un filtro olvidado devolvería datos de otro taller, y solo lo cazarían las pruebas. Con varios talleres, ese error es el más probable y el más grave. |
 | A8 | Trabajo en segundo plano | **Valkey + SAQ** con un servicio `worker`, también para los trabajos programados (recordatorios, vencimientos, caducidad de presupuestos, borrado de firmas). Heredado | **Celery**: más pesado para el mismo uso. **cron del sistema**: fuera de Docker, sin reintentos ni registro. |
 | A9 | Documentos | **PDF generados con WeasyPrint + Jinja2**. Heredado. **Sin almacén de ficheros**: no hay ficheros subidos (RF-50), y la firma en pantalla se guarda como dato en la base de datos | **Un almacén de ficheros "por si acaso"**: un servicio, un volumen y unas copias de seguridad para nada. Añadirlo después no obliga a rehacer nada (especificación §12). |
 | A10 | Correo | **SMTP de la plataforma** para todo (RF-68); **Mailpit** en desarrollo. Heredado | **SMTP por taller**: descartado en la especificación (R12). |
@@ -26,18 +26,32 @@ Este documento recoge **qué se ha decidido y contra qué alternativa**. La espe
 
 ## 2. Autenticación de tres actores
 
+### Tres significados de "rol"
+
+En este proyecto "rol" quiere decir tres cosas distintas, en tres capas que no se mezclan:
+
+| Capa | Qué responde | Valores | Dónde vive | Quién lo comprueba |
+|---|---|---|---|---|
+| **Rol de base de datos** | ¿Con qué credenciales se conecta **el proceso** a Postgres? | `axtton_owner`, `axtton_app`, `axtton_platform` | Postgres (§4) | Postgres: permisos y RLS |
+| **Actor** | ¿Qué **tipo de persona** ha iniciado sesión? | `staff`, `client`, `superadmin` | La sesión de SuperTokens (abajo) | La dependencia del router de cada prefijo (A5) |
+| **Rol en el taller** | ¿Qué puede hacer **este empleado en este taller**? | `admin`, `mechanic` | `employees.role`, uno por taller | La función de permisos de `domain/` (RNF-03) |
+
+- **Los roles de base de datos no representan personas.** Todas las peticiones del personal y de los clientes usan `axtton_app`, sea quien sea quien las hace. Solo el código de `app/platform/` usa `axtton_platform`.
+- **RLS solo sabe de talleres, no de personas.** Separa el taller A del B, pero no sabe si quien pregunta es un mecánico o un cliente. Eso lo deciden las otras dos capas: que un mecánico no envíe presupuestos lo decide su rol en el taller, y que un cliente vea solo sus órdenes, los repositorios del portal.
+- **Alternativa descartada: un rol de Postgres por usuario o por taller.** Es tentador, porque Postgres comprobaría los permisos de cada persona. Pero obligaría a abrir una conexión con credenciales distintas en cada petición, lo que rompe el pool de conexiones. Además, crear un usuario sería crear un rol de base de datos, algo que solo puede hacer un superusuario (decisión 0001).
+
 ### Quién entra y cómo
 
 | Actor | Receta de SuperTokens | Cómo entra | Qué lleva su sesión | A qué rutas llega |
 |---|---|---|---|---|
-| Personal (administrador, mecánico) | `emailpassword` | Email y contraseña | `actor: "staff"` | `/api/v1/taller/*`, con el taller activo en cada petición (A6) |
+| Personal (administrador, mecánico) | `emailpassword` | Email y contraseña | `actor: "staff"` | `/api/v1/workshop/*`, con el taller activo en cada petición (A6) |
 | Superadministrador | `emailpassword` | Email y contraseña | `actor: "superadmin"` | `/api/v1/admin/*` |
-| Cliente | `passwordless` (enlace mágico) | Enlace por email | `actor: "client"`, `taller_id`, `client_id` | `/api/v1/portal/*`, solo de ese taller y ese cliente |
+| Cliente | `passwordless` (enlace mágico) | Enlace por email | `actor: "client"`, `workshop_id`, `client_id` | `/api/v1/portal/*`, solo de ese taller y ese cliente |
 
 - **El actor lo fija el backend al crear la sesión**, nunca el navegador, y no cambia durante la vida de la sesión.
 - **Superadministradores y personal son cuentas distintas.** Un superadministrador no es un empleado con un permiso de más: si la misma persona trabaja también en un taller, usa otra cuenta. Así RNF-08 se cumple sin excepciones.
 - **Un mismo email en las dos recetas son dos usuarios distintos** de SuperTokens. No se usa la vinculación de cuentas (*account linking*), que además es de pago. Que Ana sea mecánica en un taller y clienta de otro no mezcla nada.
-- **Una sesión de cliente vale para un solo taller.** El enlace mágico lleva el taller (RF-45), y al consumirlo el backend comprueba que ese email es un cliente activo de ese taller antes de crear la sesión con su `taller_id` y su `client_id`. Si el email es cliente de varios talleres, recibe un enlace por taller y cada uno crea una sesión distinta.
+- **Una sesión de cliente vale para un solo taller.** El enlace mágico lleva el taller (RF-45), y al consumirlo el backend comprueba que ese email es un cliente activo de ese taller antes de crear la sesión con su `workshop_id` y su `client_id`. Si el email es cliente de varios talleres, recibe un enlace por taller y cada uno crea una sesión distinta.
 - **Cookies httpOnly en el navegador y token Bearer fuera de él**, como en Applications Tracker (su decisión 0003). Es la costura para las apps móviles.
 
 ### Cómo se cierra cada puerta
@@ -47,7 +61,7 @@ flowchart LR
     R[Petición] --> S{¿Sesión válida?}
     S -- no --> E401[401]
     S -- sí --> P{Prefijo}
-    P -- /taller --> T{actor = staff<br/>y empleado activo<br/>en X-Taller-Id}
+    P -- /workshop --> T{actor = staff<br/>y empleado activo<br/>en X-Workshop-Id}
     P -- /portal --> C{actor = client<br/>y cliente activo<br/>en su taller}
     P -- /admin --> A{actor = superadmin}
     T -- no --> E404[404 / 403]
@@ -64,9 +78,9 @@ Cada prefijo es un router con su dependencia. Esa dependencia, además de compro
 
 | # | Qué se intenta | Resultado esperado |
 |---|---|---|
-| T1 | Cada ruta de `/taller`, `/portal` y `/admin` sin sesión | 401. Las rutas se leen del OpenAPI, no de una lista a mano, y una prueba de control falla si encuentra demasiado pocas |
+| T1 | Cada ruta de `/workshop`, `/portal` y `/admin` sin sesión | 401. Las rutas se leen del OpenAPI, no de una lista a mano, y una prueba de control falla si encuentra demasiado pocas |
 | T2 | Cada ruta de cada prefijo con una sesión de **los otros dos** actores | Rechazada siempre |
-| T3 | Un empleado envía `X-Taller-Id` de un taller en el que no trabaja | 404, como si no existiera |
+| T3 | Un empleado envía `X-Workshop-Id` de un taller en el que no trabaja | 404, como si no existiera |
 | T4 | Un cliente del taller A usa su sesión para leer una orden del taller B, o de otro cliente de A | 404 |
 | T5 | Un enlace mágico del taller A con el taller cambiado a B en la URL | No crea sesión |
 | T6 | Usar dos veces el mismo enlace mágico | La segunda falla |
@@ -75,8 +89,8 @@ Cada prefijo es un router con su dependencia. Esa dependencia, además de compro
 
 ### Trampas ya identificadas
 
-- **Revocar las sesiones de un cliente no es revocar las de su usuario de SuperTokens.** El usuario passwordless es uno por email, compartido entre talleres. Anonimizar a un cliente o cambiarle el email (RF-47) debe cerrar solo las sesiones cuyo `taller_id` y `client_id` coinciden; `revokeAllSessionsForUser` cerraría también las de otros talleres. Por lo mismo, anonimizar nunca borra el usuario de SuperTokens si ese email sigue siendo cliente de otro taller (T7).
-- **RLS y el pool de conexiones.** El taller de la petición se fija con `set_config('app.taller_id', …, true)`: el `true` lo limita a la transacción. Sin él, el valor se queda en la conexión y la siguiente petición que la reutilice vería el taller anterior.
+- **Revocar las sesiones de un cliente no es revocar las de su usuario de SuperTokens.** El usuario passwordless es uno por email, compartido entre talleres. Anonimizar a un cliente o cambiarle el email (RF-47) debe cerrar solo las sesiones cuyo `workshop_id` y `client_id` coinciden; `revokeAllSessionsForUser` cerraría también las de otros talleres. Por lo mismo, anonimizar nunca borra el usuario de SuperTokens si ese email sigue siendo cliente de otro taller (T7).
+- **RLS y el pool de conexiones.** El taller de la petición se fija con `set_config('app.workshop_id', …, true)`: el `true` lo limita a la transacción. Sin él, el valor se queda en la conexión y la siguiente petición que la reutilice vería el taller anterior.
 - **RLS no se aplica al dueño de las tablas.** La aplicación debe conectarse con un rol que no sea el propietario de las tablas, y las tablas llevan `FORCE ROW LEVEL SECURITY`. Si no, todas las políticas pasan sin que nada falle. Las migraciones usan el rol propietario y la aplicación el otro.
 - **Las vías que cruzan talleres son explícitas.** El `worker`, el resumen entre talleres (RF-09) y el superadministrador necesitan leer más de un taller. Lo hacen por una vía separada y nombrada, nunca desactivando RLS en la conexión normal.
 
@@ -305,7 +319,7 @@ La tabla `workshops` tiene la misma política sobre su `id`, para que el persona
 
 ### Las vías que cruzan talleres
 
-Son exactamente cuatro, y todas usan `axtton_platform` desde un único módulo (`app/platform/`). Ningún endpoint de `/taller` ni de `/portal` lo importa, con **una sola excepción con nombre**: la petición de enlace mágico (§7.2).
+Son exactamente cuatro, y todas usan `axtton_platform` desde un único módulo (`app/platform/`). Ningún endpoint de `/workshop` ni de `/portal` lo importa, con **una sola excepción con nombre**: la petición de enlace mágico (§7.2).
 
 | Vía | Qué lee | Por qué no puede ir por la política normal |
 |---|---|---|
@@ -327,14 +341,14 @@ El planificador **solo busca** (devuelve ids y su `workshop_id`). Cada trabajo c
 | R5 | `UPDATE` o `DELETE` sobre una tabla append-only con `axtton_app` | Error de permisos |
 | R6 | Modificar una línea de un presupuesto enviado, incluso con `axtton_owner` | Lo rechaza el trigger |
 | R7 | Dos conexiones del pool: la primera fija el taller A y termina; la segunda reutiliza la conexión sin fijar nada | Cero filas: el valor era de la transacción, no de la conexión |
-| R8 | Un endpoint de `/taller` o `/portal` importa algo de `app/platform/`, salvo la petición de enlace mágico | Falla una prueba de arquitectura que revisa los imports, con esa única excepción escrita en la propia prueba |
+| R8 | Un endpoint de `/workshop` o `/portal` importa algo de `app/platform/`, salvo la petición de enlace mágico | Falla una prueba de arquitectura que revisa los imports, con esa única excepción escrita en la propia prueba |
 
 ## 5. Vista general
 
 ```mermaid
 flowchart LR
     subgraph Navegador
-        TA[App del taller<br/>src/taller]
+        TA[App del taller<br/>src/workshop]
         PO[Portal del cliente<br/>src/portal]
     end
     subgraph Servidor
@@ -348,7 +362,7 @@ flowchart LR
     end
     SMTP[[SMTP de la plataforma<br/>Mailpit en desarrollo]]
 
-    TA -- /api/v1/taller --> PX
+    TA -- /api/v1/workshop --> PX
     PO -- /api/v1/portal --> PX
     PX --> API
     API --> ST --> STDB
@@ -377,7 +391,7 @@ axtton-core/
 ├── backend/
 │   └── app/
 │       ├── api/v1/
-│       │   ├── taller/          endpoints del personal; el router exige actor staff y fija el taller (§2)
+│       │   ├── workshop/        endpoints del personal; el router exige actor staff y fija el taller (§2)
 │       │   ├── portal/          endpoints del cliente; el router exige actor client
 │       │   ├── admin/           endpoints del superadministrador; solo llaman a platform/
 │       │   └── deps.py          las tres dependencias de actor, y nada más decide permisos aquí
@@ -398,7 +412,7 @@ axtton-core/
 │   └── tests/                   incluidas las adversas T* y R*
 ├── frontend/
 │   └── src/
-│       ├── taller/              la aplicación del personal (features/, pages/, routes/)
+│       ├── workshop/            la aplicación del personal (features/, pages/, routes/)
 │       ├── portal/              la aplicación del cliente (features/, pages/, routes/)
 │       └── shared/              ui (shadcn), apiClient, i18n, borradores en IndexedDB, utilidades
 ├── docs/                        MkDocs (este sitio)
@@ -413,15 +427,15 @@ axtton-core/
 
 | Capa | Puede | No puede |
 |---|---|---|
-| `api/v1/{taller,portal,admin}/` | Validar con schemas, `Depends`, llamar a **un** service | Consultar la BD, decidir permisos, `commit`, importar de otro prefijo |
+| `api/v1/{workshop,portal,admin}/` | Validar con schemas, `Depends`, llamar a **un** service | Consultar la BD, decidir permisos, `commit`, importar de otro prefijo |
 | `services/` | Reglas, `domain/`, repositories, `commit`/`rollback`, escribir en la bandeja de avisos | Importar FastAPI, construir SQL, importar `platform/` |
 | `repositories/` | Consultas con la sesión de `axtton_app` | `commit`, reglas de negocio, usar `axtton_platform` |
-| `platform/` | Usar `axtton_platform`, leer varios talleres | Devolver filas operativas al superadministrador; ser importado desde `api/v1/taller` o `api/v1/portal`, salvo la petición de enlace mágico (R8) |
+| `platform/` | Usar `axtton_platform`, leer varios talleres | Devolver filas operativas al superadministrador; ser importado desde `api/v1/workshop` o `api/v1/portal`, salvo la petición de enlace mágico (R8) |
 | `domain/` | Enums, transiciones, cálculos | Cualquier I/O |
 
 **Regla única:** *si habla con la BD, vive en `repositories/`; si decide, en `services/` o `domain/`; si cruza talleres, en `platform/` y en ningún otro sitio.*
 
-**Frontend:** la estructura por *features* de Applications Tracker, una vez en `taller/` y otra en `portal/`. **`taller/` y `portal/` no se importan entre sí**: lo común sube a `shared/`. Una regla de ESLint (`no-restricted-imports`) lo impide.
+**Frontend:** la estructura por *features* de Applications Tracker, una vez en `workshop/` y otra en `portal/`. **`workshop/` y `portal/` no se importan entre sí**: lo común sube a `shared/`. Una regla de ESLint (`no-restricted-imports`) lo impide.
 
 ## 7. Flujos principales
 
@@ -435,7 +449,7 @@ sequenceDiagram
     participant WK as worker
     actor Cl as Cliente
 
-    Ad->>API: POST /taller/quotes/{id}/send
+    Ad->>API: POST /workshop/quotes/{id}/send
     API->>DB: BEGIN · fija el taller (RLS)
     API->>DB: SELECT work_order FOR UPDATE
     API->>DB: calcula y guarda totales, reparto del descuento y valid_until
@@ -610,7 +624,7 @@ Todas son `CronJob` de SAQ. La búsqueda la hace el planificador por `platform/`
 
 Se crean con un script de inicio de Postgres (`docker-entrypoint-initdb.d`), y las contraseñas llegan por variables de entorno.
 
-> **Trampa:** esos scripts **solo se ejecutan con el volumen vacío**. Si se añade un rol después, no se crea en las bases de datos que ya existen. Por eso los roles y sus permisos se crean también en la primera migración de Alembic, de forma idempotente (`CREATE ROLE` solo si no existe), y el script de inicio queda solo para el entorno nuevo.
+> **Trampa:** esos scripts **solo se ejecutan con el volumen vacío**. Los roles no se pueden crear también en una migración, porque las migraciones corren como `axtton_owner` y solo un superusuario puede crear un rol con `BYPASSRLS` ([decisión 0001](../decisiones/0001-roles-solo-en-el-script-de-inicio.md)). En desarrollo, cambiar el script obliga a `docker compose down -v`; en producción, un rol nuevo es un paso manual con el superusuario.
 
 ### Producción (desde F2)
 
@@ -632,11 +646,11 @@ Como en Applications Tracker (su decisión 0023):
 | Services | Casos de uso, concurrencia con dos transacciones reales (carreras de §7), bandeja de avisos | `compose.test.yml` |
 | API | Contrato y adversas: T1–T8 (actores), R1–R8 (RLS), B1–B12 (avisos, adaptadas de Applications Tracker) | `compose.test.yml` |
 | Migraciones | Subir y bajar contra una base **con datos** (RNF-35) | CI |
-| Frontend | Componentes y hooks con vitest; la regla de imports entre `taller/` y `portal/` | CI |
+| Frontend | Componentes y hooks con vitest; la regla de imports entre `workshop/` y `portal/` | CI |
 | Punta a punta | El flujo de los criterios de éxito (cita → recepción → presupuesto → aprobación en el portal → entrega), con Playwright | CI desde F6; antes, a mano |
 | Rendimiento | RNF-50 a RNF-53 con el volumen de referencia (un script que lo genera) | A mano, antes de cerrar F9; no en cada CI |
 
-**Las pruebas adversas se escriben con la funcionalidad, no al final.** Un endpoint nuevo en `/taller` queda cubierto por T1 y T2 automáticamente porque recorren el OpenAPI, y una tabla nueva, por R4 porque recorre el catálogo de Postgres.
+**Las pruebas adversas se escriben con la funcionalidad, no al final.** Un endpoint nuevo en `/workshop` queda cubierto por T1 y T2 automáticamente porque recorren el OpenAPI, y una tabla nueva, por R4 porque recorre el catálogo de Postgres.
 
 ## 11. Orden de implementación
 

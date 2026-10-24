@@ -4,9 +4,11 @@ from fastapi import Depends, FastAPI
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.api.v1.workshop.router import router as workshop_router
 from app.core.db import get_session
 
 app = FastAPI(title="AXTTON CORE API", version="0.1.0")
+app.include_router(workshop_router)
 
 
 @app.get("/api/health")

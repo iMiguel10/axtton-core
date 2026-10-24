@@ -9,6 +9,7 @@ dependencies = [
     "sqlalchemy[asyncio]",
     "asyncpg",
     "pydantic-settings",
+    "alembic>=1.20.1",
 ]
 
 [dependency-groups]

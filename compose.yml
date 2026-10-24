@@ -1,6 +1,6 @@
 services:
-  # Postgres de la aplicación. En el paso 2 de F0 se crean aquí los tres roles de
-  # la arquitectura (§4); de momento la API entra con el usuario de la imagen.
+  # Postgres de la aplicación, con los tres roles de la arquitectura (§4) y la base
+  # de pruebas, creados por deploy/postgres/initdb solo con el volumen vacío.
   db:
     image: postgres:17
     env_file:
@@ -9,6 +9,7 @@ services:
       - "5432:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
+      - ./deploy/postgres/initdb:/docker-entrypoint-initdb.d:ro
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB"]
       interval: 5s
@@ -19,6 +20,10 @@ services:
   api:
     build:
       context: ./backend
+    # El entrypoint aplica las migraciones pendientes (con axtton_owner) antes de
+    # arrancar uvicorn (con axtton_app).
+    entrypoint: ["/app/entrypoint.sh"]
+    command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
     ports:
       - "8000:8000"
     volumes:

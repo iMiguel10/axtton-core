@@ -24,7 +24,7 @@ La razón de la tercera regla: un agente que corrige lo que él mismo evalúa de
 
 ### 1. Estático
 
-Ruff (estilo y formato) y mypy en el backend; ESLint (incluida la regla que impide importar entre `src/taller/` y `src/portal/`) y `tsc` en el frontend. Los comandos exactos están en `CLAUDE.md` cuando existan.
+Ruff (estilo y formato) y mypy en el backend; ESLint (incluida la regla que impide importar entre `src/workshop/` y `src/portal/`) y `tsc` en el frontend. Los comandos exactos están en `CLAUDE.md` cuando existan.
 
 ### 2. Pruebas automáticas
 
@@ -48,7 +48,7 @@ Si trabajas sobre alguna de estas áreas y la prueba no existe, **escríbela**:
 | Área | Qué debe demostrar |
 |---|---|
 | Aislamiento entre talleres | Fijado el taller A, ninguna tabla devuelve filas de B; sin taller fijado, cero filas; un `INSERT` con el taller de B se rechaza; una tabla nueva sin política hace fallar R4 |
-| Actores | Cada ruta de `/taller`, `/portal` y `/admin` rechaza las sesiones de los otros dos actores (rutas leídas del OpenAPI, con una prueba de control que falla si encuentra pocas) |
+| Actores | Cada ruta de `/workshop`, `/portal` y `/admin` rechaza las sesiones de los otros dos actores (rutas leídas del OpenAPI, con una prueba de control que falla si encuentra pocas) |
 | Cliente dentro de su taller | Un cliente no ve órdenes de otro cliente del mismo taller, ni las de antes de ser titular |
 | Inmutabilidad | Una línea de un presupuesto enviado, una decisión o una hoja firmada no se pueden modificar ni con el rol propietario; `UPDATE`/`DELETE` en tablas append-only falla por permisos |
 | Concurrencia | Dos envíos de presupuesto a la vez dejan una sola versión `sent`; dos decisiones a la vez, una sola; dos salidas de stock a la vez, las dos registradas; dos órdenes abiertas a la vez, números distintos |

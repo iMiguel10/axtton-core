@@ -68,7 +68,7 @@ Ante la duda, **no toques el documento y repórtalo**.
 Presta atención especial a estas invariantes, porque su incumplimiento es un fallo real y no una diferencia de criterio:
 
 1. Toda tabla de un taller tiene `workshop_id`, FK compuestas hacia sus padres, RLS forzada y la política `workshop_isolation` (arquitectura §3 y §4).
-2. Solo `app/platform/` usa el rol `axtton_platform`; ningún endpoint de `/taller` o `/portal` lo importa, salvo la petición de enlace mágico.
+2. Solo `app/platform/` usa el rol `axtton_platform`; ningún endpoint de `/workshop` o `/portal` lo importa, salvo la petición de enlace mágico.
 3. `work_orders.status` es igual al `to_status` del cambio con el `seq` más alto de su historial.
 4. Un presupuesto enviado, una decisión y una hoja de recepción firmada no cambian; sus totales y su contenido se guardaron al enviarlos o firmarlos.
 5. El cliente de una orden es el titular del vehículo al abrirla, y el portal da acceso por `work_orders.client_id`, nunca por el vehículo.

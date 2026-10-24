@@ -130,6 +130,7 @@ Ya identificadas en el diseño (arquitectura §2, §3, §4, §8 y §9); se ampli
 - **Importar `app.main` tiene efectos** (inicializa SuperTokens y fija el emisor de correo). Las pruebas lo importan una vez al principio del `conftest`: importado por primera vez dentro de un fixture, pisaba el emisor de pruebas que otro fixture acababa de poner.
 - **SuperTokens enviaría sus emails desde sus servidores** si no se sustituye su servicio de envío. `app/core/auth_emails.py` lo cambia por nuestro `EmailSender` (RF-68), y al completar la recuperación de contraseña cierra todas las sesiones de la cuenta.
 - **Para probar que una sesión se cerró, usa su token de renovación**: el de acceso sigue valiendo hasta caducar (5 minutos) porque se valida sin consultar al core.
+- **Los `.sh` tienen que ser ejecutables en git, no solo en tu disco**: Windows no tiene ese permiso y git los guarda como `100644`. En local funciona porque Docker Desktop monta los ficheros de Windows como ejecutables; en la CI (Linux) falla con `permission denied`. Un `.sh` nuevo se marca con `git update-index --chmod=+x <fichero>`.
 - **Siempre `localhost`, nunca `127.0.0.1`**: las cookies de sesión no viajan entre los dos.
 - Heredadas de Applications Tracker para SAQ y el correo: `retries` cuenta intentos totales, SAQ recuerda la clave de un trabajo unos 10 minutos, el mismo envío puede ejecutarse dos veces a la vez (`FOR UPDATE SKIP LOCKED`), un trabajo nunca lleva un token de acceso, la cola se crea dentro del event loop.
 

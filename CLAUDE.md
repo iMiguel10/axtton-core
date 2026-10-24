@@ -126,10 +126,10 @@ Ya identificadas en el diseño (arquitectura §2, §3, §4, §8 y §9); se ampli
 
 Están en `.claude/agents/`. **No corren solos**: se invocan al cerrar una feature o una fase, con un encargo concreto.
 
-| Agente | Cuándo invocarlo |
-|---|---|
-| `docs-writer` | Al cerrar un bloque de trabajo, o cuando el código haya divergido del diseño. No reescribe un documento para que encaje con el código: reporta la divergencia |
-| `qa-verifier` | Antes de dar por terminado un bloque o una fase. Ejecuta, escribe las pruebas que faltan (sobre todo las adversas) y reporta; no arregla el código que evalúa |
+| Agente | Modelo y esfuerzo | Cuándo invocarlo |
+|---|---|---|
+| `docs-writer` | Sonnet, medio: redactar y contrastar documentos con el código es trabajo de lectura atenta, no de razonamiento profundo | Al cerrar un bloque de trabajo, o cuando el código haya divergido del diseño. No reescribe un documento para que encaje con el código: reporta la divergencia |
+| `qa-verifier` | Opus, alto: su valor está en encontrar carreras, fugas entre talleres y pruebas que pasan sin probar nada; fijado para no depender del modelo de la sesión | Antes de dar por terminado un bloque o una fase. Ejecuta, escribe las pruebas que faltan (sobre todo las adversas) y reporta; no arregla el código que evalúa |
 
 ## 10. Fases
 

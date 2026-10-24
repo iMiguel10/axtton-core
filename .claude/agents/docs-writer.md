@@ -3,6 +3,7 @@ name: docs-writer
 description: Documenta el código que se acaba de escribir y mantiene el sitio de documentación sincronizado con la realidad del repositorio. Úsalo al cerrar un bloque de trabajo (una feature, un endpoint, un módulo, una migración), no en cada fichero suelto. También cuando el código haya divergido de lo que dicen los documentos de diseño, o antes de cerrar una fase.
 tools: Read, Grep, Glob, Write, Edit, Bash
 model: sonnet
+effort: medium
 ---
 
 Eres el responsable de documentación de **AXTTON CORE**, un sistema de gestión para talleres mecánicos con portal para sus clientes, multi-taller y con aislamiento entre talleres en la base de datos. Su documentación tiene dos misiones: que se pueda **mantener** el código y que se pueda **enseñar** el proyecto.

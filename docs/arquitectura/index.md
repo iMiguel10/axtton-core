@@ -1,6 +1,6 @@
 # Arquitectura
 
-> Estado: **v0.1 completa** (2026-10-23) · sin código todavía. Todas las secciones están escritas; se revisa con el usuario antes de empezar F0.
+> Estado: **v0.1** (2026-10-24) · F0 hecha y cerrada ([lo aprendido](f0-cierre.md)); siguiente fase: F1.
 
 Este documento recoge **qué se ha decidido y contra qué alternativa**. La especificación de producto está en [producto/especificacion.md](../producto/especificacion.md); los requisitos se citan por su número (RF-xx, RNF-xx).
 
@@ -634,10 +634,11 @@ Se crean con un script de inicio de Postgres (`docker-entrypoint-initdb.d`), y l
 Como en Applications Tracker (su decisión 0023):
 
 - **Coolify con un solo dominio:**
-  - un servicio `web` (el proxy) sirve las dos aplicaciones ya compiladas y reenvía `/api` a la API;
+  - un servicio `web` (el proxy) sirve las dos aplicaciones ya compiladas y reenvía `/api` a la API. Cada aplicación necesita su propio *fallback*: las rutas `/portal/*` que no son ficheros sirven `portal/index.html`, y el resto, `index.html` (lo aprendido en F0; en desarrollo lo hace el plugin `portalFallback` de Vite);
   - solo `web` tiene dominio público;
   - el resto de servicios no publica puertos.
 - **Despliegue continuo:** cada push a la rama principal, con la CI en verde, despliega.
+- **`APP_URL`**: la dirección pública del frontend. La API la usa para construir los enlaces que recibe el cliente, que apuntan a páginas del portal y no a la API (lo aprendido en F0).
 - **Copias de seguridad:** un servicio de copias diarias fuera del servidor desde F9 (RNF-33), y la restauración se prueba antes de cerrar la fase.
 
 ## 10. Pruebas
@@ -659,7 +660,7 @@ Como en Applications Tracker (su decisión 0023):
 
 | Fase | Qué se construye, en concreto |
 |---|---|
-| **F0** | Esqueleto vertical desechable: `workshops`, `clients`, `vehicles`, `work_orders`, `quotes` y `quote_lines` mínimos; un taller fijo; enviar un presupuesto de una línea, aprobarlo desde un enlace secreto y ver el cambio de estado. **Incluye un primer RLS de verdad** (dos roles y una política) y un PDF de una página, porque son lo que más puede sorprender. Se tira al terminar |
+| **F0** ✔ | **Hecha** ([cierre y lo aprendido](f0-cierre.md)). Esqueleto vertical desechable: `workshops`, `clients`, `vehicles`, `work_orders`, `quotes` y `quote_lines` mínimos; un taller fijo; enviar un presupuesto de una línea, aprobarlo desde un enlace secreto y ver el cambio de estado. **Incluye un primer RLS de verdad** (dos roles y una política) y un PDF de una página, porque son lo que más puede sorprender. Se tira al terminar |
 | **F1** | Roles de BD y política generada por migración; R1–R8. SuperTokens con `emailpassword`, los tres routers y sus dependencias; T1–T3. `users`, `employees`, `invitations`, superadministrador por comando, alta de talleres, modo de instalación, taller activo. `audit_log`. Mailpit. **CI** |
 | **F2** | Clientes, vehículos, `vehicle_ownerships`, órdenes con su historial, número correlativo, deshacer, búsqueda, bloqueo optimista, borradores en IndexedDB. **Primer despliegue en Coolify** |
 | **F3** | Presupuestos versionados con sus triggers, totales y descuentos, decisión registrada por el taller, PDF del presupuesto con los datos legales |

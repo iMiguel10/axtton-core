@@ -2,7 +2,7 @@
 
 **Gestión para talleres mecánicos, con un portal para que el cliente siga su reparación sin llamar.**
 
-> **Estado: fase de diseño. Todavía no hay código.** Este repositorio contiene, por ahora, la especificación, la arquitectura y el sitio de documentación. El código empieza en F0.
+> **Estado: F0 hecha.** Hay un esqueleto vertical desechable que recorre el flujo de punta a punta (presupuesto, aprobación desde el móvil y PDF) con aislamiento entre talleres en la base de datos. Todavía no hay autenticación ni diseño: empiezan en F1.
 
 ## Qué resuelve
 

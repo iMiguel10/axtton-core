@@ -3,7 +3,7 @@
 Sistema de gestión para talleres mecánicos: centraliza clientes, vehículos, citas, órdenes de trabajo, presupuestos, inventario y documentos, y da al cliente un portal privado donde seguir la reparación y aprobar el presupuesto sin llamar al taller.
 
 !!! warning "Estado"
-    Fase de diseño. **No hay código todavía.** La [especificación de producto](producto/especificacion.md) está revisada y la [arquitectura](arquitectura/index.md) está completa (v0.1), pendiente de revisión. El siguiente paso es F0, el esqueleto vertical desechable.
+    F0 hecha: el esqueleto vertical desechable recorre el flujo de punta a punta ([lo aprendido](arquitectura/f0-cierre.md)). Siguiente fase: F1, autenticación y aislamiento completo. La [especificación](producto/especificacion.md) y la [arquitectura](arquitectura/index.md) son la referencia del diseño.
 
 ## En una página
 
@@ -19,6 +19,7 @@ Sistema de gestión para talleres mecánicos: centraliza clientes, vehículos, c
 
 - [Especificación](producto/especificacion.md): qué hace el producto, sus requisitos numerados, el ciclo de vida de una orden de trabajo y lo que **no** sabe responder.
 - [Arquitectura](arquitectura/index.md): decisiones con sus alternativas descartadas, autenticación de tres actores, modelo de datos y RLS, flujos, segundo plano, pruebas, orden de implementación y riesgos.
+- [Cierre de F0](arquitectura/f0-cierre.md): lo que enseñó el esqueleto y qué se queda.
 - [Decisiones](decisiones/index.md): la bitácora de cambios de rumbo durante el desarrollo.
 
 ## Las tres ideas que sostienen el diseño

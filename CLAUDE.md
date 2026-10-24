@@ -6,7 +6,7 @@ Guía de trabajo para Claude Code (y cualquier colaborador) en **AXTTON CORE**.
 
 Sistema de gestión para talleres mecánicos: clientes, vehículos, citas, órdenes de trabajo, presupuestos, inventario básico y documentos generados, con un **portal privado** donde el cliente sigue la reparación y aprueba el presupuesto. Una instalación sirve a muchos talleres (multi-taller) o a uno solo. Es un proyecto de portfolio serio, hermano de Applications Tracker, del que hereda stack y convenciones.
 
-> **Estado (2026-10-24): F0 en curso (esqueleto vertical desechable), pasos 1 a 5 hechos (esqueleto completo).** Existen la especificación (revisada), la arquitectura (v0.1), el sitio de documentación, los agentes y un backend mínimo: `db` con los tres roles y RLS; `api` con Alembic, presupuestos de una línea (borrador, envío que congela el total, aprobación o rechazo por enlace secreto) triggers que impiden tocar un presupuesto enviado y su PDF (WeasyPrint, generado al pedirlo); taller por cabecera, **sin autenticación**; pruebas de RLS, de dominio y del flujo. Y un `frontend` mínimo, sin diseño, con la aplicación del taller y el portal del cliente recorriendo el flujo. Todavía no hay autenticación; lo que este fichero describe de eso es **diseño**.
+> **Estado (2026-10-24): F0 hecha y cerrada** ([lo aprendido](docs/arquitectura/f0-cierre.md)). El repositorio contiene el esqueleto vertical **desechable** de F0: `db` con los tres roles y RLS, `api` con presupuestos de una línea, envío, aprobación por enlace secreto y PDF, y un `frontend` mínimo sin diseño (taller y portal), **sin autenticación** (el taller llega por cabecera sin comprobar). F1 empieza **reiniciando el historial de migraciones** (decisión 0002) y reescribiendo lo que el cierre de F0 marca como "se tira". Lo que este fichero describe de autenticación, avisos, citas o inventario es **diseño**.
 
 ## 2. Documentación
 
@@ -17,6 +17,7 @@ Sitio MkDocs en `docs/` (http://localhost:8001). Es la fuente de verdad del dise
 | `docs/producto/especificacion.md` | Requisitos (RF-xx, RNF-xx), roles y matriz de permisos, ciclos de vida, límite conocido, límites, fases, riesgos |
 | `docs/arquitectura/index.md` | Decisiones A1–A14 con alternativas descartadas, autenticación de tres actores, modelo de datos, RLS, flujos, segundo plano, entorno, pruebas, orden de implementación y riesgos |
 | `docs/decisiones/` | Bitácora de cambios de rumbo durante el desarrollo, con plantilla |
+| `docs/arquitectura/f0-cierre.md` | Lo aprendido en F0, y qué del esqueleto se queda y qué se tira |
 | `docs/guias/`, `docs/referencia/` | Vacías a propósito hasta que haya código |
 
 **Si el código y un documento no coinciden, no se corrige el documento sin más.** Primero se averigua si el diseño evolucionó (se actualiza el documento dejando constancia) o si la implementación se lo saltó (y entonces es un fallo del código).
@@ -134,7 +135,7 @@ Están en `.claude/agents/`. **No corren solos**: se invocan al cerrar una featu
 
 | Fase | Contenido |
 |---|---|
-| F0 | Esqueleto vertical desechable: orden, presupuesto de una línea, aprobación por enlace secreto, un primer RLS de verdad y un PDF |
+| F0 ✔ | **Hecha** ([cierre](docs/arquitectura/f0-cierre.md)). Esqueleto vertical desechable: orden, presupuesto de una línea, aprobación por enlace secreto, un primer RLS de verdad y un PDF |
 | F1 | Autenticación del personal, superadministrador, alta de talleres, modo de instalación, roles, invitaciones, taller activo, auditoría, RLS completa con sus pruebas, CI |
 | F2 | Clientes, vehículos con titularidad, órdenes con historial, deshacer, búsqueda, borradores. Primer despliegue en Coolify |
 | F3 | Presupuestos versionados e inmutables, decisión registrada por el taller, PDF con los datos legales |

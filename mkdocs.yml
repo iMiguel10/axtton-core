@@ -47,6 +47,8 @@ nav:
       - Especificación: producto/especificacion.md
   - Arquitectura:
       - arquitectura/index.md
+      - "Cierre de F0": arquitectura/f0-cierre.md
   - Decisiones:
       - decisiones/index.md
       - "0001 — Roles solo en el script de inicio": decisiones/0001-roles-solo-en-el-script-de-inicio.md
+      - "0002 — Migraciones desde cero en F1": decisiones/0002-historial-de-migraciones-desde-f1.md

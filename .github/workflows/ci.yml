@@ -26,6 +26,13 @@ jobs:
         # Las contraseñas de .env.example son de desarrollo: valen para la CI.
         run: cp .env.example .env
 
+      - name: Permisos del código montado
+        # compose.yml monta ./backend en el contenedor, donde la API corre como
+        # appuser (uid 1000). En el runner, el código es del usuario del runner
+        # (uid 1001): sin esto, ruff, mypy y pytest no pueden crear sus cachés.
+        # En Windows no pasa porque Docker Desktop monta con permisos abiertos.
+        run: chmod -R a+rwX backend
+
       - name: Levantar Postgres, SuperTokens, Mailpit y la API
         # La API aplica las migraciones al arrancar (entrypoint.sh): si una
         # migración falla, falla aquí.

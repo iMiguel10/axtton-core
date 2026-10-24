@@ -4,6 +4,7 @@ from uuid import UUID
 from fastapi import APIRouter, Depends, status
 
 from app.api.deps import get_email_sender
+from app.api.v1 import account
 from app.api.v1.deps import Superadmin, require_superadmin
 from app.infra.email import EmailSender
 from app.platform import workshops as platform_workshops
@@ -22,6 +23,8 @@ router = APIRouter(
     tags=["admin"],
     dependencies=[Depends(require_superadmin)],
 )
+# Las operaciones de cuenta (contraseña, sesiones) heredan la exigencia de actor.
+router.include_router(account.router)
 
 
 @router.get("/me")

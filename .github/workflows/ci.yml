@@ -1,0 +1,79 @@
+# CI (arquitectura A13, RNF-31): en cada push y en cada pull request.
+#
+# Usa el mismo compose.yml que el desarrollo: Postgres con los roles reales y
+# RLS, y el core real de SuperTokens. Así "pasa en mi máquina" y "pasa en la CI"
+# quieren decir lo mismo. Nunca SQLite ni dobles de la base de datos.
+name: CI
+
+on:
+  push:
+  pull_request:
+
+# Un push nuevo a la misma rama cancela la ejecución anterior, que ya no importa.
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  backend:
+    name: Backend (estilo, tipos y pruebas)
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Entorno
+        # Las contraseñas de .env.example son de desarrollo: valen para la CI.
+        run: cp .env.example .env
+
+      - name: Levantar Postgres, SuperTokens, Mailpit y la API
+        # La API aplica las migraciones al arrancar (entrypoint.sh): si una
+        # migración falla, falla aquí.
+        run: docker compose up -d --build --wait db supertokens mailpit api
+
+      - name: Estilo
+        run: |
+          docker compose exec -T api ruff check .
+          docker compose exec -T api ruff format --check .
+
+      - name: Tipos
+        run: docker compose exec -T api mypy app tests
+
+      - name: Pruebas
+        # Incluye las adversas (aislamiento, actores, RLS, capas) y alembic check.
+        run: docker compose exec -T api pytest -q
+
+      - name: Registros si algo falla
+        if: failure()
+        run: docker compose logs api supertokens db
+
+  frontend:
+    name: Frontend (tipos, lint y build)
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      - run: npm ci
+      - run: npx tsc -b
+      # Incluye la regla que impide importar entre src/workshop y src/portal.
+      - run: npm run lint
+      - run: npm run build
+
+  docs:
+    name: Documentación (MkDocs estricto)
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      # Compose lee el proyecto entero, también los servicios que no arranca:
+      # sin .env fallaría por los env_file de db y api.
+      - run: cp .env.example .env
+      - run: docker compose run --rm docs build --strict

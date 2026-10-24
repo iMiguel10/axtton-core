@@ -6,7 +6,7 @@ Guía de trabajo para Claude Code (y cualquier colaborador) en **AXTTON CORE**.
 
 Sistema de gestión para talleres mecánicos: clientes, vehículos, citas, órdenes de trabajo, presupuestos, inventario básico y documentos generados, con un **portal privado** donde el cliente sigue la reparación y aprueba el presupuesto. Una instalación sirve a muchos talleres (multi-taller) o a uno solo. Es un proyecto de portfolio serio, hermano de Applications Tracker, del que hereda stack y convenciones.
 
-> **Estado (2026-10-24): F1 en curso, pasos 1 a 4 hechos.** F0 está cerrada ([lo aprendido](docs/arquitectura/f0-cierre.md)) y su código desechable retirado. Existen `db` con los tres roles, `api` con la migración inicial definitiva (`users`, `workshops`, `employees`, `invitations`, `audit_log`, con RLS y modelos de SQLAlchemy) y pruebas de RLS; SuperTokens con inicio de sesión del personal y del superadministrador, el actor en la sesión y los tres prefijos de API cerrados entre sí (`/me` en cada uno); el comando que crea el superadministrador y, en `/admin`, el alta de talleres con invitación por email al primer administrador, el listado con recuentos, la desactivación y los límites; Mailpit; y un `frontend` vacío a la espera del paso 5. aceptar invitaciones (ruta pública `/api/v1/invitations`), el taller activo validado en cada petición, el selector de talleres y la gestión de empleados y roles con la matriz de permisos. Todavía **no hay recuperación de contraseña, CI ni pantallas** (paso 5); lo que este fichero describe de eso es **diseño**.
+> **Estado (2026-10-24): F1 en curso, pasos 1 a 4 y la parte de backend del 5 hechos.** F0 está cerrada ([lo aprendido](docs/arquitectura/f0-cierre.md)) y su código desechable retirado. Existen `db` con los tres roles, `api` con la migración inicial definitiva (`users`, `workshops`, `employees`, `invitations`, `audit_log`, con RLS y modelos de SQLAlchemy) y pruebas de RLS; SuperTokens con inicio de sesión del personal y del superadministrador, el actor en la sesión y los tres prefijos de API cerrados entre sí (`/me` en cada uno); el comando que crea el superadministrador y, en `/admin`, el alta de talleres con invitación por email al primer administrador, el listado con recuentos, la desactivación y los límites; Mailpit; y un `frontend` vacío a la espera del paso 5. aceptar invitaciones (ruta pública `/api/v1/invitations`), el taller activo validado en cada petición, el selector de talleres y la gestión de empleados y roles con la matriz de permisos. recuperar la contraseña (email por nuestro SMTP), cambiarla y gestionar sesiones; y CI en GitHub Actions. Todavía **no hay pantallas** (frontend del paso 5) ni límite de peticiones (RNF-06, con Valkey); lo que este fichero describe de eso es **diseño**.
 
 ## 2. Documentación
 
@@ -33,7 +33,7 @@ Existen `docs`, `db`, `supertokens` + `supertokens-db`, `api`, `mailpit` y `fron
 | `api` | 8000 | **Existe**, con Alembic (aplica las migraciones al arrancar). Diseño completo: FastAPI + SQLAlchemy async + Alembic (Python, uv) + SDK de SuperTokens + WeasyPrint | F0 |
 | `frontend` | 5173 | **Existe** (F0, sin Tailwind ni i18n todavía). Vite con dos aplicaciones: `src/workshop/` en `/` y `src/portal/` en `/portal`. React 19 + TS, TanStack Query, react-hook-form + zod, Tailwind v4 + shadcn/ui, i18next (es, en) | F0 |
 | `supertokens` + `supertokens-db` | — | **Existe** (core fijado a 12.2.0, SDK a 0.31.3). Receta `emailpassword` (personal y superadministrador); `passwordless` (clientes) llega en F4. Rutas en `/api/auth`, sin registro público | F1 |
-| `valkey` | — | Cola de SAQ y rate limit | F1 |
+| `valkey` | — | Cola de SAQ y límite de peticiones (RNF-06). **Aún no existe**: llega con el límite de peticiones y el worker | F1–F5 |
 | `mailpit` | 8025 | **Existe.** Solo desarrollo: captura todo el correo (http://localhost:8025). Sin `SMTP_HOST`, la aplicación arranca y no envía emails | F1 |
 | `worker` | — | Misma imagen que `api`: avisos y tareas programadas | F5 |
 | `manual` | 3001 | Docusaurus, manual de producción en es y en | F9 |
@@ -53,6 +53,7 @@ docker compose exec api mypy app tests       # tipos
 docker compose exec api pytest               # pruebas, contra la base axtton_test con los roles reales
 docker compose down -v                       # borra los volúmenes: necesario si cambia deploy/postgres/initdb
 docker compose exec api python -m app.scripts.create_superadmin <email>   # pide la contraseña (o SUPERADMIN_PASSWORD); es la única forma de crear uno
+# CI: .github/workflows/ci.yml ejecuta en cada push lo mismo que aquí (backend con compose, frontend con npm ci, docs estricto).
 docker compose exec api uv add <paquete>     # dependencias: siempre dentro del contenedor, nunca en el host
 docker compose exec frontend npx tsc -b        # tipos del frontend
 docker compose exec frontend npm run lint     # ESLint, incluida la regla que separa src/workshop y src/portal
@@ -126,6 +127,9 @@ Ya identificadas en el diseño (arquitectura §2, §3, §4, §8 y §9); se ampli
 - **`app.platform` solo se importa desde `/admin`, comandos de servidor y las excepciones con nombre de `R8_EXCEPTIONS`** (`tests/test_admin.py`). Añadir una es una decisión de diseño (arquitectura §4), no un arreglo para que pase la prueba. Las capas también se comprueban por imports (`tests/test_architecture.py`): un service que importe `fastapi` o `app.platform` hace fallar la CI.
 - **Bloqueo optimista en dos niveles**: el cliente manda la `version` que leyó y el service la compara (409 `modified_by_someone_else`); dentro de la transacción, SQLAlchemy la vigila también, y su `StaleDataError` se traduce al mismo 409 en `main.py`. Para lo que pueden hacer dos personas a la vez sobre la misma fila (aceptar una invitación), además se bloquea con `FOR UPDATE`: el bloqueo da el comportamiento correcto y la versión es la red de seguridad.
 - **El rol se comprueba con `require(Action.…)` y `can()`**, nunca comparando `role == "admin"` en un endpoint (RNF-03). El rol sale del taller activo, no de la sesión.
+- **Importar `app.main` tiene efectos** (inicializa SuperTokens y fija el emisor de correo). Las pruebas lo importan una vez al principio del `conftest`: importado por primera vez dentro de un fixture, pisaba el emisor de pruebas que otro fixture acababa de poner.
+- **SuperTokens enviaría sus emails desde sus servidores** si no se sustituye su servicio de envío. `app/core/auth_emails.py` lo cambia por nuestro `EmailSender` (RF-68), y al completar la recuperación de contraseña cierra todas las sesiones de la cuenta.
+- **Para probar que una sesión se cerró, usa su token de renovación**: el de acceso sigue valiendo hasta caducar (5 minutos) porque se valida sin consultar al core.
 - **Siempre `localhost`, nunca `127.0.0.1`**: las cookies de sesión no viajan entre los dos.
 - Heredadas de Applications Tracker para SAQ y el correo: `retries` cuenta intentos totales, SAQ recuerda la clave de un trabajo unos 10 minutos, el mismo envío puede ejecutarse dos veces a la vez (`FOR UPDATE SKIP LOCKED`), un trabajo nunca lleva un token de acceso, la cola se crea dentro del event loop.
 

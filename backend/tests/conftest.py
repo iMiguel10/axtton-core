@@ -22,7 +22,13 @@ from httpx import ASGITransport, AsyncClient
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncEngine, create_async_engine
 
+import app.main  # noqa: F401
 from app.scripts.reset_data import truncate_all
+
+# app.main se importa AQUÍ, una vez, antes de cualquier fixture: al importarse
+# inicializa SuperTokens y fija el emisor de correo del proceso. Si se importara
+# por primera vez dentro de un fixture, pisaría el emisor de pruebas que otro
+# fixture acabara de poner (le pasó a test_account.py).
 
 
 @pytest.fixture(scope="session", autouse=True)
@@ -69,8 +75,6 @@ async def make_account(
     """
     from supertokens_python.recipe.emailpassword.asyncio import sign_up
     from supertokens_python.recipe.emailpassword.interfaces import SignUpOkResult
-
-    import app.main  # noqa: F401  (inicializa el SDK de SuperTokens)
 
     async def create(kind: str) -> Account:
         email = f"{kind}-{uuid4().hex[:12]}@example.com"

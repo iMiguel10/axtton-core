@@ -25,6 +25,13 @@ class ForbiddenError(AppError):
     status_code = 403
 
 
+class ValidationFailedError(AppError):
+    """La petición está bien formada pero un valor no se acepta (p. ej. una
+    contraseña débil según la política de SuperTokens)."""
+
+    status_code = 422
+
+
 class ConflictError(AppError):
     """La petición es válida, pero el estado actual no la permite."""
 

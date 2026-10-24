@@ -15,7 +15,7 @@ from app.core.config import get_settings
 from app.core.db import get_session
 from app.core.errors import AppError
 from app.core.supertokens import init_supertokens
-from app.infra.email import build_email_sender
+from app.infra.email import build_email_sender, set_email_sender
 
 # Antes de crear la app: el middleware necesita el SDK ya inicializado.
 init_supertokens()
@@ -23,7 +23,7 @@ init_supertokens()
 app = FastAPI(title="AXTTON CORE API", version="0.1.0")
 # La implementación del correo se elige una vez, al arrancar; los endpoints la
 # reciben por dependencia (app/api/deps.py) y las pruebas la sustituyen.
-app.state.email_sender = build_email_sender(get_settings())
+set_email_sender(build_email_sender(get_settings()))
 # Atiende /api/auth/* (inicio y cierre de sesión, renovación). Sin CORS: con un
 # solo dominio, el navegador nunca hace peticiones a otro origen (arquitectura §5).
 app.add_middleware(get_middleware())

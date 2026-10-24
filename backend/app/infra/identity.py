@@ -4,18 +4,83 @@ Vive en infra/ porque habla con un sistema externo (el core de SuperTokens). Los
 services no importan el SDK: llaman a estas funciones.
 """
 
-from supertokens_python.recipe.emailpassword.asyncio import sign_in, sign_up
+from dataclasses import dataclass
+from datetime import UTC, datetime
+
+from supertokens_python.asyncio import get_user
+from supertokens_python.recipe.emailpassword.asyncio import (
+    sign_in,
+    sign_up,
+    update_email_or_password,
+)
 from supertokens_python.recipe.emailpassword.interfaces import (
     EmailAlreadyExistsError,
+    PasswordPolicyViolationError,
     SignInOkResult,
     SignUpOkResult,
 )
+from supertokens_python.recipe.session.asyncio import (
+    get_all_session_handles_for_user,
+    get_session_information,
+    revoke_multiple_sessions,
+)
+from supertokens_python.types import RecipeUserId
 
 from app.core.sessions import PASSWORD_CHECK_ONLY
 
 
 class WrongPasswordError(Exception):
     """El email ya tiene cuenta y la contraseña no es la suya."""
+
+
+class WeakPasswordError(Exception):
+    """La contraseña nueva no cumple la política de SuperTokens."""
+
+
+async def _email_of(supertokens_user_id: str) -> str:
+    user = await get_user(supertokens_user_id)
+    assert user is not None and user.emails
+    return user.emails[0]
+
+
+async def change_password(supertokens_user_id: str, current: str, new: str) -> None:
+    """Cambiar la contraseña exige la actual (RF-122): con una sesión robada no
+    basta para quedarse con la cuenta."""
+    checked = await sign_in(
+        "public",
+        await _email_of(supertokens_user_id),
+        current,
+        user_context={PASSWORD_CHECK_ONLY: True},
+    )
+    if not isinstance(checked, SignInOkResult):
+        raise WrongPasswordError(supertokens_user_id)
+    result = await update_email_or_password(
+        RecipeUserId(supertokens_user_id), password=new, apply_password_policy=True
+    )
+    if isinstance(result, PasswordPolicyViolationError):
+        raise WeakPasswordError(result.failure_reason)
+
+
+@dataclass(frozen=True)
+class SessionInfo:
+    handle: str
+    created_at: datetime
+
+
+async def list_sessions(supertokens_user_id: str) -> list[SessionInfo]:
+    sessions = []
+    for handle in await get_all_session_handles_for_user(supertokens_user_id):
+        info = await get_session_information(handle)
+        if info is not None:
+            created = datetime.fromtimestamp(info.time_created / 1000, tz=UTC)
+            sessions.append(SessionInfo(handle, created))
+    return sorted(sessions, key=lambda s: s.created_at)
+
+
+async def revoke_other_sessions(supertokens_user_id: str, keep: str) -> None:
+    """Cierra todas las sesiones de la cuenta menos la que hace la petición."""
+    handles = await get_all_session_handles_for_user(supertokens_user_id)
+    await revoke_multiple_sessions([h for h in handles if h != keep])
 
 
 async def create_or_verify_account(email: str, password: str) -> str:

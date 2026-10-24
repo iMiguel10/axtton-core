@@ -76,3 +76,19 @@ def build_email_sender(settings: Settings) -> EmailSender:
     if settings.smtp_host:
         return SmtpEmailSender(settings)
     return DisabledEmailSender()
+
+
+# El emisor del proceso. Lo fija main.py al arrancar y lo usan tanto los
+# endpoints (por dependencia, app/api/deps.py) como los emails de SuperTokens,
+# que no pasan por las dependencias de FastAPI. Las pruebas lo sustituyen con
+# set_email_sender: así hay un solo sitio que cambiar.
+_current_sender: EmailSender = DisabledEmailSender()
+
+
+def set_email_sender(sender: EmailSender) -> None:
+    global _current_sender
+    _current_sender = sender
+
+
+def current_email_sender() -> EmailSender:
+    return _current_sender

@@ -7,12 +7,14 @@ la red interna de Docker.
 from typing import Any
 
 from supertokens_python import InputAppInfo, SupertokensConfig, init
+from supertokens_python.ingredients.emaildelivery.types import EmailDeliveryConfig
 from supertokens_python.recipe import emailpassword, session
 from supertokens_python.recipe.emailpassword import EmailPasswordOverrideConfig
 from supertokens_python.recipe.emailpassword.interfaces import APIInterface
 from supertokens_python.recipe.session import SessionOverrideConfig
 from supertokens_python.types.response import GeneralErrorResponse
 
+from app.core.auth_emails import PlatformPasswordResetEmail, password_reset_effects
 from app.core.config import get_settings
 from app.core.sessions import emailpassword_override, session_override
 
@@ -60,9 +62,17 @@ def init_supertokens() -> None:
             # de Applications Tracker): es la costura para las apps móviles.
             session.init(override=SessionOverrideConfig(functions=session_override)),
             emailpassword.init(
+                # El email de recuperación sale por nuestro SMTP, no por el
+                # servicio de SuperTokens (auth_emails.py).
+                email_delivery=EmailDeliveryConfig(
+                    service=PlatformPasswordResetEmail()
+                ),
                 override=EmailPasswordOverrideConfig(
-                    functions=emailpassword_override, apis=_no_public_signup
-                )
+                    functions=emailpassword_override,
+                    apis=lambda original: password_reset_effects(
+                        _no_public_signup(original)
+                    ),
+                ),
             ),
         ],
         mode="asgi",

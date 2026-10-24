@@ -1,5 +1,6 @@
 from fastapi import APIRouter, Depends
 
+from app.api.v1 import account
 from app.api.v1.deps import Staff, require_staff
 from app.api.v1.workshop import employees
 from app.api.v1.workshop.deps import ActiveWorkshop
@@ -17,6 +18,7 @@ router = APIRouter(
 )
 # Los subrouters heredan la dependencia de actor del router padre.
 router.include_router(employees.router)
+router.include_router(account.router)
 
 
 @router.get("/me")

@@ -100,9 +100,13 @@ async def client() -> AsyncIterator[AsyncClient]:
         transport=ASGITransport(app=app), base_url="http://test"
     ) as http:
         yield http
-    # El engine de la aplicación es global: sus conexiones quedan ligadas al
-    # event loop de esta prueba y la siguiente usa otro. Se cierran aquí.
+    # Los engines de la aplicación y de plataforma son globales: sus conexiones
+    # quedan ligadas al event loop de esta prueba, y la siguiente usa otro
+    # ("Event loop is closed"). Se cierran aquí, los dos.
+    from app.platform.db import platform_engine
+
     await db.engine.dispose()
+    await platform_engine.dispose()
 
 
 async def sign_in(client: AsyncClient, account: Account) -> str:

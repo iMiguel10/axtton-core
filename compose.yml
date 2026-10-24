@@ -76,6 +76,14 @@ services:
       supertokens:
         condition: service_healthy
 
+  # Solo desarrollo: captura todo el correo (SMTP interno en mailpit:1025) y no
+  # envía nada fuera. Los emails se ven en http://localhost:8025. En producción el
+  # SMTP lo configura quien despliega (SMTP_* en el entorno).
+  mailpit:
+    image: axllent/mailpit:v1.31
+    ports:
+      - "8025:8025"
+
   # Frontend (Vite) en http://localhost:5173: la aplicación del taller en "/" y el
   # portal del cliente en "/portal". Vite reenvía /api a la API (vite.config.ts).
   frontend:

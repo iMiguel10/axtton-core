@@ -1,4 +1,5 @@
 from functools import lru_cache
+from typing import Literal
 
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
@@ -25,6 +26,17 @@ class Settings(BaseSettings):
     # SuperTokens (arquitectura A4): el core solo se alcanza por la red interna.
     supertokens_connection_uri: str
     supertokens_api_key: str
+
+    # Correo de la plataforma (RF-68). Sin smtp_host no se envía nada y la
+    # aplicación funciona igual (RNF-32).
+    smtp_host: str | None = None
+    smtp_port: int = 587
+    smtp_username: str | None = None
+    smtp_password: str | None = None
+    email_from: str = "AXTTON CORE <no-reply@localhost>"
+
+    # Modo de instalación (RF-111): un solo taller o varios.
+    installation_mode: Literal["multi", "single"] = "multi"
 
 
 @lru_cache

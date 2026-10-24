@@ -5,12 +5,43 @@
     "changeLanguage": "Cambiar idioma",
     "actions": "Acciones",
     "cancel": "Cancelar",
-    "save": "Guardar"
+    "save": "Guardar",
+    "yes": "Sí",
+    "no": "No"
+  },
+  "audit": {
+    "title": "Registro de auditoría",
+    "when": "Cuándo",
+    "who": "Quién",
+    "what": "Qué",
+    "on": "Sobre",
+    "changes": "Cambios",
+    "loadMore": "Ver anteriores",
+    "actions": {
+      "employee_created": "Alta de empleado",
+      "employee_updated": "Cambio en un empleado",
+      "access_removed": "Acceso retirado",
+      "invitation_sent": "Invitación enviada",
+      "invitation_accepted": "Invitación aceptada",
+      "workshop_created": "Alta de taller",
+      "workshop_updated": "Cambio en un taller",
+      "superadmin_created": "Alta de superadministrador"
+    },
+    "fields": {
+      "name": "Nombre",
+      "position": "Puesto",
+      "role": "Rol",
+      "active": "Activo",
+      "hourly_cost_cents": "Coste por hora",
+      "status": "Estado",
+      "max_employees_with_access": "Límite de acceso"
+    }
   },
   "nav": {
     "main": "Navegación principal",
     "home": "Inicio",
     "employees": "Empleados",
+    "audit": "Auditoría",
     "account": "Mi cuenta",
     "workshops": "Talleres",
     "signOut": "Cerrar sesión"

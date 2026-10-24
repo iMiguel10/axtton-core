@@ -192,7 +192,7 @@ erDiagram
 | `stock_movements` | Libro de movimientos de stock | **Crítica**, append-only |
 | `appointments` + `appointment_changes` | Citas y su historial de cambios | `source` (costura para la reserva desde el portal) |
 | `notifications` | Bandeja de salida de avisos | `UNIQUE (workshop_id, dedupe_key)`: la garantía de "nunca dos veces" (RF-62) |
-| `audit_log` | Registro de acciones sensibles (RNF-16) | Append-only; `workshop_id` nulo en las acciones de plataforma |
+| `audit_log` | Registro de acciones sensibles (RNF-16) | Append-only; `workshop_id` nulo en las acciones de plataforma. Se escribe en la misma transacción que el cambio, así que un cambio deshecho no deja rastro. Se consulta por `seq` descendente con `?before=`: el administrador, en `GET /workshop/audit` (bajo RLS, con los nombres de las fichas de su taller); el superadministrador, en `GET /admin/audit`, solo las filas de `workshop_id` nulo, con el email de quien actuó |
 
 ### Las tablas que hay que acertar a la primera
 

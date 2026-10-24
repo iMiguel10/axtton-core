@@ -1,12 +1,13 @@
 from typing import Annotated
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, status
+from fastapi import APIRouter, Depends, Query, status
 
 from app.api.deps import get_email_sender
 from app.api.v1 import account
 from app.api.v1.deps import Superadmin, require_superadmin
 from app.infra.email import EmailSender
+from app.platform import audit as platform_audit
 from app.platform import workshops as platform_workshops
 from app.schemas.admin import (
     WorkshopCreate,
@@ -14,6 +15,7 @@ from app.schemas.admin import (
     WorkshopRead,
     WorkshopUpdate,
 )
+from app.schemas.audit import AuditEntryRead, AuditPageRead
 from app.schemas.session import WhoAmI
 
 # Toda ruta de este router exige una sesión de superadministrador (A5). Sus
@@ -49,6 +51,30 @@ async def create_workshop(
     return WorkshopCreated(
         workshop_id=created.workshop_id,
         invitation_email_sent=created.invitation_email_sent,
+    )
+
+
+@router.get("/audit")
+async def list_audit(
+    before: Annotated[int | None, Query(ge=1)] = None,
+    limit: Annotated[int, Query(ge=1, le=200)] = 50,
+) -> AuditPageRead:
+    """Registro de la plataforma (RNF-16): nunca las filas de un taller."""
+    rows, next_before = await platform_audit.list_page(before, limit)
+    return AuditPageRead(
+        entries=[
+            AuditEntryRead(
+                seq=row.seq,
+                created_at=row.created_at,
+                action=row.action,
+                actor=row.actor_email,
+                target_type=row.target_type,
+                target_name=row.target_name,
+                details=row.details,
+            )
+            for row in rows
+        ],
+        next_before=next_before,
     )
 
 

@@ -37,7 +37,7 @@ class WeakPasswordError(Exception):
     """La contraseña nueva no cumple la política de SuperTokens."""
 
 
-async def _email_of(supertokens_user_id: str) -> str:
+async def email_of(supertokens_user_id: str) -> str:
     user = await get_user(supertokens_user_id)
     assert user is not None and user.emails
     return user.emails[0]
@@ -48,7 +48,7 @@ async def change_password(supertokens_user_id: str, current: str, new: str) -> N
     basta para quedarse con la cuenta."""
     checked = await sign_in(
         "public",
-        await _email_of(supertokens_user_id),
+        await email_of(supertokens_user_id),
         current,
         user_context={PASSWORD_CHECK_ONLY: True},
     )

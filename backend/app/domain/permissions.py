@@ -17,6 +17,8 @@ class Role(StrEnum):
 class Action(StrEnum):
     MANAGE_EMPLOYEES = "manage_employees"
     VIEW_COSTS = "view_costs"
+    # Consultar el registro de auditoría del taller (RNF-16, especificación §3).
+    VIEW_AUDIT_LOG = "view_audit_log"
 
 
 ROLE_PERMISSIONS: dict[Role, frozenset[Action]] = {

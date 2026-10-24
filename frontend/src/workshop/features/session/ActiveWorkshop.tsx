@@ -17,6 +17,7 @@ type ActiveWorkshopValue = {
   role: Role;
   /** Solo para enseñar u ocultar pantallas: el backend vuelve a comprobarlo. */
   canManageEmployees: boolean;
+  canViewAudit: boolean;
   workshops: Membership[];
   select: (workshopId: string) => void;
 };
@@ -91,6 +92,7 @@ export function ActiveWorkshopProvider({ children }: { children: ReactNode }) {
     workshopName: workshops.find((w) => w.workshop_id === workshopId)!.workshop_name,
     role: active.data.role,
     canManageEmployees: active.data.role === "admin",
+    canViewAudit: active.data.role === "admin",
     workshops,
     select,
   };

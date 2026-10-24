@@ -4,6 +4,7 @@ import { Navigate, Route, Routes } from "react-router-dom";
 
 import { AccountPage } from "./features/account/AccountPage";
 import { AdminWorkshopsPage } from "./features/admin/AdminWorkshopsPage";
+import { AuditPage } from "./features/audit/AuditPage";
 import { ForgotPasswordPage } from "./features/auth/ForgotPasswordPage";
 import { InvitationPage } from "./features/auth/InvitationPage";
 import { LoginPage } from "./features/auth/LoginPage";
@@ -52,12 +53,14 @@ function SuperadminRoutes() {
   const { t } = useTranslation();
   const nav = [
     { to: "/admin", label: t("nav.workshops") },
+    { to: "/admin/audit", label: t("nav.audit") },
     { to: "/admin/account", label: t("nav.account") },
   ];
   return (
     <AppLayout nav={nav}>
       <Routes>
         <Route path="/admin" element={<AdminWorkshopsPage />} />
+        <Route path="/admin/audit" element={<AuditPage scope={{ prefix: "/admin" }} />} />
         <Route path="/admin/account" element={<AccountPage prefix="/admin" />} />
         <Route path="*" element={<Navigate to="/admin" replace />} />
       </Routes>
@@ -67,10 +70,11 @@ function SuperadminRoutes() {
 
 function StaffRoutes() {
   const { t } = useTranslation();
-  const { canManageEmployees } = useActiveWorkshop();
+  const { workshopId, canManageEmployees, canViewAudit } = useActiveWorkshop();
   const nav = [
     { to: "/", label: t("nav.home") },
     ...(canManageEmployees ? [{ to: "/employees", label: t("nav.employees") }] : []),
+    ...(canViewAudit ? [{ to: "/audit", label: t("nav.audit") }] : []),
     { to: "/account", label: t("nav.account") },
   ];
   return (
@@ -78,6 +82,12 @@ function StaffRoutes() {
       <Routes>
         <Route path="/" element={<HomePage />} />
         {canManageEmployees && <Route path="/employees" element={<EmployeesPage />} />}
+        {canViewAudit && (
+          <Route
+            path="/audit"
+            element={<AuditPage scope={{ prefix: "/workshop", workshopId }} />}
+          />
+        )}
         <Route path="/account" element={<AccountPage prefix="/workshop" />} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>

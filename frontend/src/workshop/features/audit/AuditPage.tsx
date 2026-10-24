@@ -1,0 +1,116 @@
+import { useInfiniteQuery } from "@tanstack/react-query";
+import type { TFunction } from "i18next";
+import { useTranslation } from "react-i18next";
+
+import { Button } from "@/shared/components/ui/button";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/shared/components/ui/table";
+import { errorMessage } from "@/shared/lib/errors";
+import { formatEur } from "@/shared/money";
+
+import { fetchAuditPage, type AuditEntry, type AuditScope } from "./api";
+
+/** Registro de auditoría (RNF-16), del taller activo o de la plataforma. */
+export function AuditPage({ scope }: { scope: AuditScope }) {
+  const { t, i18n } = useTranslation();
+  const audit = useInfiniteQuery({
+    queryKey: ["audit", scope],
+    queryFn: ({ pageParam }) => fetchAuditPage(scope, pageParam),
+    initialPageParam: null as number | null,
+    // Paginado por seq: la página siguiente son las entradas anteriores a la última.
+    getNextPageParam: (last) => last.next_before,
+  });
+  const format = new Intl.DateTimeFormat(i18n.language, {
+    dateStyle: "short",
+    timeStyle: "short",
+  });
+
+  return (
+    <section className="grid gap-6">
+      <h1 className="text-2xl font-semibold">{t("audit.title")}</h1>
+      {audit.isPending ? (
+        <p>{t("common.loading")}</p>
+      ) : audit.isError ? (
+        <p role="alert">{errorMessage(t, audit.error)}</p>
+      ) : (
+        <>
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>{t("audit.when")}</TableHead>
+                <TableHead>{t("audit.who")}</TableHead>
+                <TableHead>{t("audit.what")}</TableHead>
+                <TableHead>{t("audit.on")}</TableHead>
+                <TableHead>{t("audit.changes")}</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {audit.data.pages
+                .flatMap((page) => page.entries)
+                .map((entry) => (
+                  <TableRow key={entry.seq}>
+                    <TableCell className="whitespace-nowrap">
+                      {format.format(new Date(entry.created_at))}
+                    </TableCell>
+                    <TableCell>{entry.actor ?? "—"}</TableCell>
+                    <TableCell>
+                      {t(`audit.actions.${entry.action}`, { defaultValue: entry.action })}
+                    </TableCell>
+                    <TableCell>{entry.target_name ?? "—"}</TableCell>
+                    <TableCell>
+                      <Details entry={entry} t={t} />
+                    </TableCell>
+                  </TableRow>
+                ))}
+            </TableBody>
+          </Table>
+          {audit.hasNextPage && (
+            <Button
+              variant="outline"
+              className="justify-self-start"
+              disabled={audit.isFetchingNextPage}
+              onClick={() => void audit.fetchNextPage()}
+            >
+              {t("audit.loadMore")}
+            </Button>
+          )}
+        </>
+      )}
+    </section>
+  );
+}
+
+function Details({ entry, t }: { entry: AuditEntry; t: TFunction }) {
+  const items = Object.entries(entry.details);
+  if (items.length === 0) return <>—</>;
+  return (
+    <ul className="grid gap-0.5 text-sm">
+      {items.map(([field, value]) => (
+        <li key={field}>
+          <span className="text-muted-foreground">
+            {t(`audit.fields.${field}`, { defaultValue: field })}:
+          </span>{" "}
+          {Array.isArray(value) && value.length === 2
+            ? `${show(t, field, value[0])} → ${show(t, field, value[1])}`
+            : show(t, field, value)}
+        </li>
+      ))}
+    </ul>
+  );
+}
+
+/** Un valor guardado, como lo leería una persona. */
+function show(t: TFunction, field: string, value: unknown): string {
+  if (value === null || value === undefined || value === "") return "—";
+  if (field === "role") return t(`roles.${String(value)}`);
+  if (field === "status") return t(`admin.statuses.${String(value)}`);
+  if (field === "hourly_cost_cents" && typeof value === "number") return formatEur(value);
+  if (typeof value === "boolean") return t(value ? "common.yes" : "common.no");
+  return String(value);
+}

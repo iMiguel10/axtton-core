@@ -5,12 +5,43 @@
     "changeLanguage": "Change language",
     "actions": "Actions",
     "cancel": "Cancel",
-    "save": "Save"
+    "save": "Save",
+    "yes": "Yes",
+    "no": "No"
+  },
+  "audit": {
+    "title": "Audit log",
+    "when": "When",
+    "who": "Who",
+    "what": "What",
+    "on": "On",
+    "changes": "Changes",
+    "loadMore": "Show earlier",
+    "actions": {
+      "employee_created": "Employee added",
+      "employee_updated": "Employee changed",
+      "access_removed": "Access removed",
+      "invitation_sent": "Invitation sent",
+      "invitation_accepted": "Invitation accepted",
+      "workshop_created": "Workshop created",
+      "workshop_updated": "Workshop changed",
+      "superadmin_created": "Superadmin created"
+    },
+    "fields": {
+      "name": "Name",
+      "position": "Position",
+      "role": "Role",
+      "active": "Active",
+      "hourly_cost_cents": "Hourly cost",
+      "status": "Status",
+      "max_employees_with_access": "Access limit"
+    }
   },
   "nav": {
     "main": "Main navigation",
     "home": "Home",
     "employees": "Employees",
+    "audit": "Audit log",
     "account": "My account",
     "workshops": "Workshops",
     "signOut": "Sign out"

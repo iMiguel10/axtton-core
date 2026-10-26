@@ -19,6 +19,7 @@ type ActiveWorkshopValue = {
   canManageEmployees: boolean;
   canViewAudit: boolean;
   canManageClients: boolean;
+  canManageOrders: boolean;
   workshops: Membership[];
   select: (workshopId: string) => void;
 };
@@ -96,6 +97,8 @@ export function ActiveWorkshopProvider({ children }: { children: ReactNode }) {
     canViewAudit: active.data.role === "admin",
     // El mecánico ve los clientes, pero no los crea ni los edita (especificación §3).
     canManageClients: active.data.role === "admin",
+    // El mecánico ve todas las órdenes; abrirlas y editar su recepción, no.
+    canManageOrders: active.data.role === "admin",
     workshops,
     select,
   };

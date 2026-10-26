@@ -495,3 +495,114 @@ async def test_two_owner_changes_at_once_leave_one_owner_and_a_409(
             )
         ).all()
     assert [(c, is_open) for c, is_open in periods] == [(maria, False), (luis, True)]
+
+
+async def shop_with_a_car(
+    engines: Engines, make_account: MakeAccount, workshop_id: UUID
+) -> tuple[StaffMember, UUID, UUID, UUID]:
+    """Una administradora con acceso, María (titular del coche) y Luis."""
+    from app.services import clients as client_service
+    from app.services import vehicles as vehicle_service
+
+    ana = await employee_with_access(engines, make_account, workshop_id, "admin")
+    async with open_transaction(workshop_id) as setup:
+        maria, luis = [
+            await client_service.create_client(
+                setup, workshop_id, {"name": n, "phone": "6"}
+            )
+            for n in ("María", "Luis")
+        ]
+        car = await vehicle_service.create_vehicle(
+            setup, workshop_id, {"plate": "1234BCD"}, maria
+        )
+        await setup.commit()
+    return ana, maria, luis, car
+
+
+async def open_order(
+    session: AsyncSession, workshop_id: UUID, ana: StaffMember, car: UUID
+) -> Any:
+    from app.services import work_orders as order_service
+
+    return await order_service.open_order(
+        session,
+        workshop_id,
+        ana.employee_id,
+        vehicle_id=car,
+        type_="breakdown",
+        warranty_of_id=None,
+        fields={},
+    )
+
+
+@pytest.mark.asyncio
+async def test_two_orders_opened_at_once_get_consecutive_numbers(
+    engines: Engines, two_workshops: TwoWorkshops, make_account: MakeAccount
+) -> None:
+    """RF-21. La segunda apertura espera en el contador (su fila queda bloqueada
+    por la primera) y, al confirmarse esta, recibe el número siguiente. Con
+    MAX(number) + 1, las dos habrían leído el mismo máximo."""
+    a = two_workshops.a
+    ana, _, _, car = await shop_with_a_car(engines, make_account, a)
+
+    async with open_transaction(a) as first, open_transaction(a) as second:
+        one = await open_order(first, a, ana, car)
+        work = asyncio.create_task(open_order(second, a, ana, car))
+        await asyncio.sleep(GRACE)
+        assert not work.done(), "la segunda apertura debería esperar al contador"
+        await first.commit()
+        two = await finish(second, work)
+
+    assert (one.number, two.number) == (1, 2)  # type: ignore[attr-defined]
+
+
+@pytest.mark.asyncio
+async def test_an_order_rolled_back_leaves_a_gap_not_a_repeated_number(
+    engines: Engines, two_workshops: TwoWorkshops, make_account: MakeAccount
+) -> None:
+    """Un hueco es aceptable en una orden, que no es una factura (arquitectura
+    §3); un número repetido, no. Aquí se ve el hueco."""
+    a = two_workshops.a
+    ana, _, _, car = await shop_with_a_car(engines, make_account, a)
+    async with open_transaction(a) as lost:
+        assert (await open_order(lost, a, ana, car)).number == 1
+        await lost.rollback()
+    async with open_transaction(a) as kept:
+        assert (await open_order(kept, a, ana, car)).number == 1
+        await kept.commit()
+    # El contador también se deshizo con la transacción: el hueco solo aparece
+    # cuando la que falla no es la última en pedir número.
+    async with open_transaction(a) as first, open_transaction(a) as second:
+        await open_order(first, a, ana, car)
+        work = asyncio.create_task(open_order(second, a, ana, car))
+        await asyncio.sleep(GRACE)
+        await first.rollback()
+        third = await finish(second, work)
+    assert third.number == 2  # type: ignore[attr-defined]
+
+
+@pytest.mark.asyncio
+async def test_an_order_opened_during_an_owner_change_gets_the_new_owner(
+    engines: Engines, two_workshops: TwoWorkshops, make_account: MakeAccount
+) -> None:
+    """Invariante 7. Ana está pasando el coche de María a Luis (sin confirmar) y
+    a la vez se abre una orden. La apertura bloquea el vehículo en modo
+    compartido: espera al cambio y su cliente es Luis. Sin ese bloqueo, leería el
+    periodo de María, aún abierto para ella, y la orden sería de quien ya no es
+    titular."""
+    from app.services import vehicles as vehicle_service
+
+    a = two_workshops.a
+    ana, _, luis, car = await shop_with_a_car(engines, make_account, a)
+
+    async with open_transaction(a) as transfer, open_transaction(a) as opening:
+        await vehicle_service.change_owner(
+            transfer, a, ana.user_id, car, expected_version=1, client_id=luis
+        )
+        work = asyncio.create_task(open_order(opening, a, ana, car))
+        await asyncio.sleep(GRACE)
+        assert not work.done(), "la apertura debería esperar al cambio de titular"
+        await transfer.commit()
+        order = await finish(opening, work)
+
+    assert order.client_id == luis  # type: ignore[attr-defined]

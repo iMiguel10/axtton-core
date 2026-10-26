@@ -9,6 +9,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/shared/components/ui
 import { errorMessage } from "@/shared/lib/errors";
 
 import { useActiveWorkshop } from "../session/ActiveWorkshop";
+import { RelatedOrders } from "../orders/OrderBits";
 import { vehiclesApi } from "../vehicles/api";
 import { clientsApi, type Client, type ClientInput } from "./api";
 import { ClientForm } from "./ClientForm";
@@ -102,6 +103,15 @@ export function ClientDetailPage() {
         </CardContent>
       </Card>
       <ClientVehicles client={current} canAdd={canManageClients} />
+      <Card>
+        <CardHeader>
+          <CardTitle>{t("clients.orders")}</CardTitle>
+        </CardHeader>
+        <CardContent>
+          {/* Las órdenes de las que es cliente: las abiertas mientras era titular. */}
+          <RelatedOrders filters={{ clientId: current.id }} show={{ vehicle: true }} />
+        </CardContent>
+      </Card>
     </section>
   );
 }

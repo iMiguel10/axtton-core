@@ -44,6 +44,7 @@
   "nav": {
     "main": "Main navigation",
     "home": "Home",
+    "orders": "Work orders",
     "clients": "Clients",
     "vehicles": "Vehicles",
     "employees": "Employees",
@@ -97,7 +98,7 @@
   },
   "home": {
     "yourRole": "Your role: {{role}}",
-    "comingSoon": "Work orders arrive in the next step."
+    "comingSoon": "Work order status changes arrive in the next step."
   },
   "clients": {
     "title": "Clients",
@@ -138,7 +139,76 @@
     "vehicles": "Vehicles they own",
     "noVehicles": "They do not own any vehicle.",
     "pickAnother": "Choose another",
-    "pickResults": "Matching clients"
+    "pickResults": "Matching clients",
+    "orders": "Work orders they are the client of"
+  },
+  "orders": {
+    "title": "Work orders",
+    "new": "Open work order",
+    "open": "Open work order",
+    "backToList": "Work orders",
+    "code": "Number",
+    "status": "Status",
+    "state": "Which work orders to show",
+    "states": {
+      "open": "Open",
+      "closed": "Closed",
+      "all": "All"
+    },
+    "mine": "My work orders",
+    "stalledFirst": "Most stalled first",
+    "stalled": "Stalled",
+    "none": "No work orders.",
+    "noneMine": "You are not responsible for any work order.",
+    "loadMore": "Show more",
+    "type": "Type",
+    "types": {
+      "breakdown": "Breakdown",
+      "maintenance": "Maintenance",
+      "itv": "MOT (ITV)",
+      "warranty": "Warranty",
+      "bodywork": "Bodywork",
+      "other": "Other"
+    },
+    "statuses": {
+      "received": "Received",
+      "diagnosing": "Diagnosing",
+      "pending_approval": "Pending approval",
+      "approved": "Approved",
+      "in_repair": "In repair",
+      "waiting_parts": "Waiting for parts",
+      "ready": "Ready",
+      "delivered": "Delivered",
+      "cancelled": "Cancelled"
+    },
+    "causes": {
+      "opened": "Opened",
+      "manual": "Manual change",
+      "quote_sent": "Quote sent",
+      "quote_decided": "Quote decision",
+      "quote_cancelled": "Quote cancelled",
+      "undo": "Undone"
+    },
+    "unrepaired": "not repaired",
+    "vehicle": "Vehicle",
+    "client": "Client",
+    "clientWillBe": "The client of the work order will be {{name}}, the vehicle's current owner.",
+    "clientHint": "The owner of the vehicle when the work order was opened. It does not change if the owner changes.",
+    "responsible": "Responsible",
+    "unassigned": "Unassigned",
+    "expectedDelivery": "Expected delivery",
+    "reception": "Reception",
+    "reason": "Reason for the visit (as the client tells it)",
+    "odometer": "Odometer on arrival (km)",
+    "droppedOffBy": "Dropped off by",
+    "droppedOffByName": "Dropped off by (if not the owner)",
+    "droppedOffByPhone": "Their phone",
+    "receptionNotes": "Reception notes",
+    "receptionNotesHint": "Visible damage, objects left in the car…",
+    "history": "Status history",
+    "byClient": "The client",
+    "warrantyOf": "Warranty of {{code}}",
+    "saved": "Changes saved."
   },
   "vehicles": {
     "title": "Vehicles",
@@ -184,7 +254,10 @@
     "changeOwnerHint": "Work orders already open stay with the previous owner. The change is recorded in the audit log.",
     "confirmOwner": "Change owner",
     "ownerChanged": "{{name}} is now the owner.",
-    "saved": "Changes saved."
+    "saved": "Changes saved.",
+    "orders": "Work orders",
+    "pickAnother": "Choose another",
+    "pickResults": "Matching vehicles"
   },
   "employees": {
     "title": "Employees",
@@ -289,6 +362,10 @@
     "vehicle_plate_taken": "There is already a vehicle with that plate in the workshop.",
     "vehicle_vin_taken": "There is already a vehicle with that VIN in the workshop. It may be the same car registered with another plate.",
     "invalid_plate": "The plate can only have letters and numbers (spaces and hyphens are removed automatically).",
-    "invalid_vin": "The VIN can only have letters and numbers, up to 17."
+    "invalid_vin": "The VIN can only have letters and numbers, up to 17.",
+    "work_order_not_found": "That work order does not exist in this workshop.",
+    "work_order_closed": "The work order is closed: it only accepts internal notes and its payment.",
+    "warranty_of_not_delivered": "A warranty work order can only come from a work order already delivered.",
+    "warranty_of_requires_warranty_type": "Only a warranty work order can link to the original work order."
   }
 }

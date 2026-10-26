@@ -44,6 +44,7 @@
   "nav": {
     "main": "Navegación principal",
     "home": "Inicio",
+    "orders": "Órdenes",
     "clients": "Clientes",
     "vehicles": "Vehículos",
     "employees": "Empleados",
@@ -97,7 +98,7 @@
   },
   "home": {
     "yourRole": "Tu rol: {{role}}",
-    "comingSoon": "Las órdenes de trabajo llegan en el próximo paso."
+    "comingSoon": "Los cambios de estado de las órdenes llegan en el próximo paso."
   },
   "clients": {
     "title": "Clientes",
@@ -138,7 +139,76 @@
     "vehicles": "Vehículos de los que es titular",
     "noVehicles": "No es titular de ningún vehículo.",
     "pickAnother": "Elegir otro",
-    "pickResults": "Clientes que coinciden"
+    "pickResults": "Clientes que coinciden",
+    "orders": "Órdenes de las que es cliente"
+  },
+  "orders": {
+    "title": "Órdenes de trabajo",
+    "new": "Abrir orden",
+    "open": "Abrir orden",
+    "backToList": "Órdenes",
+    "code": "Número",
+    "status": "Estado",
+    "state": "Qué órdenes ver",
+    "states": {
+      "open": "Abiertas",
+      "closed": "Cerradas",
+      "all": "Todas"
+    },
+    "mine": "Mis órdenes",
+    "stalledFirst": "Las más paradas primero",
+    "stalled": "Parada",
+    "none": "No hay órdenes.",
+    "noneMine": "No eres responsable de ninguna orden.",
+    "loadMore": "Ver más",
+    "type": "Tipo",
+    "types": {
+      "breakdown": "Avería",
+      "maintenance": "Mantenimiento",
+      "itv": "ITV",
+      "warranty": "Garantía",
+      "bodywork": "Chapa y pintura",
+      "other": "Otro"
+    },
+    "statuses": {
+      "received": "Recibida",
+      "diagnosing": "En diagnóstico",
+      "pending_approval": "Pendiente de aprobación",
+      "approved": "Aprobada",
+      "in_repair": "En reparación",
+      "waiting_parts": "Esperando piezas",
+      "ready": "Lista",
+      "delivered": "Entregada",
+      "cancelled": "Cancelada"
+    },
+    "causes": {
+      "opened": "Apertura",
+      "manual": "Cambio manual",
+      "quote_sent": "Presupuesto enviado",
+      "quote_decided": "Decisión sobre el presupuesto",
+      "quote_cancelled": "Presupuesto anulado",
+      "undo": "Deshecho"
+    },
+    "unrepaired": "sin reparar",
+    "vehicle": "Vehículo",
+    "client": "Cliente",
+    "clientWillBe": "El cliente de la orden será {{name}}, el titular actual del vehículo.",
+    "clientHint": "Es quien era titular del vehículo al abrir la orden, y no cambia aunque cambie el titular.",
+    "responsible": "Responsable",
+    "unassigned": "Sin asignar",
+    "expectedDelivery": "Entrega prevista",
+    "reception": "Recepción",
+    "reason": "Motivo de la visita (lo que cuenta el cliente)",
+    "odometer": "Kilómetros a la entrada",
+    "droppedOffBy": "Lo trajo",
+    "droppedOffByName": "Lo trae (si no es el titular)",
+    "droppedOffByPhone": "Su teléfono",
+    "receptionNotes": "Observaciones de recepción",
+    "receptionNotesHint": "Daños visibles, objetos que quedan en el coche…",
+    "history": "Historial de estados",
+    "byClient": "El cliente",
+    "warrantyOf": "Garantía de {{code}}",
+    "saved": "Cambios guardados."
   },
   "vehicles": {
     "title": "Vehículos",
@@ -184,7 +254,10 @@
     "changeOwnerHint": "Las órdenes ya abiertas siguen siendo del titular anterior. El cambio queda en el registro de auditoría.",
     "confirmOwner": "Cambiar titular",
     "ownerChanged": "{{name}} es ahora el titular.",
-    "saved": "Cambios guardados."
+    "saved": "Cambios guardados.",
+    "orders": "Órdenes",
+    "pickAnother": "Elegir otro",
+    "pickResults": "Vehículos que coinciden"
   },
   "employees": {
     "title": "Empleados",
@@ -289,6 +362,10 @@
     "vehicle_plate_taken": "Ya hay un vehículo con esa matrícula en el taller.",
     "vehicle_vin_taken": "Ya hay un vehículo con ese VIN en el taller. Puede que sea el mismo coche dado de alta con otra matrícula.",
     "invalid_plate": "La matrícula solo puede tener letras y números (los espacios y guiones se quitan solos).",
-    "invalid_vin": "El VIN solo puede tener letras y números, hasta 17."
+    "invalid_vin": "El VIN solo puede tener letras y números, hasta 17.",
+    "work_order_not_found": "Esa orden no existe en este taller.",
+    "work_order_closed": "La orden está cerrada: solo admite notas internas y su cobro.",
+    "warranty_of_not_delivered": "Una orden de garantía solo puede venir de una orden ya entregada.",
+    "warranty_of_requires_warranty_type": "Solo una orden de tipo garantía puede enlazar a la orden original."
   }
 }

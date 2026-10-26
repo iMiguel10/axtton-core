@@ -25,11 +25,16 @@ class Action(StrEnum):
     MANAGE_CLIENTS = "manage_clients"
     # Cambiar el titular de un vehículo (RF-12): fila propia en la matriz.
     CHANGE_VEHICLE_OWNER = "change_vehicle_owner"
+    # Órdenes: el mecánico las ve todas (en un taller pequeño todos tocan todos
+    # los coches, especificación §3); abrirlas, editar la recepción y asignar
+    # el responsable es del administrador.
+    VIEW_ORDERS = "view_orders"
+    MANAGE_ORDERS = "manage_orders"
 
 
 ROLE_PERMISSIONS: dict[Role, frozenset[Action]] = {
     Role.ADMIN: frozenset(Action),
-    Role.MECHANIC: frozenset({Action.VIEW_CLIENTS}),
+    Role.MECHANIC: frozenset({Action.VIEW_CLIENTS, Action.VIEW_ORDERS}),
 }
 
 

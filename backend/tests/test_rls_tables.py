@@ -29,14 +29,29 @@ WORKSHOP_TABLES = {
     "clients": "workshop_id",
     "vehicles": "workshop_id",
     "vehicle_ownerships": "workshop_id",
+    "work_order_counters": "workshop_id",
+    "work_orders": "workshop_id",
+    "work_order_status_changes": "workshop_id",
 }
 
 # Tablas sobre las que axtton_app no tiene DELETE: no se borran nunca, ni por un
 # fallo de la aplicación (sus propias pruebas de permisos, más abajo y en
 # test_ownerships_db.py).
-NO_DELETE = {"audit_log", "workshops", "clients", "vehicles", "vehicle_ownerships"}
+NO_DELETE = {
+    "audit_log",
+    "workshops",
+    "clients",
+    "vehicles",
+    "vehicle_ownerships",
+    "work_order_counters",
+    "work_orders",
+    "work_order_status_changes",
+}
 # La columna que axtton_app puede actualizar, si no puede todas.
-UPDATABLE_COLUMN = {"vehicle_ownerships": "ended_at"}
+UPDATABLE_COLUMN = {
+    "vehicle_ownerships": "ended_at",
+    "work_order_counters": "last_number",
+}
 
 
 @dataclass(frozen=True)
@@ -92,6 +107,30 @@ async def seeded(engines: Engines, two_workshops: TwoWorkshops) -> Seeded:
                     " VALUES (:w, :v, :c, clock_timestamp())"
                 ),
                 {"w": workshop, "v": vehicle, "c": client},
+            )
+            await conn.execute(
+                text(
+                    "INSERT INTO work_order_counters (workshop_id, year, last_number)"
+                    " VALUES (:w, 2026, 1)"
+                ),
+                {"w": workshop},
+            )
+            order = await conn.scalar(
+                text(
+                    "INSERT INTO work_orders (workshop_id, year, number, type,"
+                    " vehicle_id, client_id, status)"
+                    " VALUES (:w, 2026, 1, 'breakdown', :v, :c, 'received')"
+                    " RETURNING id"
+                ),
+                {"w": workshop, "v": vehicle, "c": client},
+            )
+            await conn.execute(
+                text(
+                    "INSERT INTO work_order_status_changes"
+                    " (workshop_id, work_order_id, to_status, cause)"
+                    " VALUES (:w, :o, 'received', 'opened')"
+                ),
+                {"w": workshop, "o": order},
             )
         await conn.execute(
             text("INSERT INTO audit_log (action) VALUES ('workshop_created')")
@@ -160,7 +199,11 @@ async def test_r2_with_workshop_a_every_table_returns_only_rows_of_a(
     # audit_log y workshops no están: axtton_app ni siquiera tiene permiso de
     # UPDATE sobre ellas (R5 y test_the_app_cannot_change_any_workshop). De las
     # de NO_DELETE, solo se prueba el UPDATE: el DELETE lo para el permiso.
-    [(t, c) for t, c in WORKSHOP_TABLES.items() if t not in {"audit_log", "workshops"}],
+    [
+        (t, c)
+        for t, c in WORKSHOP_TABLES.items()
+        if t not in {"audit_log", "workshops", "work_order_status_changes"}
+    ],
 )
 async def test_rows_of_b_cannot_be_updated_or_deleted_from_a(
     engines: Engines, seeded: Seeded, table: str, column: str

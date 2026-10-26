@@ -182,9 +182,9 @@ erDiagram
 | `clients` | Clientes del taller | **Existe (F2).** `kind` (particular o empresa), teléfono obligatorio, email y NIF opcionales y normalizados al guardar (minúsculas; mayúsculas sin separadores). **Email único por taller** (índice parcial `(workshop_id, email) WHERE email IS NOT NULL`): es la llave del portal y dos clientes con el mismo email harían ambiguo el enlace mágico (§7.2). Se archiva con `archived_at`; `axtton_app` **no tiene `DELETE`** (migración `0004clients`). Llegarán `anonymized_at` (RF-15, F2) y `maintenance_reminders_opt_out_at` (RF-66, F8) |
 | `vehicles` | Vehículos | **Existe (F2).** `plate_normalized` único por taller (mayúsculas, sin espacios, guiones ni puntos) y `plate` tal como se escribió; VIN opcional, normalizado y **único por taller** si existe (un VIN repetido suele ser el mismo coche dado de alta dos veces); marca y modelo en texto libre con sugerencias (`GET /workshop/vehicles/suggestions`); vencimientos (ITV, revisión por fecha y km). El titular no es una columna. `axtton_app` no tiene `DELETE` |
 | `vehicle_ownerships` | Periodos de titularidad | **Existe (F2). Crítica**, ver más abajo |
-| `work_orders` | Órdenes de trabajo | **Crítica** |
-| `work_order_counters` | El último número de orden por taller y año | Ver la trampa de la numeración |
-| `work_order_status_changes` | Historial de estados, append-only | **Crítica** |
+| `work_orders` | Órdenes de trabajo | **Existe (F2). Crítica** |
+| `work_order_counters` | El último número de orden por taller y año | **Existe (F2).** Ver la trampa de la numeración; un trigger impide que baje |
+| `work_order_status_changes` | Historial de estados, append-only | **Existe (F2). Crítica** |
 | `diagnosis_versions` | Versiones del texto de diagnóstico para el cliente | Append-only; la vigente es la de `version_no` más alto |
 | `internal_notes` | Hilo de notas internas | Append-only (nadie edita lo de otro, RF-22) |
 | `work_entries` | Trabajos realizados | `employee_id` es quien lo hizo; `recorded_by` es quien lo anotó |
@@ -218,7 +218,7 @@ El estado de una orden es una copia del último cambio de su historial (especifi
 | `unrepaired` | `boolean NOT NULL DEFAULT false` | "Lista · sin reparar" (§6 de la especificación) |
 | `no_quote_reason` | `varchar(20)` | `CHECK IN ('waiver','warranty','fixed_price')`; `waiver` exige una hoja de recepción firmada con la renuncia (RF-27) |
 | `warranty_of_id` | `uuid` | La orden original de una orden de garantía |
-| `odometer_km`, `reason`, `expected_delivery_at`, `dropped_off_by` | | Datos de recepción (RF-20) |
+| `odometer_km`, `reason`, `expected_delivery_at`, `dropped_off_by_name`, `dropped_off_by_phone`, `reception_notes` | | Datos de recepción (RF-20). *Al construirlo:* quien trae el coche, en dos columnas (nombre y teléfono), y las observaciones de recepción (daños visibles, objetos) en la orden |
 | `delivered_at` | `timestamptz` | Lo fija el paso a `entregada`; de aquí sale la garantía (RF-53) y el plazo de la firma (RF-56) |
 | `payment_status`, `payment_method`, `paid_amount_cents`, `paid_at` | | El cobro (RF-28). No es un estado |
 | `last_activity_at` | `timestamptz NOT NULL` | Para "las que llevan más tiempo paradas" (RF-24) |
@@ -229,13 +229,21 @@ El estado de una orden es una copia del último cambio de su historial (especifi
 | `workshop_id`, `work_order_id` | FK compuesta |
 | `seq` | Identidad. **El orden del historial** |
 | `from_status`, `to_status` | |
-| `cause` | `CHECK IN ('manual','quote_sent','quote_decided','quote_cancelled','undo')`. Solo `manual` se puede deshacer (§6 de la especificación) |
+| `cause` | `CHECK IN ('opened','manual','quote_sent','quote_decided','quote_cancelled','undo')`. Solo `manual` se puede deshacer (§6 de la especificación). *Añadido en F2:* `opened`, el primer cambio de toda orden (de nada a `received`), para que el invariante se cumpla también recién abierta; un `CHECK` exige que solo él no venga de ningún estado |
 | `undoes_seq` | El cambio que compensa, si `cause = 'undo'` |
 | `notified` | Si este cambio envió un aviso al cliente; entonces no se puede deshacer |
 | `employee_id` / `by_client` | Quién lo provocó |
 | `note` | Obligatoria para cancelar y para "sin reparar" |
 
 **Invariante:** `work_orders.status` es igual al `to_status` del cambio con el `seq` más alto de esa orden. Todo cambio de estado bloquea la orden con `SELECT … FOR UPDATE` antes de leer el último cambio.
+
+*Lo añadido al construirlo (F2, migración `0006orders`):*
+
+- **El invariante lo vigila también la base de datos.** `work_order_status_matches_history` es un `CONSTRAINT TRIGGER` diferido sobre las dos tablas. Al confirmar, comprueba cada orden tocada: un estado sin su cambio, un cambio sin mover la orden o una orden sin su primer cambio hacen fallar la transacción entera. Es una red de seguridad: lo normal es que el service escriba los dos.
+- **Abrir una orden** (`POST /workshop/orders`, RF-20) sigue este orden: bloquea el vehículo con `FOR SHARE`, lee su titular, pide el número y escribe la orden con su primer cambio (`opened`). El bloqueo compartido pone en fila la apertura con un cambio de titular, que pide `FOR UPDATE`. Tiene que ir **antes** de leer el titular: la comprobación de la FK hacia `vehicles` también espera al cambio, pero llega tarde, con el titular ya leído (`test_concurrency.py`).
+- **El año de la numeración es el del taller**, calculado en la base de datos con `AT TIME ZONE workshops.timezone`, no el de UTC.
+- **Permisos:** `axtton_app` no tiene `DELETE` sobre `work_orders` (una orden abierta por error se cancela) ni sobre `work_order_counters`, y no tiene `UPDATE` ni `DELETE` sobre `work_order_status_changes` (RNF-12).
+- **El cobro** (`payment_*`, RF-28) llega con su paso de F2, en otra migración.
 
 #### `quotes`, `quote_lines` y `quote_decisions`
 
@@ -324,7 +332,7 @@ El acceso del cliente en el portal **no** sale de esta tabla, sino de `work_orde
 | Rol | Lo usa | Qué puede |
 |---|---|---|
 | `axtton_owner` | Las migraciones (Alembic) | Dueño de las tablas. Nunca lo usa la aplicación |
-| `axtton_app` | La API y el `worker`, en su camino normal | `NOBYPASSRLS`. Sobre las tablas append-only (`work_order_status_changes`, `quote_decisions`, `stock_movements`, `diagnosis_versions`, `internal_notes`, `audit_log`) solo tiene `SELECT` e `INSERT`: **RNF-12 lo garantiza la base de datos**, no la disciplina del código. Tampoco tiene `DELETE` sobre `clients` (se archivan o se anonimizan, RF-15), `vehicles` ni `vehicle_ownerships`, y de esta última solo puede actualizar `ended_at` |
+| `axtton_app` | La API y el `worker`, en su camino normal | `NOBYPASSRLS`. Sobre las tablas append-only (`work_order_status_changes`, `quote_decisions`, `stock_movements`, `diagnosis_versions`, `internal_notes`, `audit_log`) solo tiene `SELECT` e `INSERT`: **RNF-12 lo garantiza la base de datos**, no la disciplina del código. Tampoco tiene `DELETE` sobre `clients` (se archivan o se anonimizan, RF-15), `vehicles` ni `vehicle_ownerships` (de esta última solo puede actualizar `ended_at`), ni sobre `work_orders` y `work_order_counters` |
 | `axtton_platform` | Solo el código de plataforma (ver "Las vías que cruzan talleres") | `BYPASSRLS`, con una conexión y un pool propios |
 
 Todas las tablas de taller tienen `ENABLE ROW LEVEL SECURITY` y `FORCE ROW LEVEL SECURITY`.

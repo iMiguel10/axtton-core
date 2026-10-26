@@ -1,6 +1,13 @@
 """Importa todos los modelos para que queden registrados en Base.metadata."""
 
-from app.models.operations import Client, Vehicle, VehicleOwnership
+from app.models.operations import (
+    Client,
+    Vehicle,
+    VehicleOwnership,
+    WorkOrder,
+    WorkOrderCounter,
+    WorkOrderStatusChange,
+)
 from app.models.platform import (
     AuditEntry,
     Employee,
@@ -19,5 +26,8 @@ __all__ = [
     "User",
     "Vehicle",
     "VehicleOwnership",
+    "WorkOrder",
+    "WorkOrderCounter",
+    "WorkOrderStatusChange",
     "Workshop",
 ]

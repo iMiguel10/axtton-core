@@ -34,6 +34,23 @@ async def get_for_update(session: AsyncSession, vehicle_id: UUID) -> Vehicle | N
     return (await session.scalars(query)).one_or_none()
 
 
+async def get_for_share(session: AsyncSession, vehicle_id: UUID) -> Vehicle | None:
+    """El vehículo, con un bloqueo compartido hasta el final de la transacción.
+
+    Para abrir una orden: su cliente es el titular de ese momento (invariante
+    7). Con el bloqueo, un cambio de titular a la vez (que pide FOR UPDATE)
+    espera a que la orden se abra, o la orden espera al cambio y ve el titular
+    nuevo; nunca un titular a medio cambiar. Dos aperturas no se esperan entre sí.
+    """
+    query = (
+        select(Vehicle)
+        .where(Vehicle.id == vehicle_id)
+        .with_for_update(read=True)
+        .execution_options(populate_existing=True)
+    )
+    return (await session.scalars(query)).one_or_none()
+
+
 async def db_now(session: AsyncSession) -> datetime:
     """La hora de la base de datos. El fin de un periodo y el inicio del
     siguiente tienen que ser el mismo instante y venir del mismo reloj que los

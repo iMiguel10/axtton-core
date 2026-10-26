@@ -4,7 +4,7 @@ import { useTranslation } from "react-i18next";
 import { Link, useParams } from "react-router-dom";
 
 import { Badge } from "@/shared/components/ui/badge";
-import { Button } from "@/shared/components/ui/button";
+import { Button, buttonVariants } from "@/shared/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/shared/components/ui/card";
 import {
   Table,
@@ -17,18 +17,19 @@ import {
 import { errorMessage } from "@/shared/lib/errors";
 
 import { ClientPicker, type PickedClient } from "../clients/ClientPicker";
+import { RelatedOrders } from "../orders/OrderBits";
 import { useActiveWorkshop } from "../session/ActiveWorkshop";
 import { vehiclesApi, type VehicleDetail, type VehicleInput } from "./api";
 import { VehicleForm } from "./VehicleForm";
 
 /**
  * Ficha de un vehículo (RF-11, RF-13): sus datos, su titular actual y todos sus
- * periodos de titularidad. El historial de órdenes llega con las órdenes (paso 3).
+ * periodos de titularidad, y todas sus órdenes.
  */
 export function VehicleDetailPage() {
   const { t } = useTranslation();
   const { vehicleId = "" } = useParams();
-  const { workshopId, canManageClients } = useActiveWorkshop();
+  const { workshopId, canManageClients, canManageOrders } = useActiveWorkshop();
   const api = vehiclesApi(workshopId);
   const queryClient = useQueryClient();
   const queryKey = ["vehicle", workshopId, vehicleId];
@@ -106,6 +107,23 @@ export function VehicleDetailPage() {
           ) : (
             <VehicleSummary vehicle={current} />
           )}
+        </CardContent>
+      </Card>
+      <Card>
+        <CardHeader className="flex flex-row items-center justify-between">
+          <CardTitle>{t("vehicles.orders")}</CardTitle>
+          {canManageOrders && (
+            <Link
+              to={`/orders/new?vehicle=${current.id}`}
+              className={buttonVariants({ variant: "outline", size: "sm" })}
+            >
+              {t("orders.new")}
+            </Link>
+          )}
+        </CardHeader>
+        <CardContent>
+          {/* Todas sus órdenes, de todos sus titulares (RF-13). */}
+          <RelatedOrders filters={{ vehicleId: current.id }} show={{ client: true }} />
         </CardContent>
       </Card>
     </section>

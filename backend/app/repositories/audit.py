@@ -1,12 +1,13 @@
 from dataclasses import dataclass
 from datetime import datetime
 from typing import Any
+from uuid import UUID
 
 from sqlalchemy import and_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import aliased
 
-from app.models import AuditEntry, Employee
+from app.models import AuditEntry, Client, Employee, Vehicle
 
 
 @dataclass(frozen=True)
@@ -29,13 +30,17 @@ async def list_page(
     no entran en ningún conjunto de talleres. Ordenado y paginado por `seq`,
     nunca por fecha (dos filas pueden compartir instante).
 
-    Los nombres salen de las fichas de empleados de ESTE taller, también bajo
-    RLS: quien actúa es un empleado de aquí, y el objetivo, una ficha de aquí.
+    Los nombres salen de las fichas de ESTE taller, también bajo RLS: quien
+    actúa es un empleado de aquí, y el objetivo, una ficha o un vehículo de aquí.
+
+    De los clientes, el registro guarda solo el id (RNF-16 con datos mínimos):
+    su nombre se pone al leer. Así, anonimizar a un cliente (RF-15) lo borra
+    también de aquí, sin tocar una tabla append-only.
     """
     actor = aliased(Employee)
     target = aliased(Employee)
     query = (
-        select(AuditEntry, actor.name, target.name)
+        select(AuditEntry, actor.name, target.name, Vehicle.plate)
         .outerjoin(actor, actor.user_id == AuditEntry.actor_user_id)
         .outerjoin(
             target,
@@ -44,12 +49,20 @@ async def list_page(
                 target.id == AuditEntry.target_id,
             ),
         )
+        .outerjoin(
+            Vehicle,
+            and_(
+                AuditEntry.target_type == "vehicle",
+                Vehicle.id == AuditEntry.target_id,
+            ),
+        )
         .order_by(AuditEntry.seq.desc())
         .limit(limit)
     )
     if before_seq is not None:
         query = query.where(AuditEntry.seq < before_seq)
-    rows = await session.execute(query)
+    rows = (await session.execute(query)).all()
+    client_names = await _client_names(session, [entry for entry, *_ in rows])
     return [
         AuditRow(
             seq=entry.seq,
@@ -57,8 +70,33 @@ async def list_page(
             action=entry.action,
             actor_name=actor_name,
             target_type=entry.target_type,
-            target_name=target_name,
-            details=entry.details,
+            target_name=employee_name or plate,
+            details=_with_client_names(entry.details, client_names),
         )
-        for entry, actor_name, target_name in rows
+        for entry, actor_name, employee_name, plate in rows
     ]
+
+
+def _client_ids(details: dict[str, Any]) -> list[str]:
+    value = details.get("client_id")
+    return [str(v) for v in value if v] if isinstance(value, list) else []
+
+
+async def _client_names(
+    session: AsyncSession, entries: list[AuditEntry]
+) -> dict[str, str]:
+    ids = {UUID(i) for entry in entries for i in _client_ids(entry.details)}
+    if not ids:
+        return {}
+    rows = await session.execute(
+        select(Client.id, Client.name).where(Client.id.in_(ids))
+    )
+    return {str(client_id): name for client_id, name in rows}
+
+
+def _with_client_names(
+    details: dict[str, Any], names: dict[str, str]
+) -> dict[str, Any]:
+    if not _client_ids(details):
+        return details
+    return {**details, "client_id": [names.get(i, i) for i in details["client_id"]]}

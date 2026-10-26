@@ -444,3 +444,54 @@ async def test_two_clients_with_one_email_at_once_give_a_409_not_a_500(
     async with engines.platform.connect() as conn:
         count = await conn.scalar(text("SELECT count(*) FROM clients"))
     assert count == 1
+
+
+@pytest.mark.asyncio
+async def test_two_owner_changes_at_once_leave_one_owner_and_a_409(
+    engines: Engines, two_workshops: TwoWorkshops, make_account: MakeAccount
+) -> None:
+    """RF-12. Ana pasa el coche a Luis y, a la vez, Pedro lo pide para él. Sin
+    bloquear el vehículo, las dos leerían el mismo periodo abierto: la segunda
+    chocaría con el trigger del periodo cerrado (un 500). Con el bloqueo, la
+    segunda espera, ve que la versión cambió y recibe un 409."""
+    from app.services import clients as client_service
+    from app.services import vehicles as vehicle_service
+
+    a = two_workshops.a
+    ana = await employee_with_access(engines, make_account, a, "admin")
+    async with open_transaction(a) as setup:
+        maria, luis, pedro = [
+            await client_service.create_client(setup, a, {"name": n, "phone": "6"})
+            for n in ("María", "Luis", "Pedro")
+        ]
+        vehicle = await vehicle_service.create_vehicle(
+            setup, a, {"plate": "1234BCD"}, maria
+        )
+        await setup.commit()
+
+    async def give(session: AsyncSession, to: UUID) -> None:
+        await vehicle_service.change_owner(
+            session, a, ana.user_id, vehicle, expected_version=1, client_id=to
+        )
+
+    async with open_transaction(a) as first, open_transaction(a) as second:
+        await give(first, luis)
+        work = asyncio.create_task(give(second, pedro))
+        await asyncio.sleep(GRACE)
+        assert not work.done(), "el segundo cambio debería esperar al bloqueo"
+        await first.commit()
+        outcome = await finish(second, work)
+
+    assert isinstance(outcome, ConflictError), outcome
+    assert outcome.code == "modified_by_someone_else"
+    async with engines.platform.connect() as conn:
+        periods = (
+            await conn.execute(
+                text(
+                    "SELECT client_id, ended_at IS NULL FROM vehicle_ownerships"
+                    " WHERE vehicle_id = :v ORDER BY started_at"
+                ),
+                {"v": vehicle},
+            )
+        ).all()
+    assert [(c, is_open) for c, is_open in periods] == [(maria, False), (luis, True)]

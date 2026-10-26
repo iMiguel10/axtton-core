@@ -4,11 +4,12 @@ import { useTranslation } from "react-i18next";
 import { Link, useParams } from "react-router-dom";
 
 import { Badge } from "@/shared/components/ui/badge";
-import { Button } from "@/shared/components/ui/button";
-import { Card, CardContent } from "@/shared/components/ui/card";
+import { Button, buttonVariants } from "@/shared/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/shared/components/ui/card";
 import { errorMessage } from "@/shared/lib/errors";
 
 import { useActiveWorkshop } from "../session/ActiveWorkshop";
+import { vehiclesApi } from "../vehicles/api";
 import { clientsApi, type Client, type ClientInput } from "./api";
 import { ClientForm } from "./ClientForm";
 
@@ -100,7 +101,59 @@ export function ClientDetailPage() {
           )}
         </CardContent>
       </Card>
+      <ClientVehicles client={current} canAdd={canManageClients} />
     </section>
+  );
+}
+
+/** Los vehículos de los que es titular hoy (RF-12). Los que tuvo antes salen en
+ * la ficha de cada vehículo, con sus periodos. */
+function ClientVehicles({ client, canAdd }: { client: Client; canAdd: boolean }) {
+  const { t } = useTranslation();
+  const { workshopId } = useActiveWorkshop();
+  const vehicles = useQuery({
+    queryKey: ["vehicles", workshopId, { ownerId: client.id }],
+    queryFn: () => vehiclesApi(workshopId).list({ ownerId: client.id }),
+  });
+  return (
+    <Card>
+      <CardHeader className="flex flex-row items-center justify-between">
+        <CardTitle>{t("clients.vehicles")}</CardTitle>
+        {canAdd && client.archived_at === null && (
+          <Link
+            to={`/vehicles/new?owner=${client.id}`}
+            className={buttonVariants({ variant: "outline", size: "sm" })}
+          >
+            {t("vehicles.new")}
+          </Link>
+        )}
+      </CardHeader>
+      <CardContent>
+        {vehicles.isPending ? (
+          <p>{t("common.loading")}</p>
+        ) : vehicles.isError ? (
+          <p role="alert">{errorMessage(t, vehicles.error)}</p>
+        ) : vehicles.data.length === 0 ? (
+          <p className="text-muted-foreground text-sm">{t("clients.noVehicles")}</p>
+        ) : (
+          <ul className="grid gap-1">
+            {vehicles.data.map((vehicle) => (
+              <li key={vehicle.id}>
+                <Link to={`/vehicles/${vehicle.id}`} className="hover:underline">
+                  <span className="font-mono font-medium">{vehicle.plate}</span>
+                  {(vehicle.make || vehicle.model) && (
+                    <span className="text-muted-foreground">
+                      {" · "}
+                      {[vehicle.make, vehicle.model].filter(Boolean).join(" ")}
+                    </span>
+                  )}
+                </Link>
+              </li>
+            ))}
+          </ul>
+        )}
+      </CardContent>
+    </Card>
   );
 }
 

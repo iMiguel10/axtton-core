@@ -18,6 +18,9 @@ import { EmployeesPage } from "./features/employees/EmployeesPage";
 import { HomePage } from "./features/home/HomePage";
 import { AppLayout } from "./features/layout/AppLayout";
 import { ActiveWorkshopProvider, useActiveWorkshop } from "./features/session/ActiveWorkshop";
+import { VehicleDetailPage } from "./features/vehicles/VehicleDetailPage";
+import { VehicleNewPage } from "./features/vehicles/VehicleNewPage";
+import { VehiclesPage } from "./features/vehicles/VehiclesPage";
 import { currentActor } from "./lib/session";
 
 export function WorkshopApp() {
@@ -82,6 +85,7 @@ function StaffRoutes() {
   const nav = [
     { to: "/", label: t("nav.home") },
     { to: "/clients", label: t("nav.clients") },
+    { to: "/vehicles", label: t("nav.vehicles") },
     ...(canManageEmployees ? [{ to: "/employees", label: t("nav.employees") }] : []),
     ...(canViewAudit ? [{ to: "/audit", label: t("nav.audit") }] : []),
     { to: "/account", label: t("nav.account") },
@@ -93,6 +97,9 @@ function StaffRoutes() {
         <Route path="/clients" element={<ClientsPage />} />
         {canManageClients && <Route path="/clients/new" element={<ClientNewPage />} />}
         <Route path="/clients/:clientId" element={<ClientDetailPage />} />
+        <Route path="/vehicles" element={<VehiclesPage />} />
+        {canManageClients && <Route path="/vehicles/new" element={<VehicleNewPage />} />}
+        <Route path="/vehicles/:vehicleId" element={<VehicleDetailPage />} />
         {canManageEmployees && <Route path="/employees" element={<EmployeesPage />} />}
         {canViewAudit && (
           <Route

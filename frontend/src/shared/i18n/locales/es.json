@@ -26,7 +26,8 @@
       "workshop_created": "Alta de taller",
       "workshop_updated": "Cambio en un taller",
       "superadmin_created": "Alta de superadministrador",
-      "superadmin_invited": "Invitación de superadministrador"
+      "superadmin_invited": "Invitación de superadministrador",
+      "vehicle_owner_changed": "Cambio de titular"
     },
     "fields": {
       "email": "Email",
@@ -36,13 +37,15 @@
       "active": "Activo",
       "hourly_cost_cents": "Coste por hora",
       "status": "Estado",
-      "max_employees_with_access": "Límite de acceso"
+      "max_employees_with_access": "Límite de acceso",
+      "client_id": "Titular"
     }
   },
   "nav": {
     "main": "Navegación principal",
     "home": "Inicio",
     "clients": "Clientes",
+    "vehicles": "Vehículos",
     "employees": "Empleados",
     "audit": "Auditoría",
     "superadmins": "Superadministradores",
@@ -74,7 +77,8 @@
     "required": "Este campo es obligatorio.",
     "passwordLength": "Al menos 10 caracteres.",
     "passwordsDiffer": "Las contraseñas no coinciden.",
-    "amount": "Escribe un importe, por ejemplo 25,50."
+    "amount": "Escribe un importe, por ejemplo 25,50.",
+    "number": "Escribe un número entero dentro de lo razonable."
   },
   "invitation": {
     "title": "Invitación",
@@ -93,7 +97,7 @@
   },
   "home": {
     "yourRole": "Tu rol: {{role}}",
-    "comingSoon": "Las órdenes de trabajo y los vehículos llegan en los próximos pasos."
+    "comingSoon": "Las órdenes de trabajo llegan en el próximo paso."
   },
   "clients": {
     "title": "Clientes",
@@ -130,6 +134,56 @@
     "archive": "Archivar",
     "unarchive": "Desarchivar",
     "confirmArchive": "¿Archivar a {{name}}? Dejará de aparecer en el listado, pero no se borra nada.",
+    "saved": "Cambios guardados.",
+    "vehicles": "Vehículos de los que es titular",
+    "noVehicles": "No es titular de ningún vehículo.",
+    "pickAnother": "Elegir otro",
+    "pickResults": "Clientes que coinciden"
+  },
+  "vehicles": {
+    "title": "Vehículos",
+    "new": "Nuevo vehículo",
+    "create": "Crear vehículo",
+    "search": "Buscar vehículos",
+    "searchPlaceholder": "Matrícula, VIN, marca o modelo",
+    "empty": "Aún no hay vehículos.",
+    "noResults": "Ningún vehículo coincide con la búsqueda.",
+    "loadMore": "Ver más",
+    "backToList": "Vehículos",
+    "data": "Datos del vehículo",
+    "plate": "Matrícula",
+    "vin": "VIN (número de bastidor)",
+    "vinOptional": "VIN (bastidor, opcional)",
+    "make": "Marca",
+    "model": "Modelo",
+    "makeModel": "Marca y modelo",
+    "year": "Año",
+    "fuel": "Combustible",
+    "fuels": {
+      "gasoline": "Gasolina",
+      "diesel": "Diésel",
+      "hybrid": "Híbrido",
+      "plug_in_hybrid": "Híbrido enchufable",
+      "electric": "Eléctrico",
+      "lpg": "GLP",
+      "cng": "GNC",
+      "other": "Otro"
+    },
+    "dueDates": "Vencimientos",
+    "nextItv": "Próxima ITV",
+    "nextServiceDate": "Próxima revisión (fecha)",
+    "nextServiceKm": "Próxima revisión (km)",
+    "owner": "Titular",
+    "ownerRequired": "Elige el titular: un vehículo siempre tiene uno.",
+    "ownerName": "Titular",
+    "since": "Desde",
+    "until": "Hasta",
+    "currentOwner": "Actual",
+    "changeOwner": "Cambiar titular",
+    "newOwner": "Nuevo titular",
+    "changeOwnerHint": "Las órdenes ya abiertas siguen siendo del titular anterior. El cambio queda en el registro de auditoría.",
+    "confirmOwner": "Cambiar titular",
+    "ownerChanged": "{{name}} es ahora el titular.",
     "saved": "Cambios guardados."
   },
   "employees": {
@@ -229,6 +283,12 @@
     "already_an_employee": "Esa cuenta ya tiene acceso a este taller con otra ficha.",
     "single_workshop_installation": "Esta instalación es de un solo taller y ya existe.",
     "client_not_found": "Ese cliente no existe en este taller.",
-    "client_email_taken": "Ya hay otro cliente del taller con ese email. El email da acceso al portal, así que no puede repetirse."
+    "client_email_taken": "Ya hay otro cliente del taller con ese email. El email da acceso al portal, así que no puede repetirse.",
+    "client_archived": "Ese cliente está archivado. Desarchívalo antes de darle un vehículo.",
+    "vehicle_not_found": "Ese vehículo no existe en este taller.",
+    "vehicle_plate_taken": "Ya hay un vehículo con esa matrícula en el taller.",
+    "vehicle_vin_taken": "Ya hay un vehículo con ese VIN en el taller. Puede que sea el mismo coche dado de alta con otra matrícula.",
+    "invalid_plate": "La matrícula solo puede tener letras y números (los espacios y guiones se quitan solos).",
+    "invalid_vin": "El VIN solo puede tener letras y números, hasta 17."
   }
 }

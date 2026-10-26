@@ -10,18 +10,19 @@ from datetime import UTC, datetime
 from typing import Any
 from uuid import UUID
 
-from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.errors import ConflictError, NotFoundError
 from app.domain.clients import normalize_email, normalize_tax_id
 from app.models import Client
 from app.repositories import clients as client_repo
+from app.services.integrity import flush_or_conflict
 
 # Campos que se pueden cambiar con PATCH. Archivar tiene sus propias operaciones.
 EDITABLE = ("kind", "name", "tax_id", "phone", "email", "address", "notes", "language")
 
-EMAIL_INDEX = "uq_clients_workshop_id_email"
+# Si dos guardan el mismo email a la vez, el índice único para al segundo.
+UNIQUE = {"uq_clients_workshop_id_email": "client_email_taken"}
 
 
 OPTIONAL_TEXT = ("tax_id", "address", "notes")
@@ -53,19 +54,6 @@ def _check_version(client: Client, expected: int) -> None:
         raise ConflictError("modified_by_someone_else")
 
 
-async def _flush_checking_email(session: AsyncSession) -> None:
-    """La comprobación previa de `email_taken` da el error amable; esta es la que
-    vale cuando dos personas guardan el mismo email a la vez: las dos pasan la
-    comprobación, y el índice único rechaza a la segunda. Sin traducirlo, sería
-    un 500."""
-    try:
-        await session.flush()
-    except IntegrityError as error:
-        if EMAIL_INDEX in str(error.orig):
-            raise ConflictError("client_email_taken") from error
-        raise
-
-
 async def list_clients(
     session: AsyncSession,
     *,
@@ -95,7 +83,7 @@ async def create_client(
         raise ConflictError("client_email_taken")
     client = Client(workshop_id=workshop_id, **values)
     session.add(client)
-    await _flush_checking_email(session)
+    await flush_or_conflict(session, UNIQUE)
     return client.id
 
 
@@ -119,7 +107,7 @@ async def update_client(
     for field in EDITABLE:
         if field in values:
             setattr(client, field, values[field])
-    await _flush_checking_email(session)
+    await flush_or_conflict(session, UNIQUE)
 
 
 async def set_archived(

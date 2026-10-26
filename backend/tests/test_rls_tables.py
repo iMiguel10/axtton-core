@@ -27,11 +27,16 @@ WORKSHOP_TABLES = {
     "invitations": "workshop_id",
     "audit_log": "workshop_id",
     "clients": "workshop_id",
+    "vehicles": "workshop_id",
+    "vehicle_ownerships": "workshop_id",
 }
 
 # Tablas sobre las que axtton_app no tiene DELETE: no se borran nunca, ni por un
-# fallo de la aplicación (sus propias pruebas de permisos, más abajo).
-NO_DELETE = {"audit_log", "workshops", "clients"}
+# fallo de la aplicación (sus propias pruebas de permisos, más abajo y en
+# test_ownerships_db.py).
+NO_DELETE = {"audit_log", "workshops", "clients", "vehicles", "vehicle_ownerships"}
+# La columna que axtton_app puede actualizar, si no puede todas.
+UPDATABLE_COLUMN = {"vehicle_ownerships": "ended_at"}
 
 
 @dataclass(frozen=True)
@@ -66,12 +71,27 @@ async def seeded(engines: Engines, two_workshops: TwoWorkshops) -> Seeded:
                 ),
                 {"w": workshop, "e": employee},
             )
-            await conn.execute(
+            client = await conn.scalar(
                 text(
                     "INSERT INTO clients (workshop_id, name, phone)"
-                    " VALUES (:w, 'Cliente', '600')"
+                    " VALUES (:w, 'Cliente', '600') RETURNING id"
                 ),
                 {"w": workshop},
+            )
+            vehicle = await conn.scalar(
+                text(
+                    "INSERT INTO vehicles (workshop_id, plate, plate_normalized)"
+                    " VALUES (:w, '1234 BCD', '1234BCD') RETURNING id"
+                ),
+                {"w": workshop},
+            )
+            await conn.execute(
+                text(
+                    "INSERT INTO vehicle_ownerships"
+                    " (workshop_id, vehicle_id, client_id, started_at)"
+                    " VALUES (:w, :v, :c, clock_timestamp())"
+                ),
+                {"w": workshop, "v": vehicle, "c": client},
             )
         await conn.execute(
             text("INSERT INTO audit_log (action) VALUES ('workshop_created')")
@@ -149,8 +169,9 @@ async def test_rows_of_b_cannot_be_updated_or_deleted_from_a(
     a, b = seeded.workshops.a, seeded.workshops.b
     async with engines.app.begin() as conn:
         await set_workshops(conn, a)
+        field = UPDATABLE_COLUMN.get(table, "created_at")
         touched = await conn.execute(
-            text(f"UPDATE {table} SET created_at = created_at WHERE {column} = :b"),
+            text(f"UPDATE {table} SET {field} = {field} WHERE {column} = :b"),
             {"b": b},
         )
         deleted = (

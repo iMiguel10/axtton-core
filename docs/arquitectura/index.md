@@ -180,8 +180,8 @@ erDiagram
 | `superadmin_invitations` | Invitaciones para ser superadministrador (RF-110) | Igual que `invitations`, pero de plataforma: sin taller ni RLS, y `axtton_app` no tiene ningún permiso sobre ella. Una invitación nueva anula las pendientes del mismo email; aceptar con el email de una cuenta de personal se rechaza (§2) |
 | `labor_rates` | Tarifas de mano de obra con nombre | Una marcada por defecto |
 | `clients` | Clientes del taller | **Existe (F2).** `kind` (particular o empresa), teléfono obligatorio, email y NIF opcionales y normalizados al guardar (minúsculas; mayúsculas sin separadores). **Email único por taller** (índice parcial `(workshop_id, email) WHERE email IS NOT NULL`): es la llave del portal y dos clientes con el mismo email harían ambiguo el enlace mágico (§7.2). Se archiva con `archived_at`; `axtton_app` **no tiene `DELETE`** (migración `0004clients`). Llegarán `anonymized_at` (RF-15, F2) y `maintenance_reminders_opt_out_at` (RF-66, F8) |
-| `vehicles` | Vehículos | `plate_normalized` único por taller; vencimientos (ITV, revisión por fecha y km) |
-| `vehicle_ownerships` | Periodos de titularidad | **Crítica**, ver más abajo |
+| `vehicles` | Vehículos | **Existe (F2).** `plate_normalized` único por taller (mayúsculas, sin espacios, guiones ni puntos) y `plate` tal como se escribió; VIN opcional, normalizado y **único por taller** si existe (un VIN repetido suele ser el mismo coche dado de alta dos veces); marca y modelo en texto libre con sugerencias (`GET /workshop/vehicles/suggestions`); vencimientos (ITV, revisión por fecha y km). El titular no es una columna. `axtton_app` no tiene `DELETE` |
+| `vehicle_ownerships` | Periodos de titularidad | **Existe (F2). Crítica**, ver más abajo |
 | `work_orders` | Órdenes de trabajo | **Crítica** |
 | `work_order_counters` | El último número de orden por taller y año | Ver la trampa de la numeración |
 | `work_order_status_changes` | Historial de estados, append-only | **Crítica** |
@@ -285,7 +285,13 @@ Un fallo de la aplicación no puede alterar un presupuesto enviado.
 Hay dos restricciones, para que nunca haya dos titulares a la vez:
 
 - **Un solo titular actual:** índice único parcial `(vehicle_id) WHERE ended_at IS NULL`.
-- **Periodos que no se solapan:** `EXCLUDE USING gist (vehicle_id WITH =, tstzrange(started_at, ended_at) WITH &&)`. Necesita la extensión `btree_gist`.
+- **Periodos que no se solapan:** `EXCLUDE USING gist (vehicle_id WITH =, tstzrange(started_at, ended_at) WITH &&)`. Necesita la extensión `btree_gist`, que es *trusted*: la crea la propia migración con el dueño de la base, sin superusuario. El rango es `[inicio, fin)`, así que un periodo que acaba en el instante exacto en que empieza el siguiente no lo pisa.
+
+*Lo añadido al construirlo (F2, migración `0005vehicles`):*
+
+- **Un periodo cerrado no cambia nunca.** El trigger `vehicle_ownerships_closed_frozen` rechaza, con cualquier rol, tocar un periodo ya cerrado o cambiar el vehículo, el cliente o el inicio de uno abierto: cambiar de titular es cerrar y abrir, nunca reescribir. `axtton_app` solo tiene `UPDATE (ended_at)` y no tiene `DELETE`.
+- **Un vehículo nace con su titular y nunca se queda sin él.** El alta crea el primer periodo en la misma transacción. El cambio de titular (`POST /workshop/vehicles/{id}/owner`, RF-12) bloquea el vehículo con `SELECT … FOR UPDATE`, comprueba su `version`, cierra el periodo abierto y abre el nuevo con **la misma hora de la base de datos** (`clock_timestamp()`). Después toca el vehículo para que suba su `version`: quien tuviera la ficha abierta recibe un 409. Se audita (`vehicle_owner_changed`) con los ids de los clientes, no con sus nombres. Los nombres se ponen al leer el registro, así que anonimizar a un cliente (RF-15) no deja su nombre en una tabla append-only.
+- **Sin el bloqueo**, dos cambios simultáneos leerían el mismo periodo abierto, y el segundo chocaría con el trigger (un 500). Con él, el segundo espera y recibe un 409 (`test_concurrency.py`).
 
 El acceso del cliente en el portal **no** sale de esta tabla, sino de `work_orders.client_id` (RF-44). Esta tabla responde "¿quién es el titular hoy?" y "¿desde cuándo?".
 
@@ -318,7 +324,7 @@ El acceso del cliente en el portal **no** sale de esta tabla, sino de `work_orde
 | Rol | Lo usa | Qué puede |
 |---|---|---|
 | `axtton_owner` | Las migraciones (Alembic) | Dueño de las tablas. Nunca lo usa la aplicación |
-| `axtton_app` | La API y el `worker`, en su camino normal | `NOBYPASSRLS`. Sobre las tablas append-only (`work_order_status_changes`, `quote_decisions`, `stock_movements`, `diagnosis_versions`, `internal_notes`, `audit_log`) solo tiene `SELECT` e `INSERT`: **RNF-12 lo garantiza la base de datos**, no la disciplina del código. Tampoco tiene `DELETE` sobre `clients`, que se archivan o se anonimizan (RF-15) |
+| `axtton_app` | La API y el `worker`, en su camino normal | `NOBYPASSRLS`. Sobre las tablas append-only (`work_order_status_changes`, `quote_decisions`, `stock_movements`, `diagnosis_versions`, `internal_notes`, `audit_log`) solo tiene `SELECT` e `INSERT`: **RNF-12 lo garantiza la base de datos**, no la disciplina del código. Tampoco tiene `DELETE` sobre `clients` (se archivan o se anonimizan, RF-15), `vehicles` ni `vehicle_ownerships`, y de esta última solo puede actualizar `ended_at` |
 | `axtton_platform` | Solo el código de plataforma (ver "Las vías que cruzan talleres") | `BYPASSRLS`, con una conexión y un pool propios |
 
 Todas las tablas de taller tienen `ENABLE ROW LEVEL SECURITY` y `FORCE ROW LEVEL SECURITY`.

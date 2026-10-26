@@ -19,9 +19,12 @@ class Action(StrEnum):
     VIEW_COSTS = "view_costs"
     # Consultar el registro de auditoría del taller (RNF-16, especificación §3).
     VIEW_AUDIT_LOG = "view_audit_log"
-    # Clientes y vehículos (especificación §3): el mecánico solo los ve.
+    # Clientes y vehículos (especificación §3): el mecánico solo los ve. Una
+    # sola acción para los dos, como la fila de la matriz.
     VIEW_CLIENTS = "view_clients"
     MANAGE_CLIENTS = "manage_clients"
+    # Cambiar el titular de un vehículo (RF-12): fila propia en la matriz.
+    CHANGE_VEHICLE_OWNER = "change_vehicle_owner"
 
 
 ROLE_PERMISSIONS: dict[Role, frozenset[Action]] = {

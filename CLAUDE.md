@@ -163,7 +163,7 @@ Están en `.claude/agents/`. **No corren solos**: se invocan al cerrar una featu
 | F0 ✔ | **Hecha** ([cierre](docs/arquitectura/f0-cierre.md)). Esqueleto vertical desechable: orden, presupuesto de una línea, aprobación por enlace secreto, un primer RLS de verdad y un PDF |
 | F1 ✔ | **Hecha** ([cierre](docs/arquitectura/f1-cierre.md)). Autenticación del personal, superadministrador, alta de talleres, modo de instalación, roles, invitaciones, taller activo, auditoría, límite de peticiones, RLS completa con sus pruebas, CI |
 | F2 | Clientes, vehículos con titularidad, órdenes con historial, deshacer, búsqueda, borradores. Primer despliegue en Coolify |
-| F3 | Presupuestos versionados e inmutables, decisión registrada por el taller, PDF con los datos legales |
+| F3 | Datos del taller y tarifas editables por su administrador (RF-02), presupuestos versionados e inmutables, decisión registrada por el taller, PDF con los datos legales |
 | F4 | Portal del cliente con enlace mágico por taller y aprobación desde el portal |
 | F5 | Worker y bandeja de avisos (presupuesto enviado, vehículo listo) |
 | F6 | Hoja de recepción con firma, resumen de entrega, informe de actuaciones |

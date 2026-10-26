@@ -140,6 +140,7 @@
     "createdNoEmail": "Taller creado, pero el correo no está configurado y la invitación no se ha enviado.",
     "singleInstallation": "Esta instalación es de un solo taller y ya está creado: no se pueden dar de alta más.",
     "workshop": "Taller",
+    "admins": "Administradores",
     "status": "Estado",
     "statuses": { "active": "Activo", "inactive": "Inactivo" },
     "access": "Con acceso",

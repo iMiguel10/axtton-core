@@ -114,7 +114,8 @@ async def test_listing_shows_account_data_and_counts_only(
     [workshop] = (
         await client.get("/api/v1/admin/workshops", headers=superadmin)
     ).json()
-    # RNF-08: nada operativo, ni siquiera el nombre o el email del administrador.
+    # RNF-08: nada operativo. De los administradores, solo el nombre (RF-114),
+    # nunca su email ni el resto de empleados.
     assert set(workshop) == {
         "id",
         "name",
@@ -123,9 +124,47 @@ async def test_listing_shows_account_data_and_counts_only(
         "max_employees_with_access",
         "employees_with_access",
         "pending_invitations",
+        "admins",
     }
     assert workshop["employees_with_access"] == 0
     assert workshop["pending_invitations"] == 1
+    # El primer administrador sale aunque aún no haya aceptado la invitación.
+    assert workshop["admins"] == [NEW_WORKSHOP["admin_name"]]
+    assert NEW_WORKSHOP["admin_email"] not in str(workshop)
+
+
+@pytest.mark.asyncio
+async def test_listing_names_only_the_active_admins_of_each_workshop(
+    client: AsyncClient,
+    superadmin: dict[str, str],
+    outbox: InMemoryEmailSender,
+    engines: Engines,
+) -> None:
+    """Ni mecánicos ni administradores desactivados, y cada uno en su taller."""
+    await client.post("/api/v1/admin/workshops", json=NEW_WORKSHOP, headers=superadmin)
+    other = {**NEW_WORKSHOP, "name": "Taller B", "admin_name": "Berta"}
+    await client.post("/api/v1/admin/workshops", json=other, headers=superadmin)
+    listed = (await client.get("/api/v1/admin/workshops", headers=superadmin)).json()
+    first = next(w for w in listed if w["name"] == NEW_WORKSHOP["name"])
+    async with engines.platform.begin() as conn:
+        await conn.execute(
+            text(
+                "INSERT INTO employees (workshop_id, name, role) VALUES"
+                " (:w, 'Mecánico', 'mechanic'),"
+                " (:w, 'Antigua', 'admin')"
+            ),
+            {"w": first["id"]},
+        )
+        await conn.execute(
+            text("UPDATE employees SET active = false WHERE name = 'Antigua'")
+        )
+
+    listed = (await client.get("/api/v1/admin/workshops", headers=superadmin)).json()
+    admins = {w["name"]: w["admins"] for w in listed}
+    assert admins == {
+        NEW_WORKSHOP["name"]: [NEW_WORKSHOP["admin_name"]],
+        "Taller B": ["Berta"],
+    }
 
 
 @pytest.mark.asyncio

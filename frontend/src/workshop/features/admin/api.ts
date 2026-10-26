@@ -9,6 +9,8 @@ export type WorkshopSummary = {
   max_employees_with_access: number;
   employees_with_access: number;
   pending_invitations: number;
+  /** Nombres de los administradores activos (RF-114), sin email. */
+  admins: string[];
 };
 
 export type NewWorkshop = { name: string; admin_name: string; admin_email: string };

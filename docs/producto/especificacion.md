@@ -301,7 +301,7 @@ Taller (organización, el "tenant")
 - **RF-111** El modo de instalación (multi-taller o taller único) se fija por configuración. En taller único, el superadministrador crea ese taller una vez y la opción de crear más desaparece; la interfaz del taller no muestra selector ni resumen entre talleres.
 - **RF-112** El superadministrador da de alta un taller con su nombre y el email de su primer administrador, que recibe una invitación (RF-04, RF-07).
 - **RF-113** Desactivar un taller corta el acceso de su personal y de sus clientes al portal y detiene sus avisos, sin borrar nada. Reactivarlo lo devuelve todo como estaba.
-- **RF-114** El superadministrador ve la lista de talleres con nombre, administradores, estado y uso respecto a los límites (§10), y puede ajustar los límites de un taller concreto. Nada de su contenido operativo.
+- **RF-114** El superadministrador ve la lista de talleres con nombre, administradores (solo el nombre de los activos, sin su email), estado y uso respecto a los límites (§10), y puede ajustar los límites de un taller concreto. Nada de su contenido operativo.
 
 ### Cuenta del personal (RF-120…)
 
@@ -511,7 +511,7 @@ Cada fase se define por lo que reduce de riesgo o lo que enseña, no por lo que 
 | **F0** | **Esqueleto vertical desechable:** un taller fijo, crear cliente + vehículo + orden, un presupuesto de una línea, enlace secreto sin autenticación donde el cliente aprueba, y el estado de la orden cambia. Feo y sin roles. | Descubrir dónde están las dificultades reales (congelar presupuestos, el paso entre dos tipos de usuario) antes de construir encima. |
 | **F1** | Autenticación del personal (inicio de sesión, recuperación y cambio de contraseña, sesiones), envío de emails básico, superadministrador y alta de talleres, modo de instalación, roles e invitaciones, varios talleres por usuario con taller activo, registro de auditoría, **aislamiento entre talleres** con sus pruebas adversas y **CI** que las ejecuta en cada push. | Lo más caro de añadir tarde. Sin esto, todo lo demás se construye sobre un supuesto. |
 | **F2** | Clientes, vehículos con titularidad y órdenes con su ciclo de vida, historial, búsqueda, edición concurrente sin pisarse y borradores sin conexión. **Primer despliegue en Coolify**: desde aquí, cada fase termina en producción. | El núcleo operativo del taller, y descubrir pronto los problemas de desplegar. |
-| **F3** | Presupuestos versionados, envío, decisión registrada por el taller y PDF del presupuesto. | La parte con más reglas e integridad. |
+| **F3** | Datos del taller y tarifas de mano de obra editables por su administrador (RF-02), presupuestos versionados, envío, decisión registrada por el taller y PDF del presupuesto. | La parte con más reglas e integridad. |
 | **F4** | Portal del cliente con enlace mágico, aprobación desde el portal y estados para el cliente. | La segunda población de usuarios y su aislamiento. |
 | **F5** | Trabajo en segundo plano y avisos al cliente (presupuesto enviado, vehículo listo), con reintentos y sin duplicados. Hasta F5, los emails de acceso (invitaciones, enlaces mágicos) se envían en la propia petición. | Envíos idempotentes y fallos de un tercero. |
 | **F6** | Documentos generados: hoja de recepción con firma en pantalla o marca de firmada, resumen de entrega, informe de actuaciones y su descarga en el portal. | Documentos con valor de prueba que no pueden cambiar después de firmados o enviados. |

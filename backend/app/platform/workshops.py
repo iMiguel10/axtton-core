@@ -117,10 +117,14 @@ class WorkshopSummary:
     max_employees_with_access: int
     employees_with_access: int
     pending_invitations: int
+    # Nombres de los administradores activos, con acceso o con la invitación
+    # pendiente (RF-114). Solo el nombre: ni email ni nada de su trabajo.
+    admins: list[str]
 
 
 async def list_workshops() -> list[WorkshopSummary]:
-    """Talleres con datos de cuenta y uso respecto a los límites (RF-114)."""
+    """Talleres con datos de cuenta, sus administradores y el uso respecto a los
+    límites (RF-114). Ningún dato operativo (RNF-08)."""
     with_access = (
         select(func.count())
         .where(
@@ -141,18 +145,39 @@ async def list_workshops() -> list[WorkshopSummary]:
         .scalar_subquery()
     )
     async with platform_transaction() as session:
-        rows = await session.execute(
-            select(
-                Workshop.id,
-                Workshop.name,
-                Workshop.status,
-                Workshop.created_at,
-                Workshop.max_employees_with_access,
-                with_access,
-                pending,
-            ).order_by(Workshop.created_at)
-        )
-        return [WorkshopSummary(*row) for row in rows]
+        rows = (
+            await session.execute(
+                select(
+                    Workshop.id,
+                    Workshop.name,
+                    Workshop.status,
+                    Workshop.created_at,
+                    Workshop.max_employees_with_access,
+                    with_access.label("with_access"),
+                    pending.label("pending"),
+                ).order_by(Workshop.created_at)
+            )
+        ).all()
+        admins: dict[UUID, list[str]] = {}
+        for workshop_id, name in await session.execute(
+            select(Employee.workshop_id, Employee.name)
+            .where(Employee.role == "admin", Employee.active)
+            .order_by(Employee.name)
+        ):
+            admins.setdefault(workshop_id, []).append(name)
+        return [
+            WorkshopSummary(
+                id=row.id,
+                name=row.name,
+                status=row.status,
+                created_at=row.created_at,
+                max_employees_with_access=row.max_employees_with_access,
+                employees_with_access=row.with_access,
+                pending_invitations=row.pending,
+                admins=admins.get(row.id, []),
+            )
+            for row in rows
+        ]
 
 
 async def update_workshop(

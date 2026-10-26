@@ -61,6 +61,7 @@ export function AdminWorkshopsPage() {
           <TableHeader>
             <TableRow>
               <TableHead>{t("admin.workshop")}</TableHead>
+              <TableHead>{t("admin.admins")}</TableHead>
               <TableHead>{t("admin.status")}</TableHead>
               <TableHead>{t("admin.access")}</TableHead>
               <TableHead>{t("admin.pendingInvitations")}</TableHead>
@@ -107,6 +108,7 @@ function WorkshopRow({
   return (
     <TableRow>
       <TableCell className="font-medium">{workshop.name}</TableCell>
+      <TableCell>{workshop.admins.length ? workshop.admins.join(", ") : "—"}</TableCell>
       <TableCell>
         <Badge variant={active ? "success" : "secondary"}>{t(`admin.statuses.${workshop.status}`)}</Badge>
       </TableCell>

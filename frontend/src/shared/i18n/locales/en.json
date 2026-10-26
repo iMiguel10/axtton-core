@@ -140,6 +140,7 @@
     "createdNoEmail": "Workshop created, but email is not configured and the invitation was not sent.",
     "singleInstallation": "This is a single-workshop installation and the workshop already exists: no more can be created.",
     "workshop": "Workshop",
+    "admins": "Administrators",
     "status": "Status",
     "statuses": { "active": "Active", "inactive": "Inactive" },
     "access": "With access",

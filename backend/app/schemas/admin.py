@@ -18,7 +18,7 @@ class WorkshopCreated(BaseModel):
 
 
 class WorkshopRead(BaseModel):
-    """Solo datos de cuenta y recuentos: nada operativo del taller (RNF-08)."""
+    """Datos de cuenta, administradores y recuentos: nada operativo (RNF-08)."""
 
     id: UUID
     name: str
@@ -27,6 +27,8 @@ class WorkshopRead(BaseModel):
     max_employees_with_access: int
     employees_with_access: int
     pending_invitations: int
+    # Nombres de los administradores activos (RF-114), sin email.
+    admins: list[str]
 
 
 class WorkshopUpdate(BaseModel):

@@ -55,8 +55,8 @@ Y el cierre: qa-verifier y docs-writer contra todo lo anterior, con lo que encon
 
 | Tema | Estado |
 |---|---|
-| **RF-114 dice que el listado de talleres muestra sus administradores**, y hoy muestra recuentos (`test_admin.py` comprueba que no salen nombres) | Por decidir: o se añaden los nombres, o la especificación se queda en recuentos |
-| **RF-02**: el administrador edita los datos de su taller, el logotipo y las tarifas de mano de obra | Sin construir y sin fase asignada. Necesita datos legales para el PDF (F3); cuando llegue, `axtton_app` recibe `UPDATE` solo sobre esas columnas de `workshops` |
+| ~~**RF-114**: el listado de talleres debía mostrar sus administradores y solo daba recuentos~~ | **Resuelto tras el cierre (2026-10-26):** se decidió mostrar los nombres. El listado da los de los administradores activos, también el primero mientras su invitación está pendiente; nunca su email |
+| **RF-02**: el administrador edita los datos de su taller, el logotipo y las tarifas de mano de obra | **Decidido: va en F3**, junto con el PDF que necesita esos datos legales. Entonces `axtton_app` recibe `UPDATE` solo sobre esas columnas de `workshops` |
 | Migraciones arriba y abajo **con datos** (RNF-35) y un arranque con volúmenes vacíos en la CI | Sin probar todavía |
 | T4–T7 y T10 (cliente) | Llegan con el portal, en F4 |
 | El rechazo de un access token caducado | Solo se ha probado el de un token alterado |

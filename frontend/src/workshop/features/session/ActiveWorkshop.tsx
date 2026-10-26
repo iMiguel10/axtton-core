@@ -18,6 +18,7 @@ type ActiveWorkshopValue = {
   /** Solo para enseñar u ocultar pantallas: el backend vuelve a comprobarlo. */
   canManageEmployees: boolean;
   canViewAudit: boolean;
+  canManageClients: boolean;
   workshops: Membership[];
   select: (workshopId: string) => void;
 };
@@ -93,6 +94,8 @@ export function ActiveWorkshopProvider({ children }: { children: ReactNode }) {
     role: active.data.role,
     canManageEmployees: active.data.role === "admin",
     canViewAudit: active.data.role === "admin",
+    // El mecánico ve los clientes, pero no los crea ni los edita (especificación §3).
+    canManageClients: active.data.role === "admin",
     workshops,
     select,
   };

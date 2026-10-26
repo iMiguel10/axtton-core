@@ -179,7 +179,7 @@ erDiagram
 | `invitations` | Invitaciones de acceso (RF-04, RF-112) | Token guardado como hash, caducidad, un solo uso |
 | `superadmin_invitations` | Invitaciones para ser superadministrador (RF-110) | Igual que `invitations`, pero de plataforma: sin taller ni RLS, y `axtton_app` no tiene ningún permiso sobre ella. Una invitación nueva anula las pendientes del mismo email; aceptar con el email de una cuenta de personal se rechaza (§2) |
 | `labor_rates` | Tarifas de mano de obra con nombre | Una marcada por defecto |
-| `clients` | Clientes del taller | `anonymized_at`; `maintenance_reminders_opt_out_at` (RF-66) |
+| `clients` | Clientes del taller | **Existe (F2).** `kind` (particular o empresa), teléfono obligatorio, email y NIF opcionales y normalizados al guardar (minúsculas; mayúsculas sin separadores). **Email único por taller** (índice parcial `(workshop_id, email) WHERE email IS NOT NULL`): es la llave del portal y dos clientes con el mismo email harían ambiguo el enlace mágico (§7.2). Se archiva con `archived_at`; `axtton_app` **no tiene `DELETE`** (migración `0004clients`). Llegarán `anonymized_at` (RF-15, F2) y `maintenance_reminders_opt_out_at` (RF-66, F8) |
 | `vehicles` | Vehículos | `plate_normalized` único por taller; vencimientos (ITV, revisión por fecha y km) |
 | `vehicle_ownerships` | Periodos de titularidad | **Crítica**, ver más abajo |
 | `work_orders` | Órdenes de trabajo | **Crítica** |
@@ -318,7 +318,7 @@ El acceso del cliente en el portal **no** sale de esta tabla, sino de `work_orde
 | Rol | Lo usa | Qué puede |
 |---|---|---|
 | `axtton_owner` | Las migraciones (Alembic) | Dueño de las tablas. Nunca lo usa la aplicación |
-| `axtton_app` | La API y el `worker`, en su camino normal | `NOBYPASSRLS`. Sobre las tablas append-only (`work_order_status_changes`, `quote_decisions`, `stock_movements`, `diagnosis_versions`, `internal_notes`, `audit_log`) solo tiene `SELECT` e `INSERT`: **RNF-12 lo garantiza la base de datos**, no la disciplina del código |
+| `axtton_app` | La API y el `worker`, en su camino normal | `NOBYPASSRLS`. Sobre las tablas append-only (`work_order_status_changes`, `quote_decisions`, `stock_movements`, `diagnosis_versions`, `internal_notes`, `audit_log`) solo tiene `SELECT` e `INSERT`: **RNF-12 lo garantiza la base de datos**, no la disciplina del código. Tampoco tiene `DELETE` sobre `clients`, que se archivan o se anonimizan (RF-15) |
 | `axtton_platform` | Solo el código de plataforma (ver "Las vías que cruzan talleres") | `BYPASSRLS`, con una conexión y un pool propios |
 
 Todas las tablas de taller tienen `ENABLE ROW LEVEL SECURITY` y `FORCE ROW LEVEL SECURITY`.
@@ -696,7 +696,7 @@ Como en Applications Tracker (su decisión 0023):
 |---|---|
 | **F0** ✔ | **Hecha** ([cierre y lo aprendido](f0-cierre.md)). Esqueleto vertical desechable: `workshops`, `clients`, `vehicles`, `work_orders`, `quotes` y `quote_lines` mínimos; un taller fijo; enviar un presupuesto de una línea, aprobarlo desde un enlace secreto y ver el cambio de estado. **Incluye un primer RLS de verdad** (dos roles y una política) y un PDF de una página, porque son lo que más puede sorprender. Se tira al terminar |
 | **F1** | Roles de BD y política generada por migración; R1–R5, R7 y R8 (R6 espera a los triggers de presupuesto, F3). SuperTokens con `emailpassword`, los tres routers y sus dependencias; T1–T3. `users`, `employees`, `invitations`, superadministrador por comando, alta de talleres, modo de instalación, taller activo. `audit_log`. Mailpit. **CI**. *Añadido al construirlo:* límite de peticiones con Valkey (RNF-06), cuenta del personal (cambio de contraseña y sesiones), consulta del registro de auditoría e invitación de otros superadministradores (RF-110) |
-| **F2** | Clientes, vehículos, `vehicle_ownerships`, órdenes con su historial, número correlativo, deshacer, búsqueda, bloqueo optimista, borradores en IndexedDB. **Primer despliegue en Coolify** |
+| **F2** | Clientes, vehículos, `vehicle_ownerships`, órdenes con su historial, número correlativo, deshacer, búsqueda, bloqueo optimista, borradores en IndexedDB. *Añadido al planificarla:* diagnóstico, notas internas y trabajos (RF-22, RF-23: lo que guardan los borradores), cobro (RF-28, RF-29) y anonimización (RF-15), y una revisión del diseño de la interfaz validada **antes** del despliegue. **Primer despliegue en Coolify** |
 | **F3** | Datos del taller y `labor_rates` editables por su administrador (RF-02; `axtton_app` recibe `UPDATE` solo sobre esas columnas de `workshops`, migración `0003grants`), presupuestos versionados con sus triggers, totales y descuentos, decisión registrada por el taller, PDF del presupuesto con los datos legales |
 | **F4** | Receta `passwordless`, petición y consumo del enlace por taller (§7.2), routers del portal, estados para el cliente, aprobación desde el portal; T4–T7 |
 | **F5** | `worker`, bandeja de avisos, despachador, presupuesto enviado y vehículo listo; B1–B6 |

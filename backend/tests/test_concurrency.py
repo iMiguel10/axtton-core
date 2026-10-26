@@ -1,4 +1,4 @@
-"""Carreras de F1 con DOS transacciones reales contra Postgres (arquitectura §10).
+"""Carreras con DOS transacciones reales contra Postgres (arquitectura §10).
 
 Cada prueba abre dos transacciones de verdad y las intercala a mano: la primera
 hace su cambio sin confirmar, la segunda arranca en una tarea, y solo entonces se
@@ -413,3 +413,34 @@ async def test_single_installation_two_creations_at_once_make_one_workshop(
     async with engines.platform.connect() as conn:
         count = await conn.scalar(text("SELECT count(*) FROM workshops"))
     assert count == 1, outcomes
+
+
+# --- F2 ----------------------------------------------------------------------
+
+
+@pytest.mark.asyncio
+async def test_two_clients_with_one_email_at_once_give_a_409_not_a_500(
+    engines: Engines, two_workshops: TwoWorkshops
+) -> None:
+    """RF-10: la segunda alta no ve la primera sin confirmar y pasa la
+    comprobación previa; su INSERT espera al índice único y, al confirmarse la
+    primera, choca. Tiene que llegar como ConflictError, no como IntegrityError
+    (que sería un 500)."""
+    from app.services import clients as client_service
+
+    a = two_workshops.a
+    fields = {"name": "Ana", "phone": "600", "email": "ana@example.com"}
+
+    async with open_transaction(a) as first, open_transaction(a) as second:
+        await client_service.create_client(first, a, fields)
+        work = asyncio.create_task(client_service.create_client(second, a, fields))
+        await asyncio.sleep(GRACE)
+        assert not work.done(), "la segunda debería esperar al índice único"
+        await first.commit()
+        outcome = await finish(second, work)
+
+    assert isinstance(outcome, ConflictError), outcome
+    assert outcome.code == "client_email_taken"
+    async with engines.platform.connect() as conn:
+        count = await conn.scalar(text("SELECT count(*) FROM clients"))
+    assert count == 1

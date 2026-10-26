@@ -42,6 +42,7 @@
   "nav": {
     "main": "Main navigation",
     "home": "Home",
+    "clients": "Clients",
     "employees": "Employees",
     "audit": "Audit log",
     "superadmins": "Superadmins",
@@ -92,7 +93,44 @@
   },
   "home": {
     "yourRole": "Your role: {{role}}",
-    "comingSoon": "Work orders, clients and vehicles arrive in the next phase."
+    "comingSoon": "Work orders and vehicles arrive in the next steps."
+  },
+  "clients": {
+    "title": "Clients",
+    "new": "New client",
+    "create": "Create client",
+    "search": "Search clients",
+    "searchPlaceholder": "Name, phone, email or tax ID",
+    "showArchived": "Show archived",
+    "empty": "No clients yet.",
+    "noArchived": "No archived clients.",
+    "noResults": "No client matches the search.",
+    "loadMore": "Show more",
+    "backToList": "Clients",
+    "kind": "Type",
+    "kinds": {
+      "individual": "Individual",
+      "company": "Company"
+    },
+    "name": "Name or company name",
+    "phone": "Phone",
+    "email": "Email",
+    "emailOptional": "Email (optional, gives access to the portal)",
+    "taxId": "Tax ID",
+    "taxIdOptional": "Tax ID (optional)",
+    "language": "Language for notifications",
+    "languages": {
+      "es": "Spanish",
+      "en": "English"
+    },
+    "address": "Address",
+    "notes": "Internal notes",
+    "notesHint": "Only the workshop staff see them; the client never does.",
+    "archived": "Archived",
+    "archive": "Archive",
+    "unarchive": "Unarchive",
+    "confirmArchive": "Archive {{name}}? They will no longer appear in the list, but nothing is deleted.",
+    "saved": "Changes saved."
   },
   "employees": {
     "title": "Employees",
@@ -189,6 +227,8 @@
     "staff_cannot_be_superadmin":"That email already belongs to a workshop staff account. A superadmin needs an account of their own, with another email.",
     "superadmin_cannot_be_employee":"A superadmin account cannot be an employee of a workshop.",
     "already_an_employee": "That account already has access to this workshop with another record.",
-    "single_workshop_installation": "This is a single-workshop installation and the workshop already exists."
+    "single_workshop_installation": "This is a single-workshop installation and the workshop already exists.",
+    "client_not_found": "That client does not exist in this workshop.",
+    "client_email_taken": "Another client of the workshop already has that email. The email gives access to the portal, so it cannot be repeated."
   }
 }

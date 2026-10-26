@@ -2,7 +2,7 @@ from fastapi import APIRouter, Depends
 
 from app.api.v1 import account
 from app.api.v1.deps import Staff, require_staff
-from app.api.v1.workshop import audit, employees
+from app.api.v1.workshop import audit, clients, employees
 from app.api.v1.workshop.deps import ActiveWorkshop
 
 # Excepción con nombre de la regla R8 (arquitectura §4): saber en qué talleres
@@ -18,6 +18,7 @@ router = APIRouter(
 )
 # Los subrouters heredan la dependencia de actor del router padre.
 router.include_router(employees.router)
+router.include_router(clients.router)
 router.include_router(audit.router)
 router.include_router(account.router)
 

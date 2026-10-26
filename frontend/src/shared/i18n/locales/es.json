@@ -42,6 +42,7 @@
   "nav": {
     "main": "Navegación principal",
     "home": "Inicio",
+    "clients": "Clientes",
     "employees": "Empleados",
     "audit": "Auditoría",
     "superadmins": "Superadministradores",
@@ -92,7 +93,44 @@
   },
   "home": {
     "yourRole": "Tu rol: {{role}}",
-    "comingSoon": "Las órdenes de trabajo, los clientes y los vehículos llegan en la próxima fase."
+    "comingSoon": "Las órdenes de trabajo y los vehículos llegan en los próximos pasos."
+  },
+  "clients": {
+    "title": "Clientes",
+    "new": "Nuevo cliente",
+    "create": "Crear cliente",
+    "search": "Buscar clientes",
+    "searchPlaceholder": "Nombre, teléfono, email o NIF",
+    "showArchived": "Ver archivados",
+    "empty": "Aún no hay clientes.",
+    "noArchived": "No hay clientes archivados.",
+    "noResults": "Ningún cliente coincide con la búsqueda.",
+    "loadMore": "Ver más",
+    "backToList": "Clientes",
+    "kind": "Tipo",
+    "kinds": {
+      "individual": "Particular",
+      "company": "Empresa"
+    },
+    "name": "Nombre o razón social",
+    "phone": "Teléfono",
+    "email": "Email",
+    "emailOptional": "Email (opcional, da acceso al portal)",
+    "taxId": "NIF",
+    "taxIdOptional": "NIF (opcional)",
+    "language": "Idioma de los avisos",
+    "languages": {
+      "es": "Español",
+      "en": "Inglés"
+    },
+    "address": "Dirección",
+    "notes": "Notas internas",
+    "notesHint": "Solo las ve el personal del taller; el cliente nunca.",
+    "archived": "Archivado",
+    "archive": "Archivar",
+    "unarchive": "Desarchivar",
+    "confirmArchive": "¿Archivar a {{name}}? Dejará de aparecer en el listado, pero no se borra nada.",
+    "saved": "Cambios guardados."
   },
   "employees": {
     "title": "Empleados",
@@ -189,6 +227,8 @@
     "staff_cannot_be_superadmin":"Ese email ya es de una cuenta del personal de un taller. Un superadministrador necesita una cuenta propia, con otro email.",
     "superadmin_cannot_be_employee":"Una cuenta de superadministrador no puede ser empleado de un taller.",
     "already_an_employee": "Esa cuenta ya tiene acceso a este taller con otra ficha.",
-    "single_workshop_installation": "Esta instalación es de un solo taller y ya existe."
+    "single_workshop_installation": "Esta instalación es de un solo taller y ya existe.",
+    "client_not_found": "Ese cliente no existe en este taller.",
+    "client_email_taken": "Ya hay otro cliente del taller con ese email. El email da acceso al portal, así que no puede repetirse."
   }
 }

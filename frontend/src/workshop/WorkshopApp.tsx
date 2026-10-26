@@ -11,6 +11,9 @@ import { InvitationPage } from "./features/auth/InvitationPage";
 import { LoginPage } from "./features/auth/LoginPage";
 import { ResetPasswordPage } from "./features/auth/ResetPasswordPage";
 import { SuperadminInvitationPage } from "./features/auth/SuperadminInvitationPage";
+import { ClientDetailPage } from "./features/clients/ClientDetailPage";
+import { ClientNewPage } from "./features/clients/ClientNewPage";
+import { ClientsPage } from "./features/clients/ClientsPage";
 import { EmployeesPage } from "./features/employees/EmployeesPage";
 import { HomePage } from "./features/home/HomePage";
 import { AppLayout } from "./features/layout/AppLayout";
@@ -75,9 +78,10 @@ function SuperadminRoutes() {
 
 function StaffRoutes() {
   const { t } = useTranslation();
-  const { workshopId, canManageEmployees, canViewAudit } = useActiveWorkshop();
+  const { workshopId, canManageEmployees, canViewAudit, canManageClients } = useActiveWorkshop();
   const nav = [
     { to: "/", label: t("nav.home") },
+    { to: "/clients", label: t("nav.clients") },
     ...(canManageEmployees ? [{ to: "/employees", label: t("nav.employees") }] : []),
     ...(canViewAudit ? [{ to: "/audit", label: t("nav.audit") }] : []),
     { to: "/account", label: t("nav.account") },
@@ -86,6 +90,9 @@ function StaffRoutes() {
     <AppLayout nav={nav} workshopSwitcher>
       <Routes>
         <Route path="/" element={<HomePage />} />
+        <Route path="/clients" element={<ClientsPage />} />
+        {canManageClients && <Route path="/clients/new" element={<ClientNewPage />} />}
+        <Route path="/clients/:clientId" element={<ClientDetailPage />} />
         {canManageEmployees && <Route path="/employees" element={<EmployeesPage />} />}
         {canViewAudit && (
           <Route

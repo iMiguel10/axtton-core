@@ -1,4 +1,4 @@
-"""RLS y permisos sobre TODAS las tablas de taller de F1 (arquitectura §4).
+"""RLS y permisos sobre TODAS las tablas de taller (arquitectura §4).
 
 test_rls.py comprueba R1 y R2 solo con `workshops` y `employees`, porque el
 fixture two_workshops no siembra más. Aquí cada tabla de taller lleva filas de A
@@ -26,7 +26,12 @@ WORKSHOP_TABLES = {
     "employees": "workshop_id",
     "invitations": "workshop_id",
     "audit_log": "workshop_id",
+    "clients": "workshop_id",
 }
+
+# Tablas sobre las que axtton_app no tiene DELETE: no se borran nunca, ni por un
+# fallo de la aplicación (sus propias pruebas de permisos, más abajo).
+NO_DELETE = {"audit_log", "workshops", "clients"}
 
 
 @dataclass(frozen=True)
@@ -60,6 +65,13 @@ async def seeded(engines: Engines, two_workshops: TwoWorkshops) -> Seeded:
                     " VALUES (:w, 'employee_created', :e)"
                 ),
                 {"w": workshop, "e": employee},
+            )
+            await conn.execute(
+                text(
+                    "INSERT INTO clients (workshop_id, name, phone)"
+                    " VALUES (:w, 'Cliente', '600')"
+                ),
+                {"w": workshop},
             )
         await conn.execute(
             text("INSERT INTO audit_log (action) VALUES ('workshop_created')")
@@ -126,7 +138,8 @@ async def test_r2_with_workshop_a_every_table_returns_only_rows_of_a(
 @pytest.mark.parametrize(
     ("table", "column"),
     # audit_log y workshops no están: axtton_app ni siquiera tiene permiso de
-    # UPDATE o DELETE sobre ellas (R5 y test_the_app_cannot_change_any_workshop).
+    # UPDATE sobre ellas (R5 y test_the_app_cannot_change_any_workshop). De las
+    # de NO_DELETE, solo se prueba el UPDATE: el DELETE lo para el permiso.
     [(t, c) for t, c in WORKSHOP_TABLES.items() if t not in {"audit_log", "workshops"}],
 )
 async def test_rows_of_b_cannot_be_updated_or_deleted_from_a(
@@ -140,10 +153,16 @@ async def test_rows_of_b_cannot_be_updated_or_deleted_from_a(
             text(f"UPDATE {table} SET created_at = created_at WHERE {column} = :b"),
             {"b": b},
         )
-        deleted = await conn.execute(
-            text(f"DELETE FROM {table} WHERE {column} = :b"), {"b": b}
+        deleted = (
+            0
+            if table in NO_DELETE
+            else (
+                await conn.execute(
+                    text(f"DELETE FROM {table} WHERE {column} = :b"), {"b": b}
+                )
+            ).rowcount
         )
-    assert (touched.rowcount, deleted.rowcount) == (0, 0)
+    assert (touched.rowcount, deleted) == (0, 0)
     async with engines.platform.connect() as conn:
         left = await conn.scalar(
             text(f"SELECT count(*) FROM {table} WHERE {column} = :b"), {"b": b}
@@ -215,6 +234,19 @@ async def test_r5_the_app_role_cannot_rewrite_the_audit_log(
 ) -> None:
     """test_rls.py lo prueba con axtton_platform; aquí con axtton_app, el rol de
     todas las peticiones, y con el taller fijado (sus propias filas)."""
+    async with engines.app.begin() as conn:
+        await set_workshops(conn, seeded.workshops.a)
+        with pytest.raises(DBAPIError, match="permission denied"):
+            await conn.execute(text(statement))
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("statement", ["DELETE FROM clients", "TRUNCATE clients"])
+async def test_the_app_role_cannot_delete_clients(
+    engines: Engines, seeded: Seeded, statement: str
+) -> None:
+    """Un cliente se archiva o se anonimiza (RF-15), nunca se borra: sus órdenes y
+    presupuestos tienen que seguir apuntando a su fila (migración 0004clients)."""
     async with engines.app.begin() as conn:
         await set_workshops(conn, seeded.workshops.a)
         with pytest.raises(DBAPIError, match="permission denied"):

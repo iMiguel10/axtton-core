@@ -1,5 +1,6 @@
 """Importa todos los modelos para que queden registrados en Base.metadata."""
 
+from app.models.operations import Client
 from app.models.platform import (
     AuditEntry,
     Employee,
@@ -11,6 +12,7 @@ from app.models.platform import (
 
 __all__ = [
     "AuditEntry",
+    "Client",
     "Employee",
     "Invitation",
     "SuperadminInvitation",

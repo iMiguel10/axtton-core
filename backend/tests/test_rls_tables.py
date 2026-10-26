@@ -32,6 +32,9 @@ WORKSHOP_TABLES = {
     "work_order_counters": "workshop_id",
     "work_orders": "workshop_id",
     "work_order_status_changes": "workshop_id",
+    "diagnosis_versions": "workshop_id",
+    "internal_notes": "workshop_id",
+    "work_entries": "workshop_id",
 }
 
 # Tablas sobre las que axtton_app no tiene DELETE: no se borran nunca, ni por un
@@ -46,11 +49,15 @@ NO_DELETE = {
     "work_order_counters",
     "work_orders",
     "work_order_status_changes",
+    "diagnosis_versions",
+    "internal_notes",
+    "work_entries",
 }
 # La columna que axtton_app puede actualizar, si no puede todas.
 UPDATABLE_COLUMN = {
     "vehicle_ownerships": "ended_at",
     "work_order_counters": "last_number",
+    "work_entries": "voided_at",
 }
 
 
@@ -132,6 +139,31 @@ async def seeded(engines: Engines, two_workshops: TwoWorkshops) -> Seeded:
                 ),
                 {"w": workshop, "o": order},
             )
+            worklog = {"w": workshop, "o": order, "e": employee}
+            await conn.execute(
+                text(
+                    "INSERT INTO diagnosis_versions"
+                    " (workshop_id, work_order_id, version_no, text, employee_id)"
+                    " VALUES (:w, :o, 1, 'Diagnóstico', :e)"
+                ),
+                worklog,
+            )
+            await conn.execute(
+                text(
+                    "INSERT INTO internal_notes"
+                    " (workshop_id, work_order_id, employee_id, body)"
+                    " VALUES (:w, :o, :e, 'Nota')"
+                ),
+                worklog,
+            )
+            await conn.execute(
+                text(
+                    "INSERT INTO work_entries (workshop_id, work_order_id,"
+                    " employee_id, recorded_by_employee_id, description, worked_on)"
+                    " VALUES (:w, :o, :e, :e, 'Trabajo', current_date)"
+                ),
+                worklog,
+            )
         await conn.execute(
             text("INSERT INTO audit_log (action) VALUES ('workshop_created')")
         )
@@ -202,7 +234,14 @@ async def test_r2_with_workshop_a_every_table_returns_only_rows_of_a(
     [
         (t, c)
         for t, c in WORKSHOP_TABLES.items()
-        if t not in {"audit_log", "workshops", "work_order_status_changes"}
+        if t
+        not in {
+            "audit_log",
+            "workshops",
+            "work_order_status_changes",
+            "diagnosis_versions",
+            "internal_notes",
+        }
     ],
 )
 async def test_rows_of_b_cannot_be_updated_or_deleted_from_a(

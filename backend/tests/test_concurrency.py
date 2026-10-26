@@ -737,3 +737,152 @@ async def test_undo_and_a_change_at_once_do_not_both_apply(
         "diagnosing",
         "cancelled",
     ]
+
+
+async def add_work(
+    session: AsyncSession, workshop_id: UUID, ana: StaffMember, order_id: UUID
+) -> Any:
+    from datetime import date
+
+    from app.services import worklog as worklog_service
+
+    return await worklog_service.add_work_entry(
+        session,
+        workshop_id,
+        ana.employee_id,
+        order_id,
+        employee_id=ana.employee_id,
+        description="Pastillas",
+        worked_on=date(2026, 10, 26),
+        hours=None,
+    )
+
+
+async def active_entries(engines: Engines, order_id: UUID) -> int:
+    async with engines.platform.connect() as conn:
+        count: int = await conn.scalar(
+            text(
+                "SELECT count(*) FROM work_entries"
+                " WHERE work_order_id = :o AND voided_at IS NULL"
+            ),
+            {"o": order_id},
+        )
+    return count
+
+
+@pytest.mark.asyncio
+async def test_two_work_entries_at_once_are_both_saved(
+    engines: Engines, two_workshops: TwoWorkshops, make_account: MakeAccount
+) -> None:
+    """RF-23. Dos mecánicos anotan a la vez en la misma orden, y cada uno, además
+    de bloquearla, la actualiza (last_activity_at). El cruce peligroso: los dos
+    cogen su bloqueo antes de que ninguno actualice. Con FOR SHARE, que es
+    compartido, los dos lo consiguen, y luego cada uno espera al del otro para
+    actualizar: un interbloqueo, y Postgres aborta a uno. Con FOR NO KEY UPDATE
+    el segundo no llega a cogerlo: espera al primero, y los dos se guardan."""
+    from app.repositories import work_orders as order_repo
+
+    a = two_workshops.a
+    ana, order_id = await order_in(engines, make_account, a, [])
+
+    async with open_transaction(a) as first, open_transaction(a) as second:
+        # El primero bloquea la orden y aún no la ha actualizado...
+        await order_repo.get_for_activity(first, order_id)
+        # ...cuando el segundo intenta anotar...
+        work = asyncio.create_task(add_work(second, a, ana, order_id))
+        await asyncio.sleep(GRACE)
+        assert not work.done(), "el segundo debería esperar a la orden"
+        # ...y entonces el primero anota (y actualiza la orden).
+        await add_work(first, a, ana, order_id)
+        await first.commit()
+        outcome = await finish(second, work)
+
+    assert isinstance(outcome, UUID), outcome
+    assert await active_entries(engines, order_id) == 2
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("first_one", ["cancel", "work"])
+async def test_a_work_entry_and_a_cancellation_at_once_never_both_apply(
+    engines: Engines,
+    two_workshops: TwoWorkshops,
+    make_account: MakeAccount,
+    first_one: str,
+) -> None:
+    """§6: una orden cancelada no tiene trabajos. Si cancelar va primero, el
+    trabajo espera y la ve cerrada; si el trabajo va primero, cancelar espera y
+    ve que hay trabajo. Sin bloquear la orden al anotar, cancelar contaría cero
+    trabajos mientras otro se está guardando, y los dos pasarían."""
+    from app.services import work_orders as order_service
+
+    a = two_workshops.a
+    ana, order_id = await order_in(engines, make_account, a, [])
+
+    async def cancel(session: AsyncSession) -> None:
+        await order_service.change_status(
+            session,
+            order_id,
+            ana.employee_id,
+            "admin",
+            expected_version=1,
+            to_status="cancelled",
+            note="Abierta por error",
+        )
+
+    steps = {"cancel": cancel, "work": lambda s: add_work(s, a, ana, order_id)}
+    second_one = "work" if first_one == "cancel" else "cancel"
+    async with open_transaction(a) as first, open_transaction(a) as second:
+        await steps[first_one](first)
+        work = asyncio.create_task(steps[second_one](second))
+        await asyncio.sleep(GRACE)
+        assert not work.done(), "la segunda debería esperar a la orden"
+        await first.commit()
+        outcome = await finish(second, work)
+
+    expected = "work_order_closed" if first_one == "cancel" else "work_order_has_work"
+    assert isinstance(outcome, ConflictError), outcome
+    assert outcome.code == expected
+    async with engines.platform.connect() as conn:
+        status = await conn.scalar(
+            text("SELECT status FROM work_orders WHERE id = :o"), {"o": order_id}
+        )
+    assert (status, await active_entries(engines, order_id)) == (
+        ("cancelled", 0) if first_one == "cancel" else ("received", 1)
+    )
+
+
+@pytest.mark.asyncio
+async def test_two_diagnoses_from_the_same_version_keep_the_first(
+    engines: Engines, two_workshops: TwoWorkshops, make_account: MakeAccount
+) -> None:
+    """RNF-15. Los dos editan desde la versión 0 y los dos pasan la comprobación
+    previa (ninguno ve la del otro sin confirmar). El índice único (orden,
+    version_no) para al segundo, que recibe un 409 y no un 500."""
+    from app.services import worklog as worklog_service
+
+    a = two_workshops.a
+    ana, order_id = await order_in(engines, make_account, a, [])
+
+    async def save(session: AsyncSession, text_: str) -> int:
+        return await worklog_service.save_diagnosis(
+            session, a, ana.employee_id, order_id, base_version_no=0, text=text_
+        )
+
+    async with open_transaction(a) as first, open_transaction(a) as second:
+        await save(first, "De Ana")
+        work = asyncio.create_task(save(second, "De Juan"))
+        await asyncio.sleep(GRACE)
+        assert not work.done(), "la segunda debería esperar al índice único"
+        await first.commit()
+        outcome = await finish(second, work)
+
+    assert isinstance(outcome, ConflictError), outcome
+    assert outcome.code == "modified_by_someone_else"
+    async with engines.platform.connect() as conn:
+        texts = (
+            await conn.scalars(
+                text("SELECT text FROM diagnosis_versions WHERE work_order_id = :o"),
+                {"o": order_id},
+            )
+        ).all()
+    assert texts == ["De Ana"]

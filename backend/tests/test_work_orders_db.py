@@ -27,6 +27,10 @@ class Order:
 
 @pytest_asyncio.fixture
 async def order(engines: Engines, two_workshops: TwoWorkshops) -> Order:
+    return await seed_order(engines, two_workshops)
+
+
+async def seed_order(engines: Engines, two_workshops: TwoWorkshops) -> Order:
     """Una orden recibida del taller A, con su primer cambio, escrita como lo
     hace el service."""
     a = two_workshops.a

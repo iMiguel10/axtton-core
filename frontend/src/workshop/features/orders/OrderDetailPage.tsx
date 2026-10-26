@@ -11,6 +11,7 @@ import { ordersApi, type OrderDetail, type ReceptionInput } from "./api";
 import { formatDateTime, StatusBadge } from "./OrderBits";
 import { ReceptionForm } from "./ReceptionForm";
 import { StatusCard } from "./StatusCard";
+import { WorklogSection } from "./WorklogSection";
 
 const CLOSED = ["delivered", "cancelled"];
 
@@ -90,6 +91,7 @@ export function OrderDetailPage() {
         </Card>
       </div>
       <StatusCard order={current} onChanged={refresh} />
+      <WorklogSection orderId={current.id} closed={CLOSED.includes(current.status)} />
       {save.isError && (
         <p role="alert" className="text-destructive text-sm">
           {errorMessage(t, save.error)}

@@ -211,3 +211,16 @@ async def invite(
     # Sin el email en la auditoría: no guarda datos personales que no necesita.
     _audit(session, workshop_id, user_id, "invitation_sent", employee_id)
     return NewInvitation(token, email, employee.name, workshop.name)
+
+
+@dataclass(frozen=True)
+class StaffMember:
+    id: UUID
+    name: str
+
+
+async def list_staff(session: AsyncSession) -> list[StaffMember]:
+    """El directorio del taller: solo id y nombre de las fichas activas, para
+    elegir quién hizo un trabajo o quién es el responsable. Sin rol, costes ni
+    acceso, que son de quien gestiona empleados."""
+    return [StaffMember(e.id, e.name) for e in await employee_repo.list_active(session)]

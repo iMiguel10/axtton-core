@@ -37,12 +37,21 @@ class Action(StrEnum):
     UNDO_STATUS_CHANGE = "undo_status_change"
     # Marcar una orden "sin presupuesto" (RF-27): solo el administrador.
     MARK_NO_QUOTE = "mark_no_quote"
+    # Escribir el diagnóstico, las notas internas y registrar trabajos
+    # (RF-22, RF-23): los dos roles. Anular un trabajo que anotó otro es de
+    # quien gestiona órdenes (MANAGE_ORDERS).
+    WRITE_WORKLOG = "write_worklog"
 
 
 ROLE_PERMISSIONS: dict[Role, frozenset[Action]] = {
     Role.ADMIN: frozenset(Action),
     Role.MECHANIC: frozenset(
-        {Action.VIEW_CLIENTS, Action.VIEW_ORDERS, Action.MOVE_REPAIR_STATUS}
+        {
+            Action.VIEW_CLIENTS,
+            Action.VIEW_ORDERS,
+            Action.MOVE_REPAIR_STATUS,
+            Action.WRITE_WORKLOG,
+        }
     ),
 }
 

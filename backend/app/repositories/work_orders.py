@@ -4,7 +4,7 @@ from datetime import datetime
 from typing import Literal
 from uuid import UUID
 
-from sqlalchemy import Select, select, text
+from sqlalchemy import Select, or_, select, text
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import aliased
@@ -13,6 +13,7 @@ from app.models import (
     Client,
     Employee,
     Vehicle,
+    WorkEntry,
     WorkOrder,
     WorkOrderCounter,
     WorkOrderStatusChange,
@@ -97,6 +98,7 @@ async def list_page(
     *,
     statuses: Collection[str] | None,
     responsible_id: UUID | None,
+    mine_employee_id: UUID | None,
     vehicle_id: UUID | None,
     client_id: UUID | None,
     sort: Literal["recent", "stalled"],
@@ -113,6 +115,21 @@ async def list_page(
         statement = statement.where(WorkOrder.status.in_(statuses))
     if responsible_id is not None:
         statement = statement.where(WorkOrder.responsible_employee_id == responsible_id)
+    if mine_employee_id is not None:
+        # "Mis órdenes" (RF-24): de las que soy responsable o en las que he
+        # registrado trabajo (sin anular).
+        worked = (
+            select(WorkEntry.id)
+            .where(
+                WorkEntry.work_order_id == WorkOrder.id,
+                WorkEntry.employee_id == mine_employee_id,
+                WorkEntry.voided_at.is_(None),
+            )
+            .exists()
+        )
+        statement = statement.where(
+            or_(WorkOrder.responsible_employee_id == mine_employee_id, worked)
+        )
     if vehicle_id is not None:
         statement = statement.where(WorkOrder.vehicle_id == vehicle_id)
     if client_id is not None:
@@ -166,5 +183,40 @@ async def last_change(
         .where(WorkOrderStatusChange.work_order_id == order_id)
         .order_by(WorkOrderStatusChange.seq.desc())
         .limit(1)
+    )
+    return (await session.scalars(query)).one_or_none()
+
+
+async def get_for_share(session: AsyncSession, order_id: UUID) -> WorkOrder | None:
+    """La orden, con un bloqueo compartido hasta el final de la transacción.
+
+    Para escribir en ella sin cambiar su estado (diagnóstico, trabajos): varias
+    escrituras así no se esperan entre sí, pero un cambio de estado (que pide
+    FOR UPDATE) sí espera a que terminen, y ellas a él. Así, un trabajo no se
+    cuela en una orden que alguien está cancelando o entregando.
+    """
+    query = (
+        select(WorkOrder)
+        .where(WorkOrder.id == order_id)
+        .with_for_update(read=True)
+        .execution_options(populate_existing=True)
+    )
+    return (await session.scalars(query)).one_or_none()
+
+
+async def get_for_activity(session: AsyncSession, order_id: UUID) -> WorkOrder | None:
+    """La orden, bloqueada FOR NO KEY UPDATE, para lo que además de escribir en
+    ella actualiza su `last_activity_at` (registrar un trabajo).
+
+    No FOR SHARE: dos trabajos a la vez tendrían cada uno su bloqueo compartido
+    y esperarían al del otro para actualizar la orden, un interbloqueo. Este
+    bloqueo los pone en fila entre sí y frente a un cambio de estado, y no
+    molesta a quien solo lee ni a las FK que apuntan a la orden.
+    """
+    query = (
+        select(WorkOrder)
+        .where(WorkOrder.id == order_id)
+        .with_for_update(key_share=True)
+        .execution_options(populate_existing=True)
     )
     return (await session.scalars(query)).one_or_none()

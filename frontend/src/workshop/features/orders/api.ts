@@ -137,3 +137,61 @@ export function ordersApi(workshopId: string) {
       request<void>(`/${order.id}/no-quote`, "POST", { version: order.version, reason }),
   };
 }
+
+// --- Diagnóstico, notas y trabajos (RF-22, RF-23) ---------------------------
+
+export type DiagnosisVersion = {
+  version_no: number;
+  text: string;
+  employee_name: string;
+  created_at: string;
+};
+
+export type Note = { seq: number; body: string; employee_name: string; created_at: string };
+
+export type WorkEntry = {
+  id: string;
+  employee: { id: string; name: string };
+  recorded_by_name: string;
+  description: string;
+  worked_on: string;
+  /** Decimal: llega como texto ("1.50"). */
+  hours: string | null;
+  voided_at: string | null;
+  can_void: boolean;
+};
+
+export type Worklog = {
+  /** La vigente primero; vacío si aún no hay. */
+  diagnosis: DiagnosisVersion[];
+  notes: Note[];
+  work_entries: WorkEntry[];
+  workers: string[];
+};
+
+export type WorkEntryInput = {
+  employee_id: string;
+  description: string;
+  worked_on: string;
+  hours: string | null;
+};
+
+export function worklogApi(workshopId: string, orderId: string) {
+  const request = <T>(path: string, method: "GET" | "POST", body?: unknown) =>
+    apiRequest<T>(`/workshop/orders/${orderId}${path}`, { method, body, workshopId });
+  return {
+    get: () => request<Worklog>("/worklog", "GET"),
+    /** `base` es la versión desde la que se editó (0 si no había): RNF-15. */
+    saveDiagnosis: (base: number, text: string) =>
+      request<{ version_no: number }>("/diagnosis", "POST", { base_version_no: base, text }),
+    addNote: (body: string) => request<void>("/notes", "POST", { body }),
+    addWork: (input: WorkEntryInput) =>
+      request<{ id: string }>("/work-entries", "POST", input),
+    voidWork: (entryId: string) => request<void>(`/work-entries/${entryId}/void`, "POST"),
+  };
+}
+
+export type StaffMember = { id: string; name: string };
+
+export const fetchStaff = (workshopId: string) =>
+  apiRequest<StaffMember[]>("/workshop/staff", { workshopId });

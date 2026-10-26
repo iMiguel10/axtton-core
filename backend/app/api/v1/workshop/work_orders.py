@@ -80,8 +80,8 @@ async def list_orders(
     # Dentro del estado elegido, solo estos (p. ej. ?status=ready).
     status_: Annotated[list[WorkOrderStatus] | None, Query(alias="status")] = None,
     responsible_id: UUID | None = None,
-    # "Mis órdenes" (RF-24): las que tengo como responsable. Las órdenes en las
-    # que he registrado trabajo se añadirán con los trabajos (paso 5 de F2).
+    # "Mis órdenes" (RF-24): las que tengo como responsable o en las que he
+    # registrado trabajo.
     mine: bool = False,
     vehicle_id: UUID | None = None,
     client_id: UUID | None = None,
@@ -97,7 +97,8 @@ async def list_orders(
     rows = await order_service.list_orders(
         workshop.session,
         statuses=statuses,
-        responsible_id=workshop.employee_id if mine else responsible_id,
+        responsible_id=responsible_id,
+        mine_employee_id=workshop.employee_id if mine else None,
         vehicle_id=vehicle_id,
         client_id=client_id,
         sort=sort,

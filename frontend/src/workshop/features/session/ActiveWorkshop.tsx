@@ -15,6 +15,8 @@ type ActiveWorkshopValue = {
   workshopId: string;
   workshopName: string;
   role: Role;
+  /** Mi ficha en este taller: quién hizo un trabajo, por defecto. */
+  employeeId: string;
   /** Solo para enseñar u ocultar pantallas: el backend vuelve a comprobarlo. */
   canManageEmployees: boolean;
   canViewAudit: boolean;
@@ -93,6 +95,7 @@ export function ActiveWorkshopProvider({ children }: { children: ReactNode }) {
     workshopId,
     workshopName: workshops.find((w) => w.workshop_id === workshopId)!.workshop_name,
     role: active.data.role,
+    employeeId: active.data.employee_id,
     canManageEmployees: active.data.role === "admin",
     canViewAudit: active.data.role === "admin",
     // El mecánico ve los clientes, pero no los crea ni los edita (especificación §3).

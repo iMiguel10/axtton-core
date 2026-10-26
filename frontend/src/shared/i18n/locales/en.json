@@ -102,7 +102,7 @@
   },
   "home": {
     "yourRole": "Your role: {{role}}",
-    "comingSoon": "Diagnosis, internal notes and work entries for each work order arrive in the next step."
+    "comingSoon": "The single counter search (plate, name or phone) arrives in the next step."
   },
   "clients": {
     "title": "Clients",
@@ -145,6 +145,33 @@
     "pickAnother": "Choose another",
     "pickResults": "Matching clients",
     "orders": "Work orders they are the client of"
+  },
+  "worklog": {
+    "diagnosis": "Diagnosis for the client",
+    "diagnosisHint": "Write it for someone who is not a mechanic: it is what the client will see. Each save keeps a version.",
+    "saveDiagnosis": "Save diagnosis",
+    "version": "Version {{number}}, by {{name}} ({{when}})",
+    "showVersions": "show the {{count}} earlier ones",
+    "hideVersions": "hide the earlier ones",
+    "diagnosisChanged": "{{name}} saved another version while you were writing. This is theirs:",
+    "useTheirs": "Use theirs (discard mine)",
+    "keepMine": "Keep mine and save it on top",
+    "work": "Work done",
+    "workers": "Worked on it",
+    "noWork": "No work recorded yet.",
+    "description": "What was done",
+    "doneBy": "Done by",
+    "date": "Date",
+    "hours": "Hours (optional)",
+    "addWork": "Record work",
+    "entryMeta": "{{worker}} · {{date}} · {{hours}} h · recorded by {{recorder}}",
+    "void": "Void",
+    "voided": "Voided",
+    "confirmVoid": "Void this work entry? It stays in the list as voided and no longer counts.",
+    "notes": "Internal notes",
+    "notesHint": "Only the workshop staff see them; never the client. They are not edited: they are added.",
+    "newNote": "Write a note…",
+    "addNote": "Add note"
   },
   "orders": {
     "title": "Work orders",
@@ -400,6 +427,9 @@
     "cannot_undo_notified": "The last change already notified the client and cannot be undone.",
     "cannot_undo_closing": "A delivered or cancelled work order is not reopened.",
     "no_quote_not_now": "“No quote” can only be set before the repair starts.",
-    "waiver_requires_signed_reception": "The client's waiver needs the signed reception sheet."
+    "waiver_requires_signed_reception": "The client's waiver needs the signed reception sheet.",
+    "work_order_has_work": "The work order has recorded work: it cannot be cancelled. Void the entries if they were recorded by mistake.",
+    "work_entry_not_found": "That work entry does not exist in this work order.",
+    "work_entry_already_voided": "That work entry was already voided."
   }
 }

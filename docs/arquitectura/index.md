@@ -185,9 +185,9 @@ erDiagram
 | `work_orders` | Órdenes de trabajo | **Existe (F2). Crítica** |
 | `work_order_counters` | El último número de orden por taller y año | **Existe (F2).** Ver la trampa de la numeración; un trigger impide que baje |
 | `work_order_status_changes` | Historial de estados, append-only | **Existe (F2). Crítica** |
-| `diagnosis_versions` | Versiones del texto de diagnóstico para el cliente | Append-only; la vigente es la de `version_no` más alto |
-| `internal_notes` | Hilo de notas internas | Append-only (nadie edita lo de otro, RF-22) |
-| `work_entries` | Trabajos realizados | `employee_id` es quien lo hizo; `recorded_by` es quien lo anotó |
+| `diagnosis_versions` | Versiones del texto de diagnóstico para el cliente | **Existe (F2).** Append-only; la vigente es la de `version_no` más alto. `UNIQUE (work_order_id, version_no)` es además su bloqueo optimista: quien guarda manda la versión desde la que editó (`base_version_no`), y dos que guardan desde la misma intentan escribir la misma siguiente, así que la segunda choca (409) |
+| `internal_notes` | Hilo de notas internas | **Existe (F2).** Append-only (nadie edita lo de otro, RF-22), ordenado por `seq`; se admiten con la orden cerrada (RF-26) |
+| `work_entries` | Trabajos realizados | **Existe (F2).** `employee_id` es quien lo hizo; `recorded_by_employee_id`, quien lo anotó. No se edita ni se borra: se **anula** (`voided_at`, `voided_by_employee_id`, las únicas columnas que `axtton_app` puede escribir; un trigger impide lo demás). Lo anula quien lo anotó o el administrador. Los mecánicos que han trabajado (RF-25) salen de los trabajos sin anular; uno sin anular impide cancelar la orden |
 | `reception_sheets` | Hoja de recepción y su firma | Una por orden; congelada al firmarse (RF-52, RF-56) |
 | `quotes` | Cada **versión** de presupuesto | **Crítica** |
 | `quote_lines` | Líneas de una versión | **Crítica** |
@@ -246,6 +246,13 @@ El estado de una orden es una copia del último cambio de su historial (especifi
 - **Las transiciones manuales** (F2, paso 4) son una tabla en `domain/work_orders.py` (`TRANSITIONS`): cada una dice qué acción de la matriz de permisos la autoriza (`MOVE_REPAIR_STATUS`, que tiene también el mecánico, o `MANAGE_ORDERS`), si exige nota (cancelar, "sin reparar") y si exige "sin presupuesto" (RF-27). Las del presupuesto no están: no se hacen a mano. `POST /workshop/orders/{id}/status` las aplica con la orden bloqueada (`FOR UPDATE`) y su versión comprobada. La ficha devuelve `allowed_transitions` para el rol de quien la mira, así que la interfaz no repite las reglas.
 - **Deshacer** (`POST /workshop/orders/{id}/undo`) escribe un cambio con causa `undo` y `undoes_seq`, vuelve al estado anterior (y quita la marca "sin reparar" si era eso) y se audita. Solo se deshace un último cambio `manual`, no notificado y que no cerró la orden.
 - **El bloqueo y la versión, comprobados rompiendo el bloqueo:** sin el `FOR UPDATE`, dos cambios simultáneos siguen sin pisarse, porque SQLAlchemy vigila la `version` al escribir la orden y el segundo choca (`StaleDataError` → 409). Pero entonces es el ORM, al final, quien detecta el conflicto, no el service con sus reglas. El bloqueo es lo que hace que el service lea el último cambio de verdad; la versión es la red. En F3, cuando el presupuesto cambie el estado sin que nadie mande una versión, el bloqueo será lo único que quede.
+- **Qué bloqueo pide cada escritura sobre una orden** (F2, paso 5):
+  - un cambio de estado pide `FOR UPDATE`;
+  - guardar el diagnóstico o anular un trabajo pide `FOR SHARE`: solo necesita que la orden no cambie de estado mientras tanto;
+  - **registrar un trabajo pide `FOR NO KEY UPDATE`**, porque además actualiza la orden (`last_activity_at`). Con `FOR SHARE`, dos trabajos a la vez podrían coger los dos su bloqueo compartido y esperarse luego el uno al otro para actualizar: un interbloqueo que Postgres resuelve abortando a uno. La prueba lo provoca a propósito y, con `FOR SHARE`, falla con `deadlock detected`.
+
+  Gracias a eso, cancelar (que exige no tener trabajos) y anotar un trabajo nunca pasan los dos: el segundo espera y ve lo que hizo el primero. `last_activity_at` se escribe con un `UPDATE` directo, sin subir la `version`, para que un trabajo no provoque un 409 a quien edita la recepción.
+- **El directorio del personal** (`GET /workshop/staff`): id y nombre de las fichas activas, para todo el personal. Hace falta para anotar el trabajo de un compañero (RF-23) sin abrirle al mecánico `/employees`, que incluye costes y accesos.
 - **El cobro** (`payment_*`, RF-28) llega con su paso de F2, en otra migración.
 
 #### `quotes`, `quote_lines` y `quote_decisions`

@@ -6,6 +6,7 @@ RLS forzada, que se añade a mano en la migración.
 """
 
 from datetime import date, datetime
+from decimal import Decimal
 from uuid import UUID
 
 from sqlalchemy import (
@@ -16,6 +17,7 @@ from sqlalchemy import (
     Identity,
     Index,
     Integer,
+    Numeric,
     SmallInteger,
     String,
     Text,
@@ -306,3 +308,111 @@ class WorkOrderStatusChange(IdMixin, CreatedAtMixin, Base):
     employee_id: Mapped[UUID | None]
     by_client: Mapped[bool] = mapped_column(server_default="false")
     note: Mapped[str | None] = mapped_column(Text)
+
+
+class DiagnosisVersion(IdMixin, CreatedAtMixin, Base):
+    """Una versión del texto de diagnóstico para el cliente (RF-22).
+
+    Append-only: editar es escribir la versión siguiente, y la vigente es la de
+    `version_no` más alto. El índice único (orden, número) es además el bloqueo
+    optimista: dos personas que editan desde la misma versión intentan escribir
+    la misma siguiente, y la segunda choca (RNF-15). Cada presupuesto enviado
+    guardará la versión que lo acompañaba (F3).
+    """
+
+    __tablename__ = "diagnosis_versions"
+    __table_args__ = (
+        UniqueConstraint("id", "workshop_id"),
+        UniqueConstraint("work_order_id", "version_no"),
+        ForeignKeyConstraint(
+            ["work_order_id", "workshop_id"],
+            ["work_orders.id", "work_orders.workshop_id"],
+        ),
+        ForeignKeyConstraint(
+            ["employee_id", "workshop_id"], ["employees.id", "employees.workshop_id"]
+        ),
+        CheckConstraint("version_no > 0", name="version_no"),
+    )
+
+    workshop_id: Mapped[UUID] = mapped_column(ForeignKey("workshops.id"))
+    work_order_id: Mapped[UUID]
+    version_no: Mapped[int] = mapped_column(Integer)
+    # Redactado para alguien que no es mecánico: es lo que leerá en el portal.
+    text: Mapped[str] = mapped_column(String(10000))
+    employee_id: Mapped[UUID]
+
+
+class InternalNote(IdMixin, CreatedAtMixin, Base):
+    """Una entrada del hilo de notas internas de una orden (RF-22).
+
+    Append-only: nadie reescribe lo de otro, y nunca salen del taller. Se
+    admiten también con la orden cerrada (RF-26).
+    """
+
+    __tablename__ = "internal_notes"
+    __table_args__ = (
+        UniqueConstraint("id", "workshop_id"),
+        ForeignKeyConstraint(
+            ["work_order_id", "workshop_id"],
+            ["work_orders.id", "work_orders.workshop_id"],
+        ),
+        ForeignKeyConstraint(
+            ["employee_id", "workshop_id"], ["employees.id", "employees.workshop_id"]
+        ),
+        Index("ix_internal_notes_work_order_id_seq", "work_order_id", "seq"),
+    )
+
+    workshop_id: Mapped[UUID] = mapped_column(ForeignKey("workshops.id"))
+    work_order_id: Mapped[UUID]
+    # El orden del hilo, nunca la fecha.
+    seq: Mapped[int] = mapped_column(BigInteger, Identity(always=True), unique=True)
+    employee_id: Mapped[UUID]
+    body: Mapped[str] = mapped_column(String(5000))
+
+
+class WorkEntry(IdMixin, CreatedAtMixin, Base):
+    """Un trabajo realizado en una orden (RF-23).
+
+    `employee_id` es quien lo hizo; `recorded_by_employee_id`, quien lo anotó
+    (un mecánico sin acceso a la aplicación existe igual). No se edita ni se
+    borra: un trabajo mal anotado se anula y se anota otro. La migración deja a
+    axtton_app escribir solo la anulación, y un trigger congela lo demás.
+    """
+
+    __tablename__ = "work_entries"
+    __table_args__ = (
+        UniqueConstraint("id", "workshop_id"),
+        ForeignKeyConstraint(
+            ["work_order_id", "workshop_id"],
+            ["work_orders.id", "work_orders.workshop_id"],
+        ),
+        ForeignKeyConstraint(
+            ["employee_id", "workshop_id"], ["employees.id", "employees.workshop_id"]
+        ),
+        ForeignKeyConstraint(
+            ["recorded_by_employee_id", "workshop_id"],
+            ["employees.id", "employees.workshop_id"],
+        ),
+        ForeignKeyConstraint(
+            ["voided_by_employee_id", "workshop_id"],
+            ["employees.id", "employees.workshop_id"],
+        ),
+        CheckConstraint("hours > 0", name="hours"),
+        CheckConstraint(
+            "(voided_at IS NULL) = (voided_by_employee_id IS NULL)",
+            name="voided_by_whom",
+        ),
+        Index("ix_work_entries_work_order_id", "work_order_id"),
+        Index("ix_work_entries_workshop_id_employee_id", "workshop_id", "employee_id"),
+    )
+
+    workshop_id: Mapped[UUID] = mapped_column(ForeignKey("workshops.id"))
+    work_order_id: Mapped[UUID]
+    employee_id: Mapped[UUID]
+    recorded_by_employee_id: Mapped[UUID]
+    description: Mapped[str] = mapped_column(String(2000))
+    worked_on: Mapped[date]
+    # Escritas a mano, opcionales: no hay cronómetro de fichaje (RF-23).
+    hours: Mapped[Decimal | None] = mapped_column(Numeric(5, 2))
+    voided_at: Mapped[datetime | None]
+    voided_by_employee_id: Mapped[UUID | None]

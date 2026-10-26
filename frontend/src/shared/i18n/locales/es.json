@@ -102,7 +102,7 @@
   },
   "home": {
     "yourRole": "Tu rol: {{role}}",
-    "comingSoon": "El diagnóstico, las notas internas y los trabajos de cada orden llegan en el próximo paso."
+    "comingSoon": "La búsqueda única del mostrador (matrícula, nombre o teléfono) llega en el próximo paso."
   },
   "clients": {
     "title": "Clientes",
@@ -145,6 +145,33 @@
     "pickAnother": "Elegir otro",
     "pickResults": "Clientes que coinciden",
     "orders": "Órdenes de las que es cliente"
+  },
+  "worklog": {
+    "diagnosis": "Diagnóstico para el cliente",
+    "diagnosisHint": "Redáctalo para alguien que no es mecánico: es lo que verá el cliente. Cada vez que se guarda queda una versión.",
+    "saveDiagnosis": "Guardar diagnóstico",
+    "version": "Versión {{number}}, de {{name}} ({{when}})",
+    "showVersions": "ver las {{count}} anteriores",
+    "hideVersions": "ocultar las anteriores",
+    "diagnosisChanged": "{{name}} ha guardado otra versión mientras escribías. Esta es la suya:",
+    "useTheirs": "Usar la suya (descartar lo mío)",
+    "keepMine": "Mantener lo mío y guardarlo encima",
+    "work": "Trabajos realizados",
+    "workers": "Han trabajado",
+    "noWork": "Aún no hay trabajos registrados.",
+    "description": "Qué se hizo",
+    "doneBy": "Lo hizo",
+    "date": "Fecha",
+    "hours": "Horas (opcional)",
+    "addWork": "Registrar trabajo",
+    "entryMeta": "{{worker}} · {{date}} · {{hours}} h · lo anotó {{recorder}}",
+    "void": "Anular",
+    "voided": "Anulado",
+    "confirmVoid": "¿Anular este trabajo? Queda en la lista como anulado y deja de contar.",
+    "notes": "Notas internas",
+    "notesHint": "Solo las ve el personal del taller; nunca el cliente. No se editan: se añaden.",
+    "newNote": "Escribe una nota…",
+    "addNote": "Añadir nota"
   },
   "orders": {
     "title": "Órdenes de trabajo",
@@ -400,6 +427,9 @@
     "cannot_undo_notified": "El último cambio ya avisó al cliente y no se puede deshacer.",
     "cannot_undo_closing": "Una orden entregada o cancelada no se reabre.",
     "no_quote_not_now": "Solo se puede marcar «sin presupuesto» antes de empezar la reparación.",
-    "waiver_requires_signed_reception": "La renuncia del cliente necesita la hoja de recepción firmada."
+    "waiver_requires_signed_reception": "La renuncia del cliente necesita la hoja de recepción firmada.",
+    "work_order_has_work": "La orden tiene trabajos registrados: no se cancela. Anúlalos si se anotaron por error.",
+    "work_entry_not_found": "Ese trabajo no existe en esta orden.",
+    "work_entry_already_voided": "Ese trabajo ya estaba anulado."
   }
 }

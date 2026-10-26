@@ -102,3 +102,11 @@ async def lock_staff(session: AsyncSession, workshop_id: UUID) -> None:
         text("SELECT pg_advisory_xact_lock(hashtextextended(:key, 0))"),
         {"key": f"staff:{workshop_id}"},
     )
+
+
+async def list_active(session: AsyncSession) -> list[Employee]:
+    """Las fichas activas del taller fijado, por nombre."""
+    rows = await session.scalars(
+        select(Employee).where(Employee.active).order_by(Employee.name, Employee.id)
+    )
+    return list(rows)

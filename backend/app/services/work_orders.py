@@ -40,6 +40,7 @@ from app.repositories import clients as client_repo
 from app.repositories import employees as employee_repo
 from app.repositories import vehicles as vehicle_repo
 from app.repositories import work_orders as order_repo
+from app.repositories import worklog as worklog_repo
 from app.repositories.work_orders import OrderRow
 
 # Lo que se puede cambiar con PATCH: los datos de recepción y el responsable.
@@ -177,6 +178,7 @@ async def list_orders(
     *,
     statuses: Collection[str] | None,
     responsible_id: UUID | None,
+    mine_employee_id: UUID | None,
     vehicle_id: UUID | None,
     client_id: UUID | None,
     sort: Literal["recent", "stalled"],
@@ -187,6 +189,7 @@ async def list_orders(
         session,
         statuses=statuses,
         responsible_id=responsible_id,
+        mine_employee_id=mine_employee_id,
         vehicle_id=vehicle_id,
         client_id=client_id,
         sort=sort,
@@ -348,9 +351,14 @@ async def change_status(
     except TransitionRefused as refused:
         raise _refused(refused.code) from refused
     # Cancelar es solo para órdenes abiertas por error: sin trabajos, piezas
-    # usadas ni presupuestos enviados (§6). Hoy ninguna de las tres existe; se
-    # comprobarán aquí al llegar (trabajos en el paso 5 de F2, presupuestos en
-    # F3, piezas en F7).
+    # usadas ni presupuestos enviados (§6). La orden está bloqueada FOR UPDATE:
+    # un trabajo que se esté anotando a la vez espera, y luego la ve cancelada.
+    # Las piezas (F7) y los presupuestos (F3) se comprobarán aquí al llegar.
+    if (
+        transition.to_status == WorkOrderStatus.CANCELLED
+        and await worklog_repo.count_active_entries(session, order_id) > 0
+    ):
+        raise ConflictError("work_order_has_work")
     if transition.unrepaired:
         order.unrepaired = True
     await _record(

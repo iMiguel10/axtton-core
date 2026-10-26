@@ -62,3 +62,8 @@ class InvitationCreate(BaseModel):
 class InvitationQueued(BaseModel):
     # El email sale después del commit; si no hay SMTP, no sale (RNF-32).
     invitation_email_queued: bool
+
+
+class StaffRead(BaseModel):
+    id: UUID
+    name: str

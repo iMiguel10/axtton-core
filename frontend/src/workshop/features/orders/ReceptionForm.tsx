@@ -11,9 +11,8 @@ import { Textarea } from "@/shared/components/form/Textarea";
 import { Button } from "@/shared/components/ui/button";
 import { Label } from "@/shared/components/ui/label";
 
-import { employeesApi } from "../employees/api";
 import { useActiveWorkshop } from "../session/ActiveWorkshop";
-import type { OrderDetail, ReceptionInput } from "./api";
+import { fetchStaff, type OrderDetail, type ReceptionInput } from "./api";
 
 const schema = z.object({
   odometerKm: z
@@ -87,15 +86,19 @@ export function ReceptionForm({
 }) {
   const { t } = useTranslation();
   const { workshopId } = useActiveWorkshop();
-  // Solo quien abre y edita órdenes (el administrador) llega aquí, y es quien
-  // puede listar los empleados.
-  const employees = useQuery({
-    queryKey: ["employees", workshopId],
-    queryFn: () => employeesApi(workshopId).list(),
+  // El directorio del taller: solo fichas activas, con id y nombre.
+  const staff = useQuery({
+    queryKey: ["staff", workshopId],
+    queryFn: () => fetchStaff(workshopId),
+    staleTime: 60_000,
   });
-  const candidates = (employees.data ?? []).filter(
-    (e) => e.active || e.id === order?.responsible?.id,
-  );
+  // Si el responsable actual ya no está activo, sigue en la lista para que el
+  // desplegable no lo cambie por otro sin que nadie lo pida.
+  const responsible = order?.responsible;
+  const candidates = [
+    ...(staff.data ?? []),
+    ...(responsible && !staff.data?.some((m) => m.id === responsible.id) ? [responsible] : []),
+  ];
   const form = useForm<Values>({ resolver: zodResolver(schema), defaultValues: toValues(order) });
   const { errors, isDirty } = form.formState;
 

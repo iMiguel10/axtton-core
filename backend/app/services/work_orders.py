@@ -1,7 +1,9 @@
-"""Órdenes de trabajo: abrirlas, listarlas y editar su recepción (RF-20 a RF-25).
+"""Órdenes de trabajo: abrirlas, listarlas, editar su recepción y moverlas por su
+ciclo de vida (RF-20 a RF-27, especificación §6).
 
-Los cambios de estado, cancelar, entregar y deshacer llegan en el paso 4 de F2.
-Todo se ejecuta en la transacción del taller activo (RLS fijada).
+Las reglas de qué transición existe y quién la hace están en domain/work_orders.py;
+aquí se aplican con la orden bloqueada. Todo se ejecuta en la transacción del
+taller activo (RLS fijada).
 """
 
 from collections.abc import Collection
@@ -11,14 +13,29 @@ from uuid import UUID
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.errors import ConflictError, NotFoundError, ValidationFailedError
+from app.core.errors import (
+    AppError,
+    ConflictError,
+    ForbiddenError,
+    NotFoundError,
+    ValidationFailedError,
+)
+from app.domain.permissions import Action, can
 from app.domain.work_orders import (
     CLOSED,
+    NO_QUOTE_STATUSES,
+    LastChange,
+    NoQuoteReason,
     StatusChangeCause,
+    Transition,
+    TransitionRefused,
     WorkOrderStatus,
     WorkOrderType,
+    allowed_transitions,
+    transition_for,
+    undo_refusal,
 )
-from app.models import WorkOrder, WorkOrderStatusChange
+from app.models import AuditEntry, WorkOrder, WorkOrderStatusChange
 from app.repositories import clients as client_repo
 from app.repositories import employees as employee_repo
 from app.repositories import vehicles as vehicle_repo
@@ -55,6 +72,10 @@ class OrderDetail:
     row: OrderRow
     warranty_of: WorkOrder | None
     history: list[HistoryEntry]
+    # Lo que puede hacer quien la consulta, según su rol y el estado.
+    transitions: list[Transition]
+    can_undo: bool
+    can_mark_no_quote: bool
 
 
 def _blank_to_none(values: dict[str, Any]) -> dict[str, Any]:
@@ -174,7 +195,9 @@ async def list_orders(
     )
 
 
-async def get_order(session: AsyncSession, order_id: UUID) -> OrderDetail:
+async def get_order(session: AsyncSession, order_id: UUID, role: str) -> OrderDetail:
+    """La ficha, con lo que `role` puede hacer ahora con ella: así la interfaz
+    enseña solo los botones que valen, sin repetir las reglas."""
     row = await order_repo.get_row(session, order_id)
     if row is None:
         raise NotFoundError("work_order_not_found")
@@ -187,7 +210,23 @@ async def get_order(session: AsyncSession, order_id: UUID) -> OrderDetail:
         HistoryEntry(change, name)
         for change, name in await order_repo.history(session, order_id)
     ]
-    return OrderDetail(row, warranty_of, history)
+    last = history[-1].change
+    undo = (
+        undo_refusal(_last(last))
+        if can(role, Action.UNDO_STATUS_CHANGE)
+        else "not_allowed"
+    )
+    return OrderDetail(
+        row,
+        warranty_of,
+        history,
+        allowed_transitions(
+            row.order.status, role, no_quote_reason=row.order.no_quote_reason
+        ),
+        can_undo=undo is None,
+        can_mark_no_quote=can(role, Action.MARK_NO_QUOTE)
+        and row.order.status in NO_QUOTE_STATUSES,
+    )
 
 
 async def update_order(
@@ -212,4 +251,190 @@ async def update_order(
     for field in EDITABLE:
         if field in values:
             setattr(order, field, values[field])
+    await session.flush()
+
+
+# --- Ciclo de vida (especificación §6) --------------------------------------
+
+# Cómo llega a la API cada motivo de rechazo del dominio.
+_REFUSALS: dict[str, type[AppError]] = {
+    "not_allowed": ForbiddenError,
+    "note_required": ValidationFailedError,
+}
+
+
+def _refused(code: str) -> AppError:
+    return _REFUSALS.get(code, ConflictError)(code)
+
+
+def _last(change: WorkOrderStatusChange) -> LastChange:
+    return LastChange(
+        from_status=change.from_status,
+        to_status=change.to_status,
+        cause=change.cause,
+        notified=change.notified,
+    )
+
+
+async def _locked(
+    session: AsyncSession, order_id: UUID, expected_version: int
+) -> WorkOrder:
+    """La orden bloqueada (FOR UPDATE) y con la versión que leyó quien pide el
+    cambio. Va antes de leer el último cambio: sin el bloqueo, dos cambios a la
+    vez leerían el mismo "último" y el historial ya no diría un solo estado."""
+    order = await order_repo.get_for_update(session, order_id)
+    if order is None:
+        raise NotFoundError("work_order_not_found")
+    if order.version != expected_version:
+        raise ConflictError("modified_by_someone_else")
+    return order
+
+
+async def _record(
+    session: AsyncSession,
+    order: WorkOrder,
+    to_status: str,
+    *,
+    cause: StatusChangeCause,
+    employee_id: UUID,
+    note: str | None = None,
+    undoes_seq: int | None = None,
+) -> None:
+    """Escribe el cambio en el historial y copia el estado en la orden, juntos
+    (invariante 5; el trigger diferido lo comprueba al confirmar)."""
+    now = await vehicle_repo.db_now(session)
+    session.add(
+        WorkOrderStatusChange(
+            workshop_id=order.workshop_id,
+            work_order_id=order.id,
+            from_status=order.status,
+            to_status=to_status,
+            cause=cause,
+            employee_id=employee_id,
+            note=note,
+            undoes_seq=undoes_seq,
+        )
+    )
+    order.status = to_status
+    # Un cambio de estado es actividad: la orden deja de estar "parada" (RF-24).
+    order.last_activity_at = now
+    if to_status == WorkOrderStatus.DELIVERED:
+        # De aquí salen la garantía (RF-53) y el plazo de la firma (RF-56).
+        order.delivered_at = now
+    await session.flush()
+
+
+async def change_status(
+    session: AsyncSession,
+    order_id: UUID,
+    employee_id: UUID,
+    role: str,
+    *,
+    expected_version: int,
+    to_status: str,
+    note: str | None,
+) -> None:
+    """Un cambio de estado hecho a mano (causa `manual`)."""
+    order = await _locked(session, order_id, expected_version)
+    note = note.strip() if note and note.strip() else None
+    try:
+        transition = transition_for(
+            order.status,
+            to_status,
+            role,
+            no_quote_reason=order.no_quote_reason,
+            note=note,
+        )
+    except TransitionRefused as refused:
+        raise _refused(refused.code) from refused
+    # Cancelar es solo para órdenes abiertas por error: sin trabajos, piezas
+    # usadas ni presupuestos enviados (§6). Hoy ninguna de las tres existe; se
+    # comprobarán aquí al llegar (trabajos en el paso 5 de F2, presupuestos en
+    # F3, piezas en F7).
+    if transition.unrepaired:
+        order.unrepaired = True
+    await _record(
+        session,
+        order,
+        transition.to_status,
+        cause=StatusChangeCause.MANUAL,
+        employee_id=employee_id,
+        note=note,
+    )
+
+
+async def undo_last_change(
+    session: AsyncSession,
+    workshop_id: UUID,
+    user_id: UUID,
+    employee_id: UUID,
+    order_id: UUID,
+    *,
+    expected_version: int,
+) -> None:
+    """Deshacer el último cambio manual (§6): un cambio compensatorio que vuelve
+    al estado anterior. El original no se borra nunca (RNF-12), y queda en el
+    registro de auditoría (RNF-16)."""
+    order = await _locked(session, order_id, expected_version)
+    last = await order_repo.last_change(session, order_id)
+    assert last is not None, "toda orden tiene al menos su apertura"
+    refusal = undo_refusal(_last(last))
+    if refusal is not None:
+        raise ConflictError(refusal)
+    assert last.from_status is not None  # un cambio manual viene de algún estado
+    if last.to_status == WorkOrderStatus.READY and order.unrepaired:
+        # Deshacer "lista · sin reparar" deshace también el "sin reparar".
+        order.unrepaired = False
+    await _record(
+        session,
+        order,
+        last.from_status,
+        cause=StatusChangeCause.UNDO,
+        employee_id=employee_id,
+        undoes_seq=last.seq,
+    )
+    session.add(
+        AuditEntry(
+            workshop_id=workshop_id,
+            actor_user_id=user_id,
+            action="status_change_undone",
+            target_type="work_order",
+            target_id=order_id,
+            details={"work_order_status": [last.to_status, last.from_status]},
+        )
+    )
+
+
+async def set_no_quote(
+    session: AsyncSession,
+    workshop_id: UUID,
+    user_id: UUID,
+    order_id: UUID,
+    *,
+    expected_version: int,
+    reason: str | None,
+) -> None:
+    """Marcar (o desmarcar) una orden "sin presupuesto" (RF-27), antes de
+    empezar a repararla. Queda en la auditoría con autor y fecha."""
+    order = await _locked(session, order_id, expected_version)
+    if order.status not in NO_QUOTE_STATUSES:
+        raise ConflictError("no_quote_not_now")
+    if reason == NoQuoteReason.WAIVER:
+        # La renuncia solo vale firmada en la hoja de recepción (RF-27, RF-52),
+        # que llega en F6.
+        raise ConflictError("waiver_requires_signed_reception")
+    if reason == order.no_quote_reason:
+        return
+    previous = order.no_quote_reason
+    order.no_quote_reason = reason
+    session.add(
+        AuditEntry(
+            workshop_id=workshop_id,
+            actor_user_id=user_id,
+            action="no_quote_marked",
+            target_type="work_order",
+            target_id=order_id,
+            details={"no_quote_reason": [previous, reason]},
+        )
+    )
     await session.flush()

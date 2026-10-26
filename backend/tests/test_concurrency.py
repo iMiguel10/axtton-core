@@ -606,3 +606,134 @@ async def test_an_order_opened_during_an_owner_change_gets_the_new_owner(
         order = await finish(opening, work)
 
     assert order.client_id == luis  # type: ignore[attr-defined]
+
+
+async def order_in(
+    engines: Engines, make_account: MakeAccount, workshop_id: UUID, path: list[str]
+) -> tuple[StaffMember, UUID]:
+    """Una orden ya movida por `path`, confirmada, y quién la movió."""
+    from app.services import work_orders as order_service
+
+    ana, _, _, car = await shop_with_a_car(engines, make_account, workshop_id)
+    async with open_transaction(workshop_id) as setup:
+        order = await open_order(setup, workshop_id, ana, car)
+        if "in_repair" in path:
+            await order_service.set_no_quote(
+                setup,
+                workshop_id,
+                ana.user_id,
+                order.id,
+                expected_version=1,
+                reason="warranty",
+            )
+        for to in path:
+            await order_service.change_status(
+                setup,
+                order.id,
+                ana.employee_id,
+                "admin",
+                expected_version=order.version,
+                to_status=to,
+                note=None,
+            )
+        await setup.commit()
+    return ana, order.id
+
+
+async def history_of(engines: Engines, order_id: UUID) -> list[tuple[str, str]]:
+    async with engines.platform.connect() as conn:
+        rows = await conn.execute(
+            text(
+                "SELECT to_status, cause FROM work_order_status_changes"
+                " WHERE work_order_id = :o ORDER BY seq"
+            ),
+            {"o": order_id},
+        )
+        return [(to, cause) for to, cause in rows]
+
+
+@pytest.mark.asyncio
+async def test_two_status_changes_at_once_leave_one_history(
+    engines: Engines, two_workshops: TwoWorkshops, make_account: MakeAccount
+) -> None:
+    """§6. Desde `in_repair`, uno la pasa a `ready` y otro, a la vez, a
+    `waiting_parts`. El segundo espera a la orden bloqueada y, al ver que su
+    versión ya no es la que leyó, recibe un 409: el historial dice un solo
+    camino y el estado es el de su último cambio (invariante 5)."""
+    from app.services import work_orders as order_service
+
+    a = two_workshops.a
+    ana, order_id = await order_in(engines, make_account, a, ["in_repair"])
+    async with engines.platform.connect() as conn:
+        version = await conn.scalar(
+            text("SELECT version FROM work_orders WHERE id = :o"), {"o": order_id}
+        )
+
+    async def to(session: AsyncSession, status: str) -> None:
+        await order_service.change_status(
+            session,
+            order_id,
+            ana.employee_id,
+            "mechanic",
+            expected_version=version,
+            to_status=status,
+            note=None,
+        )
+
+    async with open_transaction(a) as first, open_transaction(a) as second:
+        await to(first, "ready")
+        work = asyncio.create_task(to(second, "waiting_parts"))
+        await asyncio.sleep(GRACE)
+        assert not work.done(), "el segundo cambio debería esperar a la orden"
+        await first.commit()
+        outcome = await finish(second, work)
+
+    assert isinstance(outcome, ConflictError), outcome
+    assert outcome.code == "modified_by_someone_else"
+    assert (await history_of(engines, order_id))[-2:] == [
+        ("in_repair", "manual"),
+        ("ready", "manual"),
+    ]
+
+
+@pytest.mark.asyncio
+async def test_undo_and_a_change_at_once_do_not_both_apply(
+    engines: Engines, two_workshops: TwoWorkshops, make_account: MakeAccount
+) -> None:
+    """Ana deshace el paso a diagnóstico mientras otro administrador cancela la
+    orden desde diagnóstico. Si los dos pasaran, el deshacer compensaría un
+    cambio que ya no es el último. Solo pasa el primero."""
+    from app.services import work_orders as order_service
+
+    a = two_workshops.a
+    ana, order_id = await order_in(engines, make_account, a, ["diagnosing"])
+
+    async def undo(session: AsyncSession) -> None:
+        await order_service.undo_last_change(
+            session, a, ana.user_id, ana.employee_id, order_id, expected_version=2
+        )
+
+    async def cancel(session: AsyncSession) -> None:
+        await order_service.change_status(
+            session,
+            order_id,
+            ana.employee_id,
+            "admin",
+            expected_version=2,
+            to_status="cancelled",
+            note="Abierta por error",
+        )
+
+    async with open_transaction(a) as first, open_transaction(a) as second:
+        await cancel(first)
+        work = asyncio.create_task(undo(second))
+        await asyncio.sleep(GRACE)
+        await first.commit()
+        outcome = await finish(second, work)
+
+    assert isinstance(outcome, ConflictError), outcome
+    assert [to for to, _ in await history_of(engines, order_id)] == [
+        "received",
+        "diagnosing",
+        "cancelled",
+    ]

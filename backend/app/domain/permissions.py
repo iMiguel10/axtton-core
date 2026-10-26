@@ -30,11 +30,20 @@ class Action(StrEnum):
     # el responsable es del administrador.
     VIEW_ORDERS = "view_orders"
     MANAGE_ORDERS = "manage_orders"
+    # Pasar a reparación, esperando piezas y lista (desde reparación): lo único
+    # que el mecánico mueve (especificación §3 y §6).
+    MOVE_REPAIR_STATUS = "move_repair_status"
+    # Deshacer el último cambio de estado manual: solo el administrador.
+    UNDO_STATUS_CHANGE = "undo_status_change"
+    # Marcar una orden "sin presupuesto" (RF-27): solo el administrador.
+    MARK_NO_QUOTE = "mark_no_quote"
 
 
 ROLE_PERMISSIONS: dict[Role, frozenset[Action]] = {
     Role.ADMIN: frozenset(Action),
-    Role.MECHANIC: frozenset({Action.VIEW_CLIENTS, Action.VIEW_ORDERS}),
+    Role.MECHANIC: frozenset(
+        {Action.VIEW_CLIENTS, Action.VIEW_ORDERS, Action.MOVE_REPAIR_STATUS}
+    ),
 }
 
 

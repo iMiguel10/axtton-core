@@ -27,7 +27,9 @@
       "workshop_updated": "Workshop changed",
       "superadmin_created": "Superadmin created",
       "superadmin_invited": "Superadmin invited",
-      "vehicle_owner_changed": "Owner changed"
+      "vehicle_owner_changed": "Owner changed",
+      "status_change_undone": "Status change undone",
+      "no_quote_marked": "No quote"
     },
     "fields": {
       "email": "Email",
@@ -38,7 +40,9 @@
       "hourly_cost_cents": "Hourly cost",
       "status": "Status",
       "max_employees_with_access": "Access limit",
-      "client_id": "Owner"
+      "client_id": "Owner",
+      "no_quote_reason": "Reason",
+      "work_order_status": "Work order status"
     }
   },
   "nav": {
@@ -98,7 +102,7 @@
   },
   "home": {
     "yourRole": "Your role: {{role}}",
-    "comingSoon": "Work order status changes arrive in the next step."
+    "comingSoon": "Diagnosis, internal notes and work entries for each work order arrive in the next step."
   },
   "clients": {
     "title": "Clients",
@@ -208,7 +212,29 @@
     "history": "Status history",
     "byClient": "The client",
     "warrantyOf": "Warranty of {{code}}",
-    "saved": "Changes saved."
+    "saved": "Changes saved.",
+    "statusTitle": "Status",
+    "transitions": {
+      "diagnosing": "Start diagnosis",
+      "in_repair": "Start the repair",
+      "waiting_parts": "Waiting for parts",
+      "ready": "Ready for pickup",
+      "unrepaired": "Ready, not repaired",
+      "delivered": "Deliver",
+      "cancelled": "Cancel the work order"
+    },
+    "noteCancel": "Why is it cancelled? (only for work orders opened by mistake)",
+    "noteUnrepaired": "Why does it leave without being repaired?",
+    "undo": "Undo the last change",
+    "confirmUndo": "Undo the last change? The work order will go back to “{{status}}” and it will stay in the history.",
+    "noQuote": "No quote",
+    "noQuoteNone": "With a quote",
+    "noQuoteReasons": {
+      "waiver": "Client waiver",
+      "warranty": "Warranty",
+      "fixed_price": "Fixed price"
+    },
+    "noQuoteHint": "Lets the repair start without an approved quote. The client's waiver needs the signed reception sheet, which arrives later."
   },
   "vehicles": {
     "title": "Vehicles",
@@ -366,6 +392,14 @@
     "work_order_not_found": "That work order does not exist in this workshop.",
     "work_order_closed": "The work order is closed: it only accepts internal notes and its payment.",
     "warranty_of_not_delivered": "A warranty work order can only come from a work order already delivered.",
-    "warranty_of_requires_warranty_type": "Only a warranty work order can link to the original work order."
+    "warranty_of_requires_warranty_type": "Only a warranty work order can link to the original work order.",
+    "invalid_transition": "The work order cannot move to that status from the current one.",
+    "no_quote_reason_required": "To repair without an approved quote, first mark the work order as “no quote”.",
+    "note_required": "Explain why: it is required for this change.",
+    "cannot_undo_automatic": "The last change was not made by hand (or is already an undo), so it cannot be undone.",
+    "cannot_undo_notified": "The last change already notified the client and cannot be undone.",
+    "cannot_undo_closing": "A delivered or cancelled work order is not reopened.",
+    "no_quote_not_now": "“No quote” can only be set before the repair starts.",
+    "waiver_requires_signed_reception": "The client's waiver needs the signed reception sheet."
   }
 }

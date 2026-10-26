@@ -50,6 +50,10 @@ async def outbox() -> AsyncIterator[InMemoryEmailSender]:
 
 @pytest_asyncio.fixture
 async def shop(client: AsyncClient) -> Shop:
+    return await new_shop(client)
+
+
+async def new_shop(client: AsyncClient) -> Shop:
     """Talleres Pérez, con Ana (administradora), María y Luis, y el coche de María."""
     await truncate_all()
     admin = await open_workshop(client, "Talleres Pérez")

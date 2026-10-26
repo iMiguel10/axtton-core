@@ -139,3 +139,32 @@ async def history(
         .order_by(WorkOrderStatusChange.seq)
     )
     return [(change, name) for change, name in rows]
+
+
+async def get_for_update(session: AsyncSession, order_id: UUID) -> WorkOrder | None:
+    """La orden, bloqueada hasta el final de la transacción (arquitectura §3).
+
+    Todo cambio de estado pasa por aquí antes de leer el último cambio: dos
+    cambios a la vez sobre la misma orden se ponen en fila, y el segundo ve ya
+    el estado y la versión que dejó el primero.
+    """
+    query = (
+        select(WorkOrder)
+        .where(WorkOrder.id == order_id)
+        .with_for_update()
+        .execution_options(populate_existing=True)
+    )
+    return (await session.scalars(query)).one_or_none()
+
+
+async def last_change(
+    session: AsyncSession, order_id: UUID
+) -> WorkOrderStatusChange | None:
+    """El cambio con el `seq` más alto: el que dice el estado (invariante 5)."""
+    query = (
+        select(WorkOrderStatusChange)
+        .where(WorkOrderStatusChange.work_order_id == order_id)
+        .order_by(WorkOrderStatusChange.seq.desc())
+        .limit(1)
+    )
+    return (await session.scalars(query)).one_or_none()

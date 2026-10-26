@@ -1,6 +1,8 @@
-"""Órdenes de trabajo del taller activo (RF-20 a RF-25). Todo el personal las ve;
-abrirlas y editar su recepción o su responsable es del administrador
-(especificación §3)."""
+"""Órdenes de trabajo del taller activo (RF-20 a RF-27, especificación §6).
+
+Todo el personal las ve. Abrirlas, editar su recepción o su responsable,
+deshacer y marcar "sin presupuesto" es del administrador; los cambios de estado,
+de quien permita cada transición (especificación §3)."""
 
 from collections.abc import Collection
 from typing import Annotated, Literal
@@ -14,10 +16,14 @@ from app.domain.work_orders import CLOSED, OPEN, WorkOrderStatus, order_code
 from app.repositories.work_orders import OrderRow
 from app.schemas.work_orders import (
     Named,
+    NoQuoteChange,
     OrderClient,
     OrderRef,
     OrderVehicle,
+    StatusChange,
     StatusChangeRead,
+    TransitionRead,
+    VersionOnly,
     WorkOrderCreate,
     WorkOrderCreated,
     WorkOrderDetailRead,
@@ -30,6 +36,8 @@ router = APIRouter(prefix="/orders")
 
 Viewer = Annotated[WorkshopContext, Depends(require(Action.VIEW_ORDERS))]
 Manager = Annotated[WorkshopContext, Depends(require(Action.MANAGE_ORDERS))]
+Undoer = Annotated[WorkshopContext, Depends(require(Action.UNDO_STATUS_CHANGE))]
+NoQuoteMarker = Annotated[WorkshopContext, Depends(require(Action.MARK_NO_QUOTE))]
 
 STATES = {"open": OPEN, "closed": CLOSED, "all": None}
 
@@ -101,7 +109,7 @@ async def list_orders(
 
 @router.get("/{order_id}")
 async def get_order(order_id: UUID, workshop: Viewer) -> WorkOrderDetailRead:
-    detail = await order_service.get_order(workshop.session, order_id)
+    detail = await order_service.get_order(workshop.session, order_id, workshop.role)
     order = detail.row.order
     warranty_of = detail.warranty_of
     return WorkOrderDetailRead.model_validate(
@@ -128,6 +136,7 @@ async def get_order(order_id: UUID, workshop: Viewer) -> WorkOrderDetailRead:
                     from_status=entry.change.from_status,
                     to_status=entry.change.to_status,
                     cause=entry.change.cause,
+                    undoes_seq=entry.change.undoes_seq,
                     employee_name=entry.employee_name,
                     by_client=entry.change.by_client,
                     note=entry.change.note,
@@ -135,6 +144,16 @@ async def get_order(order_id: UUID, workshop: Viewer) -> WorkOrderDetailRead:
                 )
                 for entry in detail.history
             ],
+            "allowed_transitions": [
+                TransitionRead(
+                    to_status=t.to_status,
+                    needs_note=t.needs_note,
+                    unrepaired=t.unrepaired,
+                )
+                for t in detail.transitions
+            ],
+            "can_undo": detail.can_undo,
+            "can_mark_no_quote": detail.can_mark_no_quote,
         }
     )
 
@@ -162,4 +181,45 @@ async def update_order(
         order_id,
         expected_version=body.version,
         changes=body.model_dump(exclude_unset=True, exclude={"version"}),
+    )
+
+
+@router.post("/{order_id}/status", status_code=status.HTTP_204_NO_CONTENT)
+async def change_status(order_id: UUID, body: StatusChange, workshop: Viewer) -> None:
+    """Un cambio de estado a mano (§6). Lo puede pedir todo el personal: qué
+    transición permite cada rol lo decide domain.transition_for (RNF-03)."""
+    await order_service.change_status(
+        workshop.session,
+        order_id,
+        workshop.employee_id,
+        workshop.role,
+        expected_version=body.version,
+        to_status=body.to_status.value,
+        note=body.note,
+    )
+
+
+@router.post("/{order_id}/undo", status_code=status.HTTP_204_NO_CONTENT)
+async def undo_last_change(order_id: UUID, body: VersionOnly, workshop: Undoer) -> None:
+    await order_service.undo_last_change(
+        workshop.session,
+        workshop.workshop_id,
+        workshop.user_id,
+        workshop.employee_id,
+        order_id,
+        expected_version=body.version,
+    )
+
+
+@router.post("/{order_id}/no-quote", status_code=status.HTTP_204_NO_CONTENT)
+async def set_no_quote(
+    order_id: UUID, body: NoQuoteChange, workshop: NoQuoteMarker
+) -> None:
+    await order_service.set_no_quote(
+        workshop.session,
+        workshop.workshop_id,
+        workshop.user_id,
+        order_id,
+        expected_version=body.version,
+        reason=body.reason.value if body.reason else None,
     )

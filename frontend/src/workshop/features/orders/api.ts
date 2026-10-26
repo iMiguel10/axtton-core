@@ -49,14 +49,20 @@ export type StatusChange = {
   from_status: Status | null;
   to_status: Status;
   cause: Cause;
+  /** Si es un deshacer, el `seq` del cambio que compensa. */
+  undoes_seq: number | null;
   employee_name: string | null;
   by_client: boolean;
   note: string | null;
   created_at: string;
 };
 
+export type AllowedTransition = { to_status: Status; needs_note: boolean; unrepaired: boolean };
+
+export type NoQuoteReason = "waiver" | "warranty" | "fixed_price";
+
 export type OrderDetail = Order & {
-  no_quote_reason: string | null;
+  no_quote_reason: NoQuoteReason | null;
   warranty_of: { id: string; code: string } | null;
   odometer_km: number | null;
   reason: string | null;
@@ -65,6 +71,10 @@ export type OrderDetail = Order & {
   reception_notes: string | null;
   delivered_at: string | null;
   history: StatusChange[];
+  /** Lo que puede hacer quien la mira: el servidor lo vuelve a comprobar. */
+  allowed_transitions: AllowedTransition[];
+  can_undo: boolean;
+  can_mark_no_quote: boolean;
 };
 
 export type ReceptionInput = {
@@ -115,5 +125,15 @@ export function ordersApi(workshopId: string) {
       }),
     update: (order: Order, changes: Partial<ReceptionInput>) =>
       request<void>(`/${order.id}`, "PATCH", { version: order.version, ...changes }),
+    changeStatus: (order: Order, to: Status, note: string | null) =>
+      request<void>(`/${order.id}/status`, "POST", {
+        version: order.version,
+        to_status: to,
+        note,
+      }),
+    undo: (order: Order) =>
+      request<void>(`/${order.id}/undo`, "POST", { version: order.version }),
+    setNoQuote: (order: Order, reason: NoQuoteReason | null) =>
+      request<void>(`/${order.id}/no-quote`, "POST", { version: order.version, reason }),
   };
 }

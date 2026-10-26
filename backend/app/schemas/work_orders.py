@@ -3,7 +3,12 @@ from uuid import UUID
 
 from pydantic import AwareDatetime, BaseModel, ConfigDict, Field
 
-from app.domain.work_orders import StatusChangeCause, WorkOrderStatus, WorkOrderType
+from app.domain.work_orders import (
+    NoQuoteReason,
+    StatusChangeCause,
+    WorkOrderStatus,
+    WorkOrderType,
+)
 
 
 class OrderVehicle(BaseModel):
@@ -54,10 +59,20 @@ class StatusChangeRead(BaseModel):
     from_status: WorkOrderStatus | None
     to_status: WorkOrderStatus
     cause: StatusChangeCause
+    # Si es un deshacer, el `seq` del cambio que compensa.
+    undoes_seq: int | None
     employee_name: str | None
     by_client: bool
     note: str | None
     created_at: datetime
+
+
+class TransitionRead(BaseModel):
+    """Un cambio que quien consulta puede hacer ahora (domain.TRANSITIONS)."""
+
+    to_status: WorkOrderStatus
+    needs_note: bool
+    unrepaired: bool
 
 
 class WorkOrderDetailRead(WorkOrderRead):
@@ -71,6 +86,11 @@ class WorkOrderDetailRead(WorkOrderRead):
     delivered_at: datetime | None
     # Por `seq`, del primero al último (invariante 5: el último es el estado).
     history: list[StatusChangeRead]
+    # Lo que puede hacer quien la consulta, según su rol en este taller. Es una
+    # comodidad para la interfaz: el servidor lo vuelve a comprobar al pedirlo.
+    allowed_transitions: list[TransitionRead]
+    can_undo: bool
+    can_mark_no_quote: bool
 
 
 class _ReceptionFields(BaseModel):
@@ -104,3 +124,22 @@ class WorkOrderUpdate(_ReceptionFields):
     son opcionales en la orden, así que se pueden vaciar con null."""
 
     version: int
+
+
+class StatusChange(BaseModel):
+    model_config = ConfigDict(str_strip_whitespace=True)
+
+    version: int
+    to_status: WorkOrderStatus
+    # Obligatoria para cancelar y para "sin reparar" (§6).
+    note: str | None = Field(default=None, max_length=2000)
+
+
+class VersionOnly(BaseModel):
+    version: int
+
+
+class NoQuoteChange(BaseModel):
+    version: int
+    # Nulo: deja de estar marcada.
+    reason: NoQuoteReason | None

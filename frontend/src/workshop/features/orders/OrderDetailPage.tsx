@@ -10,12 +10,13 @@ import { useActiveWorkshop } from "../session/ActiveWorkshop";
 import { ordersApi, type OrderDetail, type ReceptionInput } from "./api";
 import { formatDateTime, StatusBadge } from "./OrderBits";
 import { ReceptionForm } from "./ReceptionForm";
+import { StatusCard } from "./StatusCard";
 
 const CLOSED = ["delivered", "cancelled"];
 
 /**
  * Ficha de una orden (RF-20 a RF-25): vehículo, cliente, recepción, responsable
- * e historial de estados. Cambiar de estado llega en el paso 4 de F2.
+ * estado (con lo que quien mira puede hacer) e historial.
  */
 export function OrderDetailPage() {
   const { t } = useTranslation();
@@ -27,17 +28,18 @@ export function OrderDetailPage() {
   const order = useQuery({ queryKey, queryFn: () => api.get(orderId) });
   const [saved, setSaved] = useState(false);
 
+  // También tras un 409: se recarga lo último guardado, con su versión.
+  const refresh = () =>
+    Promise.all([
+      queryClient.invalidateQueries({ queryKey }),
+      queryClient.invalidateQueries({ queryKey: ["orders", workshopId] }),
+    ]);
   const save = useMutation({
     mutationFn: ({ current, input }: { current: OrderDetail; input: ReceptionInput }) =>
       api.update(current, input),
     onMutate: () => setSaved(false),
     onSuccess: () => setSaved(true),
-    // También tras un 409: se recarga lo último guardado, con su versión.
-    onSettled: () =>
-      Promise.all([
-        queryClient.invalidateQueries({ queryKey }),
-        queryClient.invalidateQueries({ queryKey: ["orders", workshopId] }),
-      ]),
+    onSettled: refresh,
   });
 
   if (order.isPending) return <p>{t("common.loading")}</p>;
@@ -87,6 +89,7 @@ export function OrderDetailPage() {
           </CardContent>
         </Card>
       </div>
+      <StatusCard order={current} onChanged={refresh} />
       {save.isError && (
         <p role="alert" className="text-destructive text-sm">
           {errorMessage(t, save.error)}

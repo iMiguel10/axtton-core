@@ -3,11 +3,11 @@ from datetime import datetime
 from typing import Any
 from uuid import UUID
 
-from sqlalchemy import and_, select
+from sqlalchemy import ColumnElement, String, and_, case, cast, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import aliased
 
-from app.models import AuditEntry, Client, Employee, Vehicle
+from app.models import AuditEntry, Client, Employee, Vehicle, WorkOrder
 
 
 @dataclass(frozen=True)
@@ -40,7 +40,7 @@ async def list_page(
     actor = aliased(Employee)
     target = aliased(Employee)
     query = (
-        select(AuditEntry, actor.name, target.name, Vehicle.plate)
+        select(AuditEntry, actor.name, target.name, Vehicle.plate, _order_code())
         .outerjoin(actor, actor.user_id == AuditEntry.actor_user_id)
         .outerjoin(
             target,
@@ -54,6 +54,13 @@ async def list_page(
             and_(
                 AuditEntry.target_type == "vehicle",
                 Vehicle.id == AuditEntry.target_id,
+            ),
+        )
+        .outerjoin(
+            WorkOrder,
+            and_(
+                AuditEntry.target_type == "work_order",
+                WorkOrder.id == AuditEntry.target_id,
             ),
         )
         .order_by(AuditEntry.seq.desc())
@@ -70,10 +77,10 @@ async def list_page(
             action=entry.action,
             actor_name=actor_name,
             target_type=entry.target_type,
-            target_name=employee_name or plate,
+            target_name=employee_name or plate or order_code,
             details=_with_client_names(entry.details, client_names),
         )
-        for entry, actor_name, employee_name, plate in rows
+        for entry, actor_name, employee_name, plate, order_code in rows
     ]
 
 
@@ -100,3 +107,15 @@ def _with_client_names(
     if not _client_ids(details):
         return details
     return {**details, "client_id": [names.get(i, i) for i in details["client_id"]]}
+
+
+def _order_code() -> ColumnElement[str | None]:
+    """OT-2026-0042, como domain.order_code, pero en SQL para el join. Nulo si
+    la fila no es de una orden (concat ignoraría los nulos y daría "OT--")."""
+    code = func.concat(
+        "OT-",
+        WorkOrder.year,
+        "-",
+        func.lpad(cast(WorkOrder.number, String), 4, "0"),
+    )
+    return case((WorkOrder.id.is_not(None), code), else_=None)

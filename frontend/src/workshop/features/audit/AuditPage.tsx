@@ -110,6 +110,8 @@ function show(t: TFunction, field: string, value: unknown): string {
   if (value === null || value === undefined || value === "") return "—";
   if (field === "role") return t(`roles.${String(value)}`);
   if (field === "status") return t(`admin.statuses.${String(value)}`);
+  if (field === "work_order_status") return t(`orders.statuses.${String(value)}`);
+  if (field === "no_quote_reason") return t(`orders.noQuoteReasons.${String(value)}`);
   if (field === "hourly_cost_cents" && typeof value === "number") return formatEur(value);
   if (typeof value === "boolean") return t(value ? "common.yes" : "common.no");
   return String(value);

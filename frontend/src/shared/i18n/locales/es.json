@@ -27,7 +27,9 @@
       "workshop_updated": "Cambio en un taller",
       "superadmin_created": "Alta de superadministrador",
       "superadmin_invited": "Invitación de superadministrador",
-      "vehicle_owner_changed": "Cambio de titular"
+      "vehicle_owner_changed": "Cambio de titular",
+      "status_change_undone": "Cambio de estado deshecho",
+      "no_quote_marked": "Sin presupuesto"
     },
     "fields": {
       "email": "Email",
@@ -38,7 +40,9 @@
       "hourly_cost_cents": "Coste por hora",
       "status": "Estado",
       "max_employees_with_access": "Límite de acceso",
-      "client_id": "Titular"
+      "client_id": "Titular",
+      "no_quote_reason": "Motivo",
+      "work_order_status": "Estado de la orden"
     }
   },
   "nav": {
@@ -98,7 +102,7 @@
   },
   "home": {
     "yourRole": "Tu rol: {{role}}",
-    "comingSoon": "Los cambios de estado de las órdenes llegan en el próximo paso."
+    "comingSoon": "El diagnóstico, las notas internas y los trabajos de cada orden llegan en el próximo paso."
   },
   "clients": {
     "title": "Clientes",
@@ -208,7 +212,29 @@
     "history": "Historial de estados",
     "byClient": "El cliente",
     "warrantyOf": "Garantía de {{code}}",
-    "saved": "Cambios guardados."
+    "saved": "Cambios guardados.",
+    "statusTitle": "Estado",
+    "transitions": {
+      "diagnosing": "Pasar a diagnóstico",
+      "in_repair": "Empezar la reparación",
+      "waiting_parts": "Esperando piezas",
+      "ready": "Lista para recoger",
+      "unrepaired": "Lista sin reparar",
+      "delivered": "Entregar",
+      "cancelled": "Cancelar la orden"
+    },
+    "noteCancel": "¿Por qué se cancela? (solo para órdenes abiertas por error)",
+    "noteUnrepaired": "¿Por qué sale sin reparar?",
+    "undo": "Deshacer el último cambio",
+    "confirmUndo": "¿Deshacer el último cambio? La orden volverá a «{{status}}» y quedará en el historial.",
+    "noQuote": "Sin presupuesto",
+    "noQuoteNone": "Con presupuesto",
+    "noQuoteReasons": {
+      "waiver": "Renuncia del cliente",
+      "warranty": "Garantía",
+      "fixed_price": "Precio cerrado"
+    },
+    "noQuoteHint": "Permite empezar a reparar sin presupuesto aprobado. La renuncia del cliente necesita la hoja de recepción firmada, que llega más adelante."
   },
   "vehicles": {
     "title": "Vehículos",
@@ -366,6 +392,14 @@
     "work_order_not_found": "Esa orden no existe en este taller.",
     "work_order_closed": "La orden está cerrada: solo admite notas internas y su cobro.",
     "warranty_of_not_delivered": "Una orden de garantía solo puede venir de una orden ya entregada.",
-    "warranty_of_requires_warranty_type": "Solo una orden de tipo garantía puede enlazar a la orden original."
+    "warranty_of_requires_warranty_type": "Solo una orden de tipo garantía puede enlazar a la orden original.",
+    "invalid_transition": "La orden no puede pasar a ese estado desde el actual.",
+    "no_quote_reason_required": "Para reparar sin presupuesto aprobado, marca antes la orden como «sin presupuesto».",
+    "note_required": "Explica el motivo: es obligatorio para este cambio.",
+    "cannot_undo_automatic": "El último cambio no se hizo a mano (o ya es un deshacer), así que no se puede deshacer.",
+    "cannot_undo_notified": "El último cambio ya avisó al cliente y no se puede deshacer.",
+    "cannot_undo_closing": "Una orden entregada o cancelada no se reabre.",
+    "no_quote_not_now": "Solo se puede marcar «sin presupuesto» antes de empezar la reparación.",
+    "waiver_requires_signed_reception": "La renuncia del cliente necesita la hoja de recepción firmada."
   }
 }

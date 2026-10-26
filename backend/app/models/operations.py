@@ -12,6 +12,7 @@ from uuid import UUID
 from sqlalchemy import (
     BigInteger,
     CheckConstraint,
+    Computed,
     ForeignKey,
     ForeignKeyConstraint,
     Identity,
@@ -60,6 +61,10 @@ class Client(IdMixin, CreatedAtMixin, UpdatedAtMixin, Base):
             postgresql_where=text("email IS NOT NULL"),
         ),
         Index("ix_clients_workshop_id_name", "workshop_id", "name"),
+        # Sin índices trigram para la búsqueda: bajo RLS, Postgres no puede usar
+        # un índice para LIKE (su operador no es LEAKPROOF), así que no servirían.
+        # La búsqueda recorre las filas del taller, y nunca las de otro
+        # (migración 0008search).
     )
 
     workshop_id: Mapped[UUID] = mapped_column(ForeignKey("workshops.id"))
@@ -75,6 +80,17 @@ class Client(IdMixin, CreatedAtMixin, UpdatedAtMixin, Base):
     # Idioma de los avisos y del portal.
     language: Mapped[str] = mapped_column(String(2), server_default="es")
     archived_at: Mapped[datetime | None]
+    # Para la búsqueda del mostrador (RF-14), normalizados al guardar: el nombre
+    # en minúsculas y sin tildes ("maria" encuentra "María"), y solo los dígitos
+    # del teléfono ("600111222" encuentra "600 111 222"). Las calcula Postgres:
+    # nadie las escribe. search_text() la crea la migración 0008search. Son `text`:
+    # quitar tildes puede alargar un nombre ("ß" pasa a "ss").
+    name_search: Mapped[str] = mapped_column(
+        Text, Computed("search_text(name)", persisted=True)
+    )
+    phone_digits: Mapped[str] = mapped_column(
+        Text, Computed("regexp_replace(phone, '[^0-9]', '', 'g')", persisted=True)
+    )
     version: Mapped[int] = mapped_column(server_default="1")
 
     __mapper_args__ = {"version_id_col": version}  # noqa: RUF012

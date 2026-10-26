@@ -4,6 +4,7 @@ from sqlalchemy import or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models import Client
+from app.repositories.search import contains_text
 
 
 async def get(session: AsyncSession, client_id: UUID) -> Client | None:
@@ -34,8 +35,8 @@ async def list_page(
 ) -> list[Client]:
     """Clientes del taller fijado, por nombre.
 
-    El filtro por texto es el sencillo de esta pantalla. La búsqueda única del
-    mostrador (RF-14, con matrícula e índices propios) llega en el paso 6 de F2.
+    El filtro por texto es el de esta pantalla (también por email y NIF). La
+    búsqueda única del mostrador, con matrícula, está en repositories/search.py.
     """
     statement = select(Client).where(
         Client.archived_at.is_not(None) if archived else Client.archived_at.is_(None)
@@ -44,7 +45,8 @@ async def list_page(
         pattern = f"%{_escape_like(query)}%"
         statement = statement.where(
             or_(
-                Client.name.ilike(pattern),
+                # Sin tildes ni mayúsculas, como la búsqueda del mostrador.
+                contains_text(Client.name_search, query),
                 Client.phone.ilike(pattern),
                 Client.email.ilike(pattern),
                 Client.tax_id.ilike(pattern),

@@ -101,8 +101,13 @@
     "mechanic": "Mecánico"
   },
   "home": {
-    "yourRole": "Tu rol: {{role}}",
-    "comingSoon": "La búsqueda única del mostrador (matrícula, nombre o teléfono) llega en el próximo paso."
+    "searchLabel": "Buscar por matrícula, nombre o teléfono",
+    "searchPlaceholder": "1234 BCD, María García, 600 111 222…",
+    "noResults": "Nada coincide. Comprueba lo escrito o da de alta al cliente.",
+    "vehicles": "Vehículos",
+    "clients": "Clientes",
+    "openOrders": "Órdenes abiertas",
+    "allOrders": "Ver todas"
   },
   "clients": {
     "title": "Clientes",

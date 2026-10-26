@@ -101,8 +101,13 @@
     "mechanic": "Mechanic"
   },
   "home": {
-    "yourRole": "Your role: {{role}}",
-    "comingSoon": "The single counter search (plate, name or phone) arrives in the next step."
+    "searchLabel": "Search by plate, name or phone",
+    "searchPlaceholder": "1234 BCD, María García, 600 111 222…",
+    "noResults": "Nothing matches. Check what you typed or add the client.",
+    "vehicles": "Vehicles",
+    "clients": "Clients",
+    "openOrders": "Open work orders",
+    "allOrders": "See all"
   },
   "clients": {
     "title": "Clients",

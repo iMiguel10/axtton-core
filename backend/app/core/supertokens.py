@@ -37,6 +37,12 @@ def _no_public_signup(original: APIInterface) -> APIInterface:
         return GeneralErrorResponse("signup_disabled")
 
     original.sign_up_post = sign_up_post  # type: ignore[method-assign]
+    # "¿Existe una cuenta con este email?" solo le sirve al formulario de
+    # registro, que no hay. Abierta, cualquiera averiguaría qué emails tienen
+    # cuenta y anularía el "responde igual" de la recuperación (RF-121). Se apaga
+    # la operación, que SuperTokens atiende en varias rutas (hallazgo del cierre
+    # de F1, tests/test_adverse_f1.py).
+    original.disable_email_exists_get = True
     return original
 
 

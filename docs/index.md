@@ -3,7 +3,7 @@
 Sistema de gestión para talleres mecánicos: centraliza clientes, vehículos, citas, órdenes de trabajo, presupuestos, inventario y documentos, y da al cliente un portal privado donde seguir la reparación y aprobar el presupuesto sin llamar al taller.
 
 !!! warning "Estado"
-    F0 hecha: el esqueleto vertical desechable recorre el flujo de punta a punta ([lo aprendido](arquitectura/f0-cierre.md)). Siguiente fase: F1, autenticación y aislamiento completo. La [especificación](producto/especificacion.md) y la [arquitectura](arquitectura/index.md) son la referencia del diseño.
+    F0 y F1 hechas y cerradas ([lo aprendido en F0](arquitectura/f0-cierre.md), [en F1](arquitectura/f1-cierre.md)): autenticación, talleres, personal, auditoría y aislamiento completo. Siguiente fase: F2, el núcleo operativo. La [especificación](producto/especificacion.md) y la [arquitectura](arquitectura/index.md) son la referencia del diseño.
 
 ## En una página
 

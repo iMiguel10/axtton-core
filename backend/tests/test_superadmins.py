@@ -73,7 +73,7 @@ async def test_an_invited_superadmin_can_sign_in_to_admin(
         "Authorization": f"Bearer {await sign_in(client, Account(email, PASSWORD, ''))}"
     }
     me = await client.get("/api/v1/admin/me", headers=new)
-    assert me.json() == {"actor": "superadmin"}
+    assert me.json() == {"actor": "superadmin", "installation_mode": "multi"}
     # Y no es personal: /workshop lo rechaza.
     assert (await client.get("/api/v1/workshop/me", headers=new)).status_code == 403
 
@@ -174,3 +174,25 @@ async def test_the_application_role_cannot_read_superadmin_invitations(
     async with engines.app.connect() as conn:
         with pytest.raises(ProgrammingError, match="permission denied"):
             await conn.execute(text("SELECT * FROM superadmin_invitations"))
+
+
+@pytest.mark.asyncio
+async def test_inviting_someone_who_already_is_superadmin_adds_nothing(
+    client: AsyncClient, superadmin: dict[str, str], outbox: InMemoryEmailSender
+) -> None:
+    """Invitado dos veces y aceptado dos veces: la segunda no da otra alta ni
+    deja un segundo superadmin_created en la auditoría."""
+    email, first = await invite(client, superadmin, outbox)
+    assert await accept(client, first) == 204
+    _, second = await invite(client, superadmin, outbox, email)
+
+    response = await client.post(
+        f"/api/v1/superadmin-invitations/{second}/accept", json={"password": PASSWORD}
+    )
+    assert response.status_code == 409
+    assert response.json() == {"code": "already_a_superadmin"}
+
+    entries = (await client.get("/api/v1/admin/audit", headers=superadmin)).json()[
+        "entries"
+    ]
+    assert [e["action"] for e in entries].count("superadmin_created") == 1

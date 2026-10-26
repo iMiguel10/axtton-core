@@ -1,6 +1,6 @@
 from uuid import UUID
 
-from pydantic import BaseModel, EmailStr, Field
+from pydantic import BaseModel, EmailStr, Field, model_validator
 
 from app.domain.permissions import Role
 
@@ -39,6 +39,16 @@ class EmployeeUpdate(BaseModel):
     role: Role | None = None
     active: bool | None = None
     hourly_cost_cents: int | None = Field(default=None, ge=0)
+
+    @model_validator(mode="after")
+    def required_fields_are_not_nulled(self) -> "EmployeeUpdate":
+        """`None` aquí significa "no lo cambies" solo si el campo no viene. Un
+        `null` explícito en un campo obligatorio es un 422, no un 500 de la base
+        de datos (hallazgo del cierre de F1). Puesto y coste sí admiten vaciarse."""
+        for field in ("name", "role", "active"):
+            if field in self.model_fields_set and getattr(self, field) is None:
+                raise ValueError(f"{field} no puede ser null")
+        return self
 
 
 class VersionOnly(BaseModel):

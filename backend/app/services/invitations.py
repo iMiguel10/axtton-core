@@ -56,7 +56,12 @@ async def view(session: AsyncSession, token: str) -> InvitationView:
 async def accept(
     session: AsyncSession, workshop_id: UUID, token: str, password: str
 ) -> None:
-    # 1. Bloquear la invitación: dos aceptaciones a la vez se ponen en fila.
+    # 0. En fila con los demás cambios del personal de este taller: dos
+    #    aceptaciones de invitaciones DISTINTAS con un solo hueco libre entrarían
+    #    las dos (RF-114). Primero este bloqueo y después el de la fila, en el
+    #    mismo orden que invite y remove_access, para no cruzarse.
+    await employee_repo.lock_staff(session, workshop_id)
+    # 1. Bloquear la invitación: dos aceptaciones de la misma se ponen en fila.
     invitation = _usable(
         await invitation_repo.get_by_token_hash(session, hash_token(token), lock=True)
     )

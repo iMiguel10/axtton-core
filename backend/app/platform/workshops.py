@@ -9,7 +9,7 @@ from dataclasses import dataclass
 from datetime import UTC, datetime
 from uuid import UUID
 
-from sqlalchemy import func, select
+from sqlalchemy import func, select, text
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import get_settings
@@ -53,11 +53,15 @@ async def create_workshop(
     """
     token = new_token()
     async with platform_transaction() as session:
-        # Taller único (RF-111): se crea una vez y nunca más.
-        if get_settings().installation_mode == "single" and await session.scalar(
-            select(func.count()).select_from(Workshop)
-        ):
-            raise ConflictError("single_workshop_installation")
+        # Taller único (RF-111): se crea una vez y nunca más. El bloqueo pone en
+        # fila las altas: sin él, dos a la vez cuentan cero y crean dos talleres.
+        if get_settings().installation_mode == "single":
+            await session.execute(
+                text("SELECT pg_advisory_xact_lock(hashtextextended(:key, 0))"),
+                {"key": "workshop_creation"},
+            )
+            if await session.scalar(select(func.count()).select_from(Workshop)):
+                raise ConflictError("single_workshop_installation")
 
         workshop = Workshop(name=name)
         session.add(workshop)

@@ -13,7 +13,10 @@ export type WorkshopSummary = {
 
 export type NewWorkshop = { name: string; admin_name: string; admin_email: string };
 
+export type AdminMe = { actor: "superadmin"; installation_mode: "multi" | "single" };
+
 export const adminApi = {
+  me: () => apiRequest<AdminMe>("/admin/me"),
   list: () => apiRequest<WorkshopSummary[]>("/admin/workshops"),
   create: (input: NewWorkshop) =>
     apiRequest<{ workshop_id: string; invitation_email_sent: boolean }>("/admin/workshops", {

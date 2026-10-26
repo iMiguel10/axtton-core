@@ -57,7 +57,12 @@ async def workshop_context(
         )
 
 
-ActiveWorkshop = Annotated[WorkshopContext, Depends(workshop_context)]
+# scope="function": la salida del `yield` (el commit de workshop_transaction) se
+# ejecuta al terminar el endpoint, ANTES de enviar la respuesta y antes de las
+# BackgroundTasks. Con el valor por defecto ("request") el commit llegaba después
+# de ambas: un 2xx podía no estar guardado y un email de invitación salir antes
+# que su invitación (hallazgo del cierre de F1, tests/test_commit_order.py).
+ActiveWorkshop = Annotated[WorkshopContext, Depends(workshop_context, scope="function")]
 
 
 def require(action: Action) -> Callable[..., Awaitable[WorkshopContext]]:

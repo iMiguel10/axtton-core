@@ -59,7 +59,7 @@ Cosas que el diseño no había previsto o había previsto mal. Cada una ya está
 | | `platform/db.py` | Tal cual |
 | | `infra/pdf.py` (hilo aparte, semáforo, *fetcher* sin recursos externos) | Tal cual |
 | | `domain/quotes.py` (redondeo) y `domain/money.py` | Se amplían en F3 con descuentos y desglose de IVA |
-| | El patrón de RLS (`app_current_workshops`, la política común, las FK compuestas) y los triggers de inmutabilidad | Se reescriben en la migración inicial de F1 (decisión 0002) con la misma forma |
+| | El patrón de RLS (`app_current_workshops`, la política común, las FK compuestas) y los triggers de inmutabilidad | Se reescriben con la misma forma (decisión 0002): el patrón de RLS, en la migración inicial de F1; los triggers de inmutabilidad, en F3 con las tablas de presupuesto |
 | | Las pruebas de RLS (R1–R4, R7), las de inmutabilidad, la de concurrencia, el `conftest.py` y `reset_data.py` | Se adaptan a las tablas definitivas |
 | | Configuración del frontend (`vite.config.ts` con las dos entradas, el proxy y `portalFallback`; ESLint con la regla de separación; los `tsconfig`) | Tal cual; F1 añade Tailwind, shadcn, i18n y TanStack Query |
 | | `shared/api.ts`, `shared/money.ts` | Se adaptan a TanStack Query |

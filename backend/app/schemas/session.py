@@ -1,3 +1,4 @@
+from typing import Literal
 from uuid import UUID
 
 from pydantic import BaseModel
@@ -23,3 +24,8 @@ class ActiveWorkshopRead(BaseModel):
     workshop_id: UUID
     employee_id: UUID
     role: str
+
+
+class AdminMe(WhoAmI):
+    # Taller único (RF-111): la interfaz oculta el alta cuando ya hay un taller.
+    installation_mode: Literal["multi", "single"]

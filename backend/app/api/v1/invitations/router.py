@@ -31,7 +31,10 @@ async def invitation_session(workshop_id: UUID) -> AsyncIterator[AsyncSession]:
         raise ConflictError("already_an_employee") from error
 
 
-InvitationSession = Annotated[AsyncSession, Depends(invitation_session)]
+# scope="function": commit antes de responder (como ActiveWorkshop).
+InvitationSession = Annotated[
+    AsyncSession, Depends(invitation_session, scope="function")
+]
 
 
 # Las dependencias del límite van antes que la sesión: un 429 no abre transacción.

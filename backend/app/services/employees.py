@@ -133,6 +133,9 @@ async def update_employee(
     expected_version: int,
     changes: dict[str, Any],
 ) -> None:
+    # Antes de leer: así la ficha y el recuento de administradores se leen ya
+    # con los cambios de quien iba delante.
+    await employee_repo.lock_staff(session, workshop_id)
     employee = await _get(session, employee_id)
     _check_version(employee, expected_version)
     audited: dict[str, list[Any]] = {}
@@ -157,6 +160,7 @@ async def remove_access(
     """Quitar el acceso (RF-06): la ficha se queda (su nombre sigue en lo que
     hizo) y la cuenta deja de estar ligada. Surte efecto en la siguiente petición
     de esa persona, porque el taller activo se valida en cada una."""
+    await employee_repo.lock_staff(session, workshop_id)
     employee = await _get(session, employee_id)
     _check_version(employee, expected_version)
     if employee.user_id is None:
@@ -185,6 +189,8 @@ async def invite(
 ) -> NewInvitation:
     """Invitar (o reinvitar) a una ficha sin acceso (RF-04). La invitación
     anterior, si la hubiera, deja de servir."""
+    # En fila: dos reinvitaciones a la vez dejarían dos enlaces válidos.
+    await employee_repo.lock_staff(session, workshop_id)
     employee = await _get(session, employee_id)
     if employee.user_id is not None:
         raise ConflictError("employee_already_has_access")

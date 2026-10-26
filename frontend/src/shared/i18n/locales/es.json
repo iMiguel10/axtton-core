@@ -138,6 +138,7 @@
     "create": "Dar de alta",
     "created": "Taller creado. Su administrador ha recibido la invitación.",
     "createdNoEmail": "Taller creado, pero el correo no está configurado y la invitación no se ha enviado.",
+    "singleInstallation": "Esta instalación es de un solo taller y ya está creado: no se pueden dar de alta más.",
     "workshop": "Taller",
     "status": "Estado",
     "statuses": { "active": "Activo", "inactive": "Inactivo" },
@@ -183,7 +184,8 @@
     "invitation_already_accepted": "Esta invitación ya se aceptó. Inicia sesión.",
     "employee_limit_reached": "El taller ha llegado a su límite de empleados con acceso.",
     "employee_already_has_access": "Este empleado ya tiene acceso.",
-    "staff_cannot_be_superadmin": "Ese email ya es de una cuenta del personal de un taller. Un superadministrador necesita una cuenta propia, con otro email.",
+    "already_a_superadmin": "Esta cuenta ya es de superadministrador. Inicia sesión.",
+    "staff_cannot_be_superadmin":"Ese email ya es de una cuenta del personal de un taller. Un superadministrador necesita una cuenta propia, con otro email.",
     "superadmin_cannot_be_employee":"Una cuenta de superadministrador no puede ser empleado de un taller.",
     "already_an_employee": "Esa cuenta ya tiene acceso a este taller con otra ficha.",
     "single_workshop_installation": "Esta instalación es de un solo taller y ya existe."

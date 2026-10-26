@@ -308,7 +308,7 @@ Taller (organización, el "tenant")
 - **RF-120** El personal y el superadministrador entran con email y contraseña.
 - **RF-121** Recuperar la contraseña por email con un enlace de un solo uso que caduca. Pedirlo para un email que no existe responde igual que para uno que existe.
 - **RF-122** Cambiar la contraseña exige la actual y cierra las demás sesiones abiertas.
-- **RF-123** Cada usuario ve sus sesiones abiertas y puede cerrarlas todas.
+- **RF-123** Cada usuario ve sus sesiones abiertas y puede cerrar todas las demás (cerrar también la actual es cerrar sesión).
 - **RF-124** Segundo factor (2FA) **pospuesto**: no se construye, pero el inicio de sesión se diseña en pasos para poder añadirlo sin rehacerlo (§12).
 
 ## 6. Ciclos de vida
@@ -493,8 +493,9 @@ Existen desde el primer día, aunque no se cobre por ellos. Los de cuenta los pu
 | Piezas en el catálogo | 10.000 | Un catálogo básico; más indica una importación masiva que no está soportada |
 | Líneas por versión de presupuesto | 200 | Un presupuesto de taller no tiene más; protege el PDF y el cálculo de totales |
 | Versiones de presupuesto por orden | 20 | Más indica un uso anómalo |
-| Intentos de inicio de sesión por cuenta | 10 cada 15 minutos | Frenar el ataque por fuerza bruta sin bloquear al usuario legítimo |
-| Enlaces mágicos y recuperaciones de contraseña por email y hora | 5 | Evitar usar el sistema para enviar spam |
+| Intentos de inicio de sesión | 10 por hora por email y 30 por minuto por IP | Frenar el ataque por fuerza bruta sin bloquear al usuario legítimo: se frena, nunca se bloquea la cuenta. *Al construirlo en F1 se fijó por hora y se añadió la IP, holgada porque el personal de un taller comparte la suya* |
+| Recuperaciones de contraseña | 3 por hora por email y 10 por hora por IP | Evitar usar el sistema para enviar spam. *Fijado en F1, más estricto que el 5 inicial* |
+| Enlaces mágicos por email y hora | 5 | Ídem. Llega con el portal (F4) |
 | Validez de un enlace mágico | 15 minutos | Equilibrio entre seguridad y que el cliente abra el correo tarde |
 | Validez de una invitación | 7 días | El invitado puede tardar en verla; después hay que reenviarla |
 | Sesión del portal | 30 días | RF-47 |

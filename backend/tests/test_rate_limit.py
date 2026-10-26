@@ -217,3 +217,100 @@ async def test_the_real_valkey_counts() -> None:
     result = await limiter.hit("2/minute", "test", key)
     assert not result.allowed
     assert result.retry_after > 0
+
+
+# --- Formas de esquivar el límite que no tenían prueba ------------------------
+
+
+@pytest.mark.asyncio
+async def test_spaces_around_the_email_do_not_skip_the_limit(
+    client: AsyncClient,
+) -> None:
+    """SuperTokens recorta el email antes de comprobarlo: si el límite no lo
+    hiciera, " ana@x " y "ana@x" serían dos contadores para la misma cuenta."""
+    email = f"alguien-{uuid4().hex[:8]}@example.com"
+    for _ in range(10):
+        await client.post("/api/auth/signin", json=signin_body(email))
+    response = await client.post("/api/auth/signin", json=signin_body(f"  {email} "))
+    assert response.status_code == 429
+
+
+@pytest.mark.asyncio
+async def test_password_reset_is_limited_per_ip_across_emails(
+    client: AsyncClient,
+) -> None:
+    for _ in range(10):
+        body = {"formFields": [{"id": "email", "value": f"{uuid4().hex}@example.com"}]}
+        response = await client.post("/api/auth/user/password/reset/token", json=body)
+        assert response.status_code == 200
+    body = {"formFields": [{"id": "email", "value": "otro@example.com"}]}
+    response = await client.post("/api/auth/user/password/reset/token", json=body)
+    assert response.status_code == 429
+
+
+@pytest.mark.asyncio
+async def test_changing_the_workshop_in_an_invitation_link_does_not_reset_its_limit(
+    client: AsyncClient,
+) -> None:
+    """El límite por enlace va por el token, no por la URL entera: cambiar el
+    taller del enlace no da cinco intentos más con el mismo token."""
+    token = uuid4().hex
+    body = {"password": "una-contraseña-larga-1"}
+    for _ in range(5):
+        await client.post(f"/api/v1/invitations/{uuid4()}/{token}/accept", json=body)
+    response = await client.post(
+        f"/api/v1/invitations/{uuid4()}/{token}/accept", json=body
+    )
+    assert response.status_code == 429
+
+
+@pytest.mark.asyncio
+async def test_accepting_a_superadmin_invitation_is_limited_per_link(
+    client: AsyncClient,
+) -> None:
+    """Igual que la de empleado (RF-110): con un email que ya tiene cuenta, aceptar
+    exige su contraseña, así que sin límite serviría para probarlas."""
+    path = f"/api/v1/superadmin-invitations/{uuid4().hex}/accept"
+    body = {"password": "una-contraseña-larga-1"}
+    for _ in range(5):
+        response = await client.post(path, json=body)
+        assert response.status_code == 404
+    response = await client.post(path, json=body)
+    assert response.status_code == 429
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    "path",
+    [
+        "/api/v1/invitations/{workshop}/{token}",
+        "/api/v1/superadmin-invitations/{token}",
+    ],
+)
+async def test_viewing_invitations_is_limited_per_ip(
+    client: AsyncClient, path: str
+) -> None:
+    for _ in range(60):
+        url = path.format(workshop=uuid4(), token=uuid4().hex)
+        assert (await client.get(url)).status_code == 404
+    url = path.format(workshop=uuid4(), token=uuid4().hex)
+    assert (await client.get(url)).status_code == 429
+
+
+@pytest.mark.asyncio
+async def test_a_superadmin_changing_the_password_is_limited_too(
+    client: AsyncClient, make_account: Callable[[str], Awaitable[Account]]
+) -> None:
+    """La misma operación cuelga de /workshop y de /admin: el límite vale en las dos."""
+    account = await make_account("superadmin")
+    headers = {"Authorization": f"Bearer {await sign_in(client, account)}"}
+    wrong = {"current_password": "no-es-esta", "new_password": "otra-contraseña-larga"}
+    for _ in range(5):
+        response = await client.post(
+            "/api/v1/admin/account/password", json=wrong, headers=headers
+        )
+        assert response.status_code == 403
+    response = await client.post(
+        "/api/v1/admin/account/password", json=wrong, headers=headers
+    )
+    assert response.status_code == 429

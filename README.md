@@ -2,7 +2,7 @@
 
 **Gestión para talleres mecánicos, con un portal para que el cliente siga su reparación sin llamar.**
 
-> **Estado: F0 hecha.** Hay un esqueleto vertical desechable que recorre el flujo de punta a punta (presupuesto, aprobación desde el móvil y PDF) con aislamiento entre talleres en la base de datos. Todavía no hay autenticación ni diseño: empiezan en F1.
+> **Estado: F1 hecha y cerrada ([lo aprendido](docs/arquitectura/f1-cierre.md)).** Están hechos el acceso del personal y del superadministrador (SuperTokens, sin registro público), el alta de talleres, las invitaciones, el taller activo, los roles, el registro de auditoría, el límite de peticiones y el aislamiento entre talleres en la base de datos con sus pruebas adversas, más la CI y las pantallas correspondientes. Todavía no hay clientes, vehículos, órdenes ni portal: empiezan en F2.
 
 ## Qué resuelve
 
@@ -26,6 +26,16 @@ No es un programa de facturación, ni de compras, ni de reservas online: la espe
 ## Stack
 
 FastAPI · SQLAlchemy async · PostgreSQL 17 (RLS) · SuperTokens · Valkey + SAQ · WeasyPrint · React 19 · TypeScript · Vite · TanStack Query · Tailwind + shadcn/ui · Docker · Coolify
+
+## Arrancarlo
+
+```bash
+cp .env.example .env
+docker compose up -d --build
+docker compose exec api python -m app.scripts.create_superadmin <email>
+```
+
+Frontend en http://localhost:5173, API en http://localhost:8000/docs y correo capturado en http://localhost:8025. Siempre `localhost`, nunca `127.0.0.1`.
 
 ## Documentación
 

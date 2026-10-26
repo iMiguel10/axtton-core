@@ -1,6 +1,6 @@
 # Arquitectura
 
-> Estado: **v0.1** (2026-10-24) · F0 hecha y cerrada ([lo aprendido](f0-cierre.md)); siguiente fase: F1.
+> Estado: **v0.1** (2026-10-24) · F0 y F1 hechas y cerradas ([lo aprendido en F0](f0-cierre.md), [en F1](f1-cierre.md)). Donde F1 resultó distinto del diseño, el texto lo dice ("al construirlo en F1").
 
 Este documento recoge **qué se ha decidido y contra qué alternativa**. La especificación de producto está en [producto/especificacion.md](../producto/especificacion.md); los requisitos se citan por su número (RF-xx, RNF-xx).
 
@@ -13,7 +13,7 @@ Este documento recoge **qué se ha decidido y contra qué alternativa**. La espe
 | A3 | Frontend | **Un proyecto Vite con dos aplicaciones**: `src/workshop/` y `src/portal/`, con lo común en `src/shared/`. React 19 + TS, TanStack Query, react-hook-form + zod, Tailwind v4 + shadcn/ui, i18next. Cada aplicación es una entrada de Vite con su propio paquete | **Una sola SPA con dos árboles de rutas**: el cliente descargaría el código del taller y compartirían estado global. **Dos proyectos**: doble mantenimiento de dependencias y componentes para la misma interfaz. |
 | A4 | Autenticación | **SuperTokens para los tres actores**: email y contraseña (receta `emailpassword`) para el personal y el superadministrador; enlace mágico (receta `passwordless`) para los clientes. Detalle en §2 | **Zitadel**: OIDC estándar, passkeys y MFA gratis y consola de identidades, pero **no tiene enlace mágico**: el portal necesitaría un sistema de sesión propio aparte, y en el navegador exige que el backend haga de intermediario para no exponer tokens; además pesa más en infraestructura. Gana en lo que aquí está pospuesto. **Revisar esta decisión si** las apps móviles pasan a ser una fase real, el 2FA pasa a ser obligatorio o un taller quiere entrar con la cuenta de su empresa (SSO). **Híbrido** (SuperTokens para el personal, sesión propia para el portal): dos sistemas de sesión que mantener. **Autenticación propia**: habría que escribir y probar uno mismo la rotación, la revocación y el CSRF. |
 | A5 | Separación de actores en la API | **Tres prefijos**: `/api/v1/workshop/*`, `/api/v1/portal/*` y `/api/v1/admin/*`. Cada uno tiene una dependencia **a nivel de router** que exige su actor y rechaza cualquier otro | **Comprobar el actor en cada endpoint**: basta con olvidarlo una vez. Con el router, un endpoint nuevo queda protegido por construcción. |
-| A5b | Rutas sin sesión | **Un cuarto prefijo, `/api/v1/invitations`**, para aceptar una invitación: quien la usa aún no tiene cuenta. El taller viaja en la URL y se fija para RLS antes de buscar el token. Añadida en F1 | **Meterla en `/workshop`** exigiría una sesión que esa persona todavía no tiene. **Un prefijo genérico `/public`** invitaría a añadir ahí cualquier cosa sin pensar en quién la usa. |
+| A5b | Rutas sin sesión | **Dos prefijos más, sin sesión**, para aceptar una invitación, porque quien la usa aún no tiene cuenta: `/api/v1/invitations` (empleados; el taller viaja en la URL y se fija para RLS antes de buscar el token) y `/api/v1/superadmin-invitations` (superadministradores; sin taller, por la vía de plataforma, §4). Añadidos en F1 | **Meterla en `/workshop`** exigiría una sesión que esa persona todavía no tiene. **Un prefijo genérico `/public`** invitaría a añadir ahí cualquier cosa sin pensar en quién la usa. |
 | A6 | Taller activo | **Llega en cada petición** del personal (cabecera `X-Workshop-Id`) y se valida contra los empleados activos del usuario (RNF-09) | **Guardarlo en la sesión**: cambiar de taller obligaría a renovar la sesión, y dos pestañas no podrían trabajar en talleres distintos. |
 | A7 | Aislamiento entre talleres | **Dos capas en la base de datos además del filtro de la aplicación**: claves foráneas compuestas `(workshop_id, id)`, que impiden enlazar datos de dos talleres, y **Row-Level Security**, que impide leer o escribir filas de otro taller aunque una consulta olvide filtrar | **Solo FK compuestas** (como Applications Tracker): un filtro olvidado devolvería datos de otro taller, y solo lo cazarían las pruebas. Con varios talleres, ese error es el más probable y el más grave. |
 | A8 | Trabajo en segundo plano | **Valkey + SAQ** con un servicio `worker`, también para los trabajos programados (recordatorios, vencimientos, caducidad de presupuestos, borrado de firmas). Heredado | **Celery**: más pesado para el mismo uso. **cron del sistema**: fuera de Docker, sin reintentos ni registro. |
@@ -95,6 +95,8 @@ Cada prefijo es un router con su dependencia. Esa dependencia, además de compro
 | T10 | Consumir un enlace mágico, también con un email que es a la vez de personal en otro taller | La sesión creada es siempre `actor: client`, con el taller del enlace |
 | T11 | Buscar en el código llamadas que modifiquen el contenido de una sesión ya creada | Ninguna fuera de `app/core/sessions.py`; la prueba revisa el código, como R8 revisa los imports |
 
+F1 cubre T1, T2, T3, T8, T9 y T11. T4, T5, T6, T7 y T10 hablan del cliente y llegan con el portal (F4).
+
 ### Límite de peticiones (RNF-06)
 
 Hecho en F1, heredado de Applications Tracker: la librería `limits` con **ventana deslizante** sobre Valkey (`app/infra/rate_limit.py`), reglas puras en `app/domain/rate_limits.py`. Al superar una regla se responde 429 `rate_limited` con `Retry-After`; nunca se bloquea la cuenta, porque bastaría saber un email para dejar a alguien sin acceso.
@@ -115,7 +117,7 @@ Hecho en F1, heredado de Applications Tracker: la librería `limits` con **venta
 ### Trampas ya identificadas
 
 - **Revocar las sesiones de un cliente no es revocar las de su usuario de SuperTokens.** El usuario passwordless es uno por email, compartido entre talleres. Anonimizar a un cliente o cambiarle el email (RF-47) debe cerrar solo las sesiones cuyo `workshop_id` y `client_id` coinciden; `revokeAllSessionsForUser` cerraría también las de otros talleres. Por lo mismo, anonimizar nunca borra el usuario de SuperTokens si ese email sigue siendo cliente de otro taller (T7).
-- **RLS y el pool de conexiones.** El taller de la petición se fija con `set_config('app.workshop_id', …, true)`: el `true` lo limita a la transacción. Sin él, el valor se queda en la conexión y la siguiente petición que la reutilice vería el taller anterior.
+- **RLS y el pool de conexiones.** El taller de la petición se fija con `set_config('app.workshop_ids', …, true)`: el `true` lo limita a la transacción. Sin él, el valor se queda en la conexión y la siguiente petición que la reutilice vería el taller anterior.
 - **RLS no se aplica al dueño de las tablas.** La aplicación debe conectarse con un rol que no sea el propietario de las tablas, y las tablas llevan `FORCE ROW LEVEL SECURITY`. Si no, todas las políticas pasan sin que nada falle. Las migraciones usan el rol propietario y la aplicación el otro.
 - **Las vías que cruzan talleres son explícitas.** El `worker`, el resumen entre talleres (RF-09) y el superadministrador necesitan leer más de un taller. Lo hacen por una vía separada y nombrada, nunca desactivando RLS en la conexión normal.
 
@@ -137,6 +139,7 @@ Heredadas de Applications Tracker, salvo donde se dice:
 **La regla del multi-taller, nueva respecto a Applications Tracker:** **toda tabla de un taller lleva su propia columna `workshop_id NOT NULL`, también las tablas hijas**, aunque se pudiera deducir del padre. Cada tabla tiene además `UNIQUE (id, workshop_id)`, y sus claves foráneas son compuestas: `(parent_id, workshop_id) → parent(id, workshop_id)`.
 
 - **Qué consigue:** que la base de datos impida enlazar una línea de presupuesto del taller A con un presupuesto del taller B, y que la política de RLS (§4) sea una comparación de una columna, sin joins.
+- **Una excepción, `audit_log`:** su `workshop_id` puede ser nulo (las acciones de plataforma) y ninguna tabla la referencia, así que no lleva `UNIQUE (id, workshop_id)`: no hay ninguna FK compuesta que lo necesite. Sí lleva la política de RLS, y la fila nula no la ve ningún taller.
 - **Qué cuesta:** una columna repetida por tabla.
 
 ### Mapa
@@ -345,7 +348,7 @@ La tabla `workshops` tiene la misma política sobre su `id`, para que el persona
 
 ### Las vías que cruzan talleres
 
-Son exactamente cinco, y todas usan `axtton_platform` desde un único módulo (`app/platform/`). Ningún endpoint de `/workshop` ni de `/portal` lo importa, salvo **dos excepciones con nombre**: el selector de talleres (F1) y la petición de enlace mágico (§7.2, F4). Están escritas, con su fichero y su módulo, en la propia prueba R8 (`R8_EXCEPTIONS`), así que añadir otra es una decisión visible, no un descuido.
+Son exactamente cinco, y todas usan `axtton_platform` desde un único módulo (`app/platform/`). Ningún endpoint de `/workshop` ni de `/portal` lo importa, salvo **dos excepciones con nombre**: el selector de talleres (F1) y la petición de enlace mágico (§7.2, F4). Se escriben, con su fichero y su módulo, en la propia prueba R8 (`R8_EXCEPTIONS`), así que añadir otra es una decisión visible, no un descuido. Hoy `R8_EXCEPTIONS` solo contiene la primera; la segunda se añadirá con el portal.
 
 | Vía | Qué lee | Por qué no puede ir por la política normal |
 |---|---|---|
@@ -402,7 +405,7 @@ flowchart LR
 ```
 
 - **Un solo dominio**, como en Applications Tracker: el proxy sirve las dos aplicaciones y la API. El taller vive en `/`, el portal en `/portal` y la API en `/api`. Así las cookies de sesión no cruzan dominios y no hace falta CORS en producción.
-- **La API no envía avisos al cliente**: los escribe en la bandeja de salida (`notifications`) dentro de la misma transacción que el cambio que los provoca, y el `worker` los envía (§8). Hasta F5, los emails de acceso (invitaciones, enlaces mágicos) se envían en la propia petición.
+- **La API no envía avisos al cliente**: los escribe en la bandeja de salida (`notifications`) dentro de la misma transacción que el cambio que los provoca, y el `worker` los envía (§8). Hasta F5, los emails de acceso (invitaciones, enlaces mágicos) los envía la propia API, **después del commit** (en F1, con `BackgroundTasks` de FastAPI): si la transacción fallara, llegaría una invitación a algo que no existe. Para que el commit vaya de verdad antes, la dependencia que abre la transacción del taller se declara con `scope="function"`: con el ámbito por defecto, FastAPI la cierra después de responder y de las tareas en segundo plano (encontrado al cerrar F1).
 - **Los PDF los genera la API en el momento** (A14), sin guardarlos.
 
 | # | Decisión | Elección | Alternativa descartada y por qué |
@@ -417,35 +420,42 @@ Hereda la de Applications Tracker. Lo que cambia es que **la API se parte por ac
 axtton-core/
 ├── backend/
 │   └── app/
-│       ├── api/v1/
-│       │   ├── workshop/        endpoints del personal; el router exige actor staff y fija el taller (§2)
-│       │   ├── portal/          endpoints del cliente; el router exige actor client
-│       │   ├── admin/           endpoints del superadministrador; solo llaman a platform/
-│       │   └── deps.py          las tres dependencias de actor, y nada más decide permisos aquí
-│       ├── core/                configuración, SuperTokens, sesión de BD con el taller fijado
-│       ├── domain/              reglas puras: transiciones de la orden y del presupuesto, totales y redondeo,
-│       │                        días hábiles, matriz de permisos (can), estados que ve el cliente
+│       ├── api/
+│       │   ├── deps.py · rate_limit.py   dependencias comunes (emisor de correo) y límite de peticiones (§2)
+│       │   └── v1/
+│       │       ├── workshop/        endpoints del personal; el router exige actor staff y valida el taller activo en cada petición (§2)
+│       │       ├── portal/          endpoints del cliente; el router exige actor client (marcador hasta F4)
+│       │       ├── admin/           endpoints del superadministrador; solo llaman a platform/
+│       │       ├── invitations/     rutas sin sesión: aceptar una invitación de empleado o de superadministrador (A5b)
+│       │       ├── account.py       contraseña y sesiones; subrouter de /workshop y de /admin
+│       │       └── deps.py          las tres dependencias de actor, y nada más decide permisos aquí
+│       ├── core/                configuración, SuperTokens, la sesión (sessions.py), BD con el taller fijado, errores
+│       ├── domain/              reglas puras: matriz de permisos (can), actores, límite de peticiones, invitaciones;
+│       │                        con F2 y F3 llegan transiciones, totales, días hábiles y estados que ve el cliente
 │       ├── models/              SQLAlchemy
 │       ├── repositories/        consultas con axtton_app; siempre bajo RLS
 │       ├── schemas/             Pydantic, separados por actor cuando lo que se expone difiere
 │       ├── services/            casos de uso; commit y rollback
-│       ├── platform/            lo único que usa axtton_platform: superadministrador y planificador (§4)
-│       ├── infra/               email/, queue/, pdf/, rate_limit/ (detrás de interfaces)
-│       ├── jobs/                trabajos del worker: funciones finas que llaman a un service
-│       ├── templates/           PDF (presupuesto, hoja de recepción, resumen, informe) y emails, en es y en
-│       ├── scripts/             comandos de servidor (crear superadministrador, datos de demostración…)
-│       ├── main.py · worker.py
+│       ├── platform/            lo único que usa axtton_platform: superadministrador, selector de talleres
+│       │                        y, con el worker, el planificador (§4)
+│       ├── infra/               módulos detrás de interfaces: email.py, identity.py (SuperTokens), pdf.py,
+│       │                        rate_limit.py; la cola llega con el worker
+│       ├── scripts/             comandos de servidor (crear superadministrador, reset_data…)
+│       ├── jobs/ · templates/   llegan con el worker (F5) y los PDF (F3)
+│       └── main.py              (worker.py llega en F5)
 │   ├── migrations/              Alembic, con el rol axtton_owner
 │   └── tests/                   incluidas las adversas T* y R*
 ├── frontend/
 │   └── src/
-│       ├── workshop/            la aplicación del personal (features/, pages/, routes/)
-│       ├── portal/              la aplicación del cliente (features/, pages/, routes/)
-│       └── shared/              ui (shadcn), apiClient, i18n, borradores en IndexedDB, utilidades
+│       ├── workshop/            la aplicación del personal (features/ por área, lib/ con la sesión)
+│       ├── portal/              la aplicación del cliente (marcador hasta F4)
+│       └── shared/              components/ (shadcn y formularios), lib/ (apiClient, errores, queryClient),
+│                                i18n/, styles/; los borradores en IndexedDB llegan en F2
+├── .github/workflows/           la CI (A13)
 ├── docs/                        MkDocs (este sitio)
 ├── manual/                      Docusaurus, en F9
-├── deploy/                      proxy y configuración de producción
-└── compose.yml · compose.test.yml · compose.prod.yml
+├── deploy/                      hoy, el script de roles de Postgres; el proxy y la producción llegan en F2
+└── compose.yml                  (no hay compose.test.yml ni compose.prod.yml: las pruebas usan la base axtton_test del mismo compose)
 ```
 
 ### Reglas de capas
@@ -638,7 +648,7 @@ Todas son `CronJob` de SAQ. La búsqueda la hace el planificador por `platform/`
 | `api` | 8000 | FastAPI; `/docs` con el OpenAPI | F0 |
 | `frontend` | 5173 | Vite con las dos entradas (`/` y `/portal`) | F0 |
 | `supertokens` + `supertokens-db` | — | Core de autenticación y su propio Postgres; sin puertos publicados | F1 |
-| `valkey` | — | Cola de SAQ y límites de peticiones | F1 |
+| `valkey` | — | Límites de peticiones (RNF-06, F1); la cola de SAQ llega con el `worker` (F5) | F1 |
 | `worker` | — | La misma imagen que `api` con otro comando | F5 (antes, sin trabajos) |
 | `mailpit` | 8025 | Solo desarrollo: captura todo el correo | F1 |
 | `docs` | 8001 | MkDocs | F0 |
@@ -670,9 +680,9 @@ Como en Applications Tracker (su decisión 0023):
 | Nivel | Qué cubre | Dónde corre |
 |---|---|---|
 | `domain/` | Transiciones de la orden y del presupuesto, cálculo de totales y redondeo (RNF-14), reparto del descuento global, días hábiles, matriz de permisos, estados que ve el cliente | Sin base de datos; el más rápido |
-| Repositorios | Consultas, **siempre contra Postgres real con los roles reales** y RLS activa (nunca SQLite: RLS, `EXCLUDE` y los triggers no existirían) | `compose.test.yml` |
-| Services | Casos de uso, concurrencia con dos transacciones reales (carreras de §7), bandeja de avisos | `compose.test.yml` |
-| API | Contrato y adversas: T1–T8 (actores), R1–R8 (RLS), B1–B12 (avisos, adaptadas de Applications Tracker) | `compose.test.yml` |
+| Repositorios | Consultas, **siempre contra Postgres real con los roles reales** y RLS activa (nunca SQLite: RLS, `EXCLUDE` y los triggers no existirían) | La base `axtton_test` del compose (aún no hay `compose.test.yml`) |
+| Services | Casos de uso, concurrencia con dos transacciones reales (carreras de §7), bandeja de avisos | Ídem |
+| API | Contrato y adversas: T1–T11 (actores), R1–R8 (RLS), B1–B12 (avisos, adaptadas de Applications Tracker) | Ídem |
 | Migraciones | Subir y bajar contra una base **con datos** (RNF-35) | CI |
 | Frontend | Componentes y hooks con vitest; la regla de imports entre `workshop/` y `portal/` | CI |
 | Punta a punta | El flujo de los criterios de éxito (cita → recepción → presupuesto → aprobación en el portal → entrega), con Playwright | CI desde F6; antes, a mano |
@@ -685,7 +695,7 @@ Como en Applications Tracker (su decisión 0023):
 | Fase | Qué se construye, en concreto |
 |---|---|
 | **F0** ✔ | **Hecha** ([cierre y lo aprendido](f0-cierre.md)). Esqueleto vertical desechable: `workshops`, `clients`, `vehicles`, `work_orders`, `quotes` y `quote_lines` mínimos; un taller fijo; enviar un presupuesto de una línea, aprobarlo desde un enlace secreto y ver el cambio de estado. **Incluye un primer RLS de verdad** (dos roles y una política) y un PDF de una página, porque son lo que más puede sorprender. Se tira al terminar |
-| **F1** | Roles de BD y política generada por migración; R1–R8. SuperTokens con `emailpassword`, los tres routers y sus dependencias; T1–T3. `users`, `employees`, `invitations`, superadministrador por comando, alta de talleres, modo de instalación, taller activo. `audit_log`. Mailpit. **CI** |
+| **F1** | Roles de BD y política generada por migración; R1–R5, R7 y R8 (R6 espera a los triggers de presupuesto, F3). SuperTokens con `emailpassword`, los tres routers y sus dependencias; T1–T3. `users`, `employees`, `invitations`, superadministrador por comando, alta de talleres, modo de instalación, taller activo. `audit_log`. Mailpit. **CI**. *Añadido al construirlo:* límite de peticiones con Valkey (RNF-06), cuenta del personal (cambio de contraseña y sesiones), consulta del registro de auditoría e invitación de otros superadministradores (RF-110) |
 | **F2** | Clientes, vehículos, `vehicle_ownerships`, órdenes con su historial, número correlativo, deshacer, búsqueda, bloqueo optimista, borradores en IndexedDB. **Primer despliegue en Coolify** |
 | **F3** | Presupuestos versionados con sus triggers, totales y descuentos, decisión registrada por el taller, PDF del presupuesto con los datos legales |
 | **F4** | Receta `passwordless`, petición y consumo del enlace por taller (§7.2), routers del portal, estados para el cliente, aprobación desde el portal; T4–T7 |

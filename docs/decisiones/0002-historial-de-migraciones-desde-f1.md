@@ -25,3 +25,4 @@ En desarrollo hay que recrear la base: `docker compose down -v`.
 - El primer despliegue (F2) parte de un historial limpio.
 - **A partir del primer despliegue esto ya no se puede hacer**: una migración aplicada en producción no se borra ni se edita nunca; se corrige con otra.
 - El código de F0 que se tira sigue en el historial de git (commits `a8b310d` a `a0a4489`).
+- **Al construirlo en F1:** la migración inicial (`0001f1base`) solo trae las tablas de plataforma y de personal (`users`, `workshops`, `employees`, `invitations`, `audit_log`), la función `app_current_workshops()` y la política común. Los **triggers de inmutabilidad** que la decisión preveía reescribir no están, porque `quotes` y `quote_lines` aún no existen: vuelven con ellos en F3. Una segunda migración (`0002sadminv`) añade `superadmin_invitations`.

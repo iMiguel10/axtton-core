@@ -6,6 +6,7 @@ from fastapi import APIRouter, Depends, Query, status
 from app.api.deps import get_email_sender
 from app.api.v1 import account
 from app.api.v1.deps import Superadmin, require_superadmin
+from app.core.config import get_settings
 from app.infra.email import EmailSender
 from app.platform import audit as platform_audit
 from app.platform import superadmins as platform_superadmins
@@ -22,7 +23,7 @@ from app.schemas.admin import (
     WorkshopUpdate,
 )
 from app.schemas.audit import AuditEntryRead, AuditPageRead
-from app.schemas.session import WhoAmI
+from app.schemas.session import AdminMe
 
 # Toda ruta de este router exige una sesión de superadministrador (A5). Sus
 # endpoints solo llaman a app/platform/ y nunca devuelven datos de un taller.
@@ -36,8 +37,8 @@ router.include_router(account.router)
 
 
 @router.get("/me")
-async def me(user: Superadmin) -> WhoAmI:
-    return WhoAmI(actor=user.actor)
+async def me(user: Superadmin) -> AdminMe:
+    return AdminMe(actor=user.actor, installation_mode=get_settings().installation_mode)
 
 
 @router.post("/workshops", status_code=status.HTTP_201_CREATED)

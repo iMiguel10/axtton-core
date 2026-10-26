@@ -138,6 +138,7 @@
     "create": "Create",
     "created": "Workshop created. Its administrator has received the invitation.",
     "createdNoEmail": "Workshop created, but email is not configured and the invitation was not sent.",
+    "singleInstallation": "This is a single-workshop installation and the workshop already exists: no more can be created.",
     "workshop": "Workshop",
     "status": "Status",
     "statuses": { "active": "Active", "inactive": "Inactive" },
@@ -183,7 +184,8 @@
     "invitation_already_accepted": "This invitation was already accepted. Sign in.",
     "employee_limit_reached": "The workshop has reached its limit of employees with access.",
     "employee_already_has_access": "This employee already has access.",
-    "staff_cannot_be_superadmin": "That email already belongs to a workshop staff account. A superadmin needs an account of their own, with another email.",
+    "already_a_superadmin": "This account is already a superadmin. Sign in.",
+    "staff_cannot_be_superadmin":"That email already belongs to a workshop staff account. A superadmin needs an account of their own, with another email.",
     "superadmin_cannot_be_employee":"A superadmin account cannot be an employee of a workshop.",
     "already_an_employee": "That account already has access to this workshop with another record.",
     "single_workshop_installation": "This is a single-workshop installation and the workshop already exists."

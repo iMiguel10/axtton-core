@@ -9,7 +9,7 @@ from dataclasses import dataclass
 from datetime import UTC, datetime
 from uuid import UUID
 
-from sqlalchemy import func, select, update
+from sqlalchemy import func, select, text, update
 
 from app.core.config import get_settings
 from app.core.errors import ConflictError, ForbiddenError, NotFoundError
@@ -34,6 +34,11 @@ async def invite(*, email: str, invited_by: str, email_sender: EmailSender) -> b
     email = email.strip().lower()
     token = new_token()
     async with platform_transaction() as session:
+        # En fila por email: dos invitaciones a la vez dejarían dos enlaces válidos.
+        await session.execute(
+            text("SELECT pg_advisory_xact_lock(hashtextextended(:key, 0))"),
+            {"key": f"superadmin_invitation:{email}"},
+        )
         inviter = await session.scalar(
             select(User.id).where(User.supertokens_user_id == invited_by)
         )
@@ -127,6 +132,9 @@ async def accept(token: str, password: str) -> None:
         )
         if user is not None and user.kind == "staff":
             raise ConflictError("staff_cannot_be_superadmin")
+        # Ya lo era (lo invitaron dos veces): nada que dar de alta otra vez.
+        if user is not None:
+            raise ConflictError("already_a_superadmin")
         if user is None:
             user = User(supertokens_user_id=supertokens_user_id, kind="superadmin")
             session.add(user)

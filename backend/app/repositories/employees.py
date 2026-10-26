@@ -1,7 +1,7 @@
 from datetime import UTC, datetime
 from uuid import UUID
 
-from sqlalchemy import func, select, update
+from sqlalchemy import func, select, text, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models import Employee, Invitation, User
@@ -84,4 +84,21 @@ async def revoke_pending_invitations(session: AsyncSession, employee_id: UUID) -
             Invitation.revoked_at.is_(None),
         )
         .values(revoked_at=datetime.now(UTC))
+    )
+
+
+async def lock_staff(session: AsyncSession, workshop_id: UUID) -> None:
+    """Pone en fila, hasta el final de la transacción, los cambios del personal
+    de un taller que dependen de un recuento: que quede un administrador (RF-05)
+    y que no se pase el límite de empleados con acceso (RF-114).
+
+    Sin esto, dos transacciones a la vez cuentan cada una sin ver la otra (READ
+    COMMITTED) y las dos pasan la comprobación: dos administradores que se quitan
+    el rol mutuamente dejan el taller sin ninguno. Es un bloqueo consultivo de
+    Postgres, por taller: no necesita permisos sobre ninguna tabla y se suelta
+    solo al confirmar o deshacer.
+    """
+    await session.execute(
+        text("SELECT pg_advisory_xact_lock(hashtextextended(:key, 0))"),
+        {"key": f"staff:{workshop_id}"},
     )

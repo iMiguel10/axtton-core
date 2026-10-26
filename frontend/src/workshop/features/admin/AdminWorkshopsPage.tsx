@@ -29,6 +29,11 @@ export function AdminWorkshopsPage() {
   const { t } = useTranslation();
   const queryClient = useQueryClient();
   const workshops = useQuery({ queryKey, queryFn: adminApi.list });
+  const me = useQuery({ queryKey: ["admin", "me"], queryFn: adminApi.me });
+  // Taller único (RF-111): una vez creado, el alta desaparece. La API lo rechaza
+  // igual; esto evita ofrecer algo que solo puede acabar en error.
+  const canCreate =
+    me.data?.installation_mode !== "single" || (workshops.data?.length ?? 0) === 0;
   const update = useMutation({
     mutationFn: ({ id, changes }: { id: string; changes: Parameters<typeof adminApi.update>[1] }) =>
       adminApi.update(id, changes),
@@ -38,7 +43,10 @@ export function AdminWorkshopsPage() {
   return (
     <section className="grid gap-6">
       <h1 className="text-2xl font-semibold">{t("admin.title")}</h1>
-      <NewWorkshopForm />
+      {me.isSuccess && workshops.isSuccess && canCreate && <NewWorkshopForm />}
+      {me.isSuccess && workshops.isSuccess && !canCreate && (
+        <p className="text-muted-foreground text-sm">{t("admin.singleInstallation")}</p>
+      )}
       {update.isError && (
         <p role="alert" className="text-destructive text-sm">
           {errorMessage(t, update.error)}

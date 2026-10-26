@@ -30,3 +30,23 @@ def invitation_email(
         "Si no esperabas este mensaje, ignóralo."
     )
     return f"Te han dado acceso a {workshop_name} en AXTTON CORE", body
+
+
+def superadmin_invitation_path(token: str) -> str:
+    """Página del frontend que abre una invitación de superadministrador. Sin
+    taller: es de la plataforma."""
+    return f"/superadmin-invitations/{token}"
+
+
+def superadmin_invitation_email(*, link: str) -> tuple[str, str]:
+    """(asunto, cuerpo) del email que invita a ser superadministrador (RF-110)."""
+    body = (
+        "Hola:\n\n"
+        "Te han invitado a ser superadministrador de esta instalación de AXTTON CORE:"
+        " darás de alta talleres y gestionarás sus límites, sin acceso a lo que"
+        " ocurre dentro de cada uno.\n\n"
+        "Para crear tu cuenta, abre este enlace (caduca en 7 días):\n\n"
+        f"{link}\n\n"
+        "Si no esperabas este mensaje, ignóralo."
+    )
+    return "Te han invitado a administrar AXTTON CORE", body

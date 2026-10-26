@@ -25,9 +25,11 @@
       "invitation_accepted": "Invitación aceptada",
       "workshop_created": "Alta de taller",
       "workshop_updated": "Cambio en un taller",
-      "superadmin_created": "Alta de superadministrador"
+      "superadmin_created": "Alta de superadministrador",
+      "superadmin_invited": "Invitación de superadministrador"
     },
     "fields": {
+      "email": "Email",
       "name": "Nombre",
       "position": "Puesto",
       "role": "Rol",
@@ -42,6 +44,7 @@
     "home": "Inicio",
     "employees": "Empleados",
     "audit": "Auditoría",
+    "superadmins": "Superadministradores",
     "account": "Mi cuenta",
     "workshops": "Talleres",
     "signOut": "Cerrar sesión"
@@ -145,6 +148,22 @@
     "activate": "Reactivar",
     "deactivate": "Desactivar"
   },
+  "superadmins": {
+    "title": "Superadministradores",
+    "invite": "Invitar a otro superadministrador",
+    "inviteHint": "Podrá dar de alta talleres, cambiar sus límites y ver el registro de la plataforma, pero no lo que ocurre dentro de cada taller. Tiene que usar un email que no sea de ningún empleado.",
+    "send": "Enviar invitación",
+    "sent": "Invitación enviada.",
+    "sentNoEmail": "Invitación creada, pero el correo no está configurado y no se ha enviado.",
+    "current": "Con acceso",
+    "since": "desde el {{date}}",
+    "pending": "Invitaciones pendientes",
+    "expires": "caduca el {{date}}"
+  },
+  "superadminInvitation": {
+    "title": "Invitación de superadministrador",
+    "intro": "Te han invitado a administrar esta instalación de AXTTON CORE con el email {{email}}. Elige tu contraseña para crear la cuenta."
+  },
   "portal": {
     "comingSoon": "El portal del cliente estará disponible próximamente."
   },
@@ -164,7 +183,8 @@
     "invitation_already_accepted": "Esta invitación ya se aceptó. Inicia sesión.",
     "employee_limit_reached": "El taller ha llegado a su límite de empleados con acceso.",
     "employee_already_has_access": "Este empleado ya tiene acceso.",
-    "superadmin_cannot_be_employee": "Una cuenta de superadministrador no puede ser empleado de un taller.",
+    "staff_cannot_be_superadmin": "Ese email ya es de una cuenta del personal de un taller. Un superadministrador necesita una cuenta propia, con otro email.",
+    "superadmin_cannot_be_employee":"Una cuenta de superadministrador no puede ser empleado de un taller.",
     "already_an_employee": "Esa cuenta ya tiene acceso a este taller con otra ficha.",
     "single_workshop_installation": "Esta instalación es de un solo taller y ya existe."
   }

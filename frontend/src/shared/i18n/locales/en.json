@@ -25,9 +25,11 @@
       "invitation_accepted": "Invitation accepted",
       "workshop_created": "Workshop created",
       "workshop_updated": "Workshop changed",
-      "superadmin_created": "Superadmin created"
+      "superadmin_created": "Superadmin created",
+      "superadmin_invited": "Superadmin invited"
     },
     "fields": {
+      "email": "Email",
       "name": "Name",
       "position": "Position",
       "role": "Role",
@@ -42,6 +44,7 @@
     "home": "Home",
     "employees": "Employees",
     "audit": "Audit log",
+    "superadmins": "Superadmins",
     "account": "My account",
     "workshops": "Workshops",
     "signOut": "Sign out"
@@ -145,6 +148,22 @@
     "activate": "Reactivate",
     "deactivate": "Deactivate"
   },
+  "superadmins": {
+    "title": "Superadmins",
+    "invite": "Invite another superadmin",
+    "inviteHint": "They will be able to create workshops, change their limits and read the platform log, but not see what happens inside each workshop. They must use an email that is not an employee's.",
+    "send": "Send invitation",
+    "sent": "Invitation sent.",
+    "sentNoEmail": "Invitation created, but email is not configured and it was not sent.",
+    "current": "With access",
+    "since": "since {{date}}",
+    "pending": "Pending invitations",
+    "expires": "expires on {{date}}"
+  },
+  "superadminInvitation": {
+    "title": "Superadmin invitation",
+    "intro": "You have been invited to administer this AXTTON CORE installation with the email {{email}}. Choose your password to create the account."
+  },
   "portal": {
     "comingSoon": "The client portal will be available soon."
   },
@@ -164,7 +183,8 @@
     "invitation_already_accepted": "This invitation was already accepted. Sign in.",
     "employee_limit_reached": "The workshop has reached its limit of employees with access.",
     "employee_already_has_access": "This employee already has access.",
-    "superadmin_cannot_be_employee": "A superadmin account cannot be an employee of a workshop.",
+    "staff_cannot_be_superadmin": "That email already belongs to a workshop staff account. A superadmin needs an account of their own, with another email.",
+    "superadmin_cannot_be_employee":"A superadmin account cannot be an employee of a workshop.",
     "already_an_employee": "That account already has access to this workshop with another record.",
     "single_workshop_installation": "This is a single-workshop installation and the workshop already exists."
   }

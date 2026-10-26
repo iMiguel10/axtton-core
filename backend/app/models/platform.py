@@ -138,6 +138,24 @@ class Invitation(IdMixin, CreatedAtMixin, Base):
     created_by_user_id: Mapped[UUID | None] = mapped_column(ForeignKey("users.id"))
 
 
+class SuperadminInvitation(IdMixin, CreatedAtMixin, Base):
+    """Invitación para ser superadministrador (RF-110).
+
+    De la plataforma, no de un taller: sin workshop_id ni RLS, y solo el rol de
+    plataforma la lee (la migración se la retira a axtton_app). Del enlace solo
+    se guarda el hash, como en las de empleados.
+    """
+
+    __tablename__ = "superadmin_invitations"
+
+    email: Mapped[str] = mapped_column(String(320))
+    token_hash: Mapped[bytes] = mapped_column(LargeBinary, unique=True)
+    expires_at: Mapped[datetime]
+    accepted_at: Mapped[datetime | None]
+    revoked_at: Mapped[datetime | None]
+    created_by_user_id: Mapped[UUID | None] = mapped_column(ForeignKey("users.id"))
+
+
 class AuditEntry(IdMixin, CreatedAtMixin, Base):
     """Registro de acciones sensibles (RNF-16). Append-only por permisos.
 

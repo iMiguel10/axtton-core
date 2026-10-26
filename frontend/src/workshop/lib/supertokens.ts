@@ -8,6 +8,7 @@ import { queryClient } from "@/shared/lib/queryClient";
 export function isPublicPath(pathname: string): boolean {
   return (
     ["/login", "/forgot-password", "/reset-password"].includes(pathname) ||
+    pathname.startsWith("/superadmin-invitations/") ||
     pathname.startsWith("/invitations/")
   );
 }

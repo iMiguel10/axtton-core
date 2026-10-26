@@ -10,6 +10,9 @@ from supertokens_python.framework.fastapi import get_middleware
 from app.api.rate_limit import AuthRateLimitMiddleware, retry_after_headers
 from app.api.v1.admin.router import router as admin_router
 from app.api.v1.invitations.router import router as invitations_router
+from app.api.v1.invitations.superadmin import (
+    router as superadmin_invitations_router,
+)
 from app.api.v1.portal.router import router as portal_router
 from app.api.v1.workshop.router import router as workshop_router
 from app.core.config import get_settings
@@ -39,6 +42,7 @@ app.include_router(workshop_router)
 app.include_router(portal_router)
 app.include_router(admin_router)
 app.include_router(invitations_router)
+app.include_router(superadmin_invitations_router)
 
 
 @app.exception_handler(AppError)

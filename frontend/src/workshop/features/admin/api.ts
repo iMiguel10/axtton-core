@@ -25,3 +25,17 @@ export const adminApi = {
     changes: { status?: "active" | "inactive"; max_employees_with_access?: number },
   ) => apiRequest<void>(`/admin/workshops/${id}`, { method: "PATCH", body: changes }),
 };
+
+export type SuperadminsList = {
+  superadmins: { email: string; created_at: string }[];
+  pending_invitations: { id: string; email: string; expires_at: string }[];
+};
+
+export const superadminsApi = {
+  list: () => apiRequest<SuperadminsList>("/admin/superadmins"),
+  invite: (email: string) =>
+    apiRequest<{ invitation_email_sent: boolean }>("/admin/superadmins/invitations", {
+      method: "POST",
+      body: { email },
+    }),
+};

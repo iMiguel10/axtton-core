@@ -8,8 +8,14 @@ from app.api.v1 import account
 from app.api.v1.deps import Superadmin, require_superadmin
 from app.infra.email import EmailSender
 from app.platform import audit as platform_audit
+from app.platform import superadmins as platform_superadmins
 from app.platform import workshops as platform_workshops
 from app.schemas.admin import (
+    PendingSuperadminInvitation,
+    SuperadminInvitationCreate,
+    SuperadminInvitationSent,
+    SuperadminRead,
+    SuperadminsRead,
     WorkshopCreate,
     WorkshopCreated,
     WorkshopRead,
@@ -52,6 +58,33 @@ async def create_workshop(
         workshop_id=created.workshop_id,
         invitation_email_sent=created.invitation_email_sent,
     )
+
+
+@router.get("/superadmins")
+async def list_superadmins() -> SuperadminsRead:
+    found, pending = await platform_superadmins.list_superadmins()
+    return SuperadminsRead(
+        superadmins=[SuperadminRead(**s.__dict__) for s in found],
+        pending_invitations=[
+            PendingSuperadminInvitation(**p.__dict__) for p in pending
+        ],
+    )
+
+
+@router.post("/superadmins/invitations", status_code=status.HTTP_201_CREATED)
+async def invite_superadmin(
+    body: SuperadminInvitationCreate,
+    user: Superadmin,
+    email_sender: Annotated[EmailSender, Depends(get_email_sender)],
+) -> SuperadminInvitationSent:
+    """Invitar a otro superadministrador (RF-110). Se responde después de enviar el
+    email, que sale tras el commit."""
+    sent = await platform_superadmins.invite(
+        email=str(body.email),
+        invited_by=user.supertokens_user_id,
+        email_sender=email_sender,
+    )
+    return SuperadminInvitationSent(invitation_email_sent=sent)
 
 
 @router.get("/audit")

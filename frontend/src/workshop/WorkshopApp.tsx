@@ -3,12 +3,14 @@ import { useTranslation } from "react-i18next";
 import { Navigate, Route, Routes } from "react-router-dom";
 
 import { AccountPage } from "./features/account/AccountPage";
+import { AdminSuperadminsPage } from "./features/admin/AdminSuperadminsPage";
 import { AdminWorkshopsPage } from "./features/admin/AdminWorkshopsPage";
 import { AuditPage } from "./features/audit/AuditPage";
 import { ForgotPasswordPage } from "./features/auth/ForgotPasswordPage";
 import { InvitationPage } from "./features/auth/InvitationPage";
 import { LoginPage } from "./features/auth/LoginPage";
 import { ResetPasswordPage } from "./features/auth/ResetPasswordPage";
+import { SuperadminInvitationPage } from "./features/auth/SuperadminInvitationPage";
 import { EmployeesPage } from "./features/employees/EmployeesPage";
 import { HomePage } from "./features/home/HomePage";
 import { AppLayout } from "./features/layout/AppLayout";
@@ -22,6 +24,7 @@ export function WorkshopApp() {
       <Route path="/forgot-password" element={<ForgotPasswordPage />} />
       <Route path="/reset-password" element={<ResetPasswordPage />} />
       <Route path="/invitations/:workshopId/:token" element={<InvitationPage />} />
+      <Route path="/superadmin-invitations/:token" element={<SuperadminInvitationPage />} />
       <Route path="*" element={<SessionGate />} />
     </Routes>
   );
@@ -53,6 +56,7 @@ function SuperadminRoutes() {
   const { t } = useTranslation();
   const nav = [
     { to: "/admin", label: t("nav.workshops") },
+    { to: "/admin/superadmins", label: t("nav.superadmins") },
     { to: "/admin/audit", label: t("nav.audit") },
     { to: "/admin/account", label: t("nav.account") },
   ];
@@ -60,6 +64,7 @@ function SuperadminRoutes() {
     <AppLayout nav={nav}>
       <Routes>
         <Route path="/admin" element={<AdminWorkshopsPage />} />
+        <Route path="/admin/superadmins" element={<AdminSuperadminsPage />} />
         <Route path="/admin/audit" element={<AuditPage scope={{ prefix: "/admin" }} />} />
         <Route path="/admin/account" element={<AccountPage prefix="/admin" />} />
         <Route path="*" element={<Navigate to="/admin" replace />} />

@@ -49,6 +49,8 @@ nav:
       - arquitectura/index.md
       - "Cierre de F0": arquitectura/f0-cierre.md
       - "Cierre de F1": arquitectura/f1-cierre.md
+  - Guías:
+      - "Datos de demostración": guias/demo.md
   - Decisiones:
       - decisiones/index.md
       - "0001 — Roles solo en el script de inicio": decisiones/0001-roles-solo-en-el-script-de-inicio.md

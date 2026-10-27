@@ -19,7 +19,8 @@ Sitio MkDocs en `docs/` (http://localhost:8001). Es la fuente de verdad del dise
 | `docs/decisiones/` | Bitácora de cambios de rumbo durante el desarrollo, con plantilla |
 | `docs/arquitectura/f0-cierre.md` | Lo aprendido en F0, y qué del esqueleto se queda y qué se tira |
 | `docs/arquitectura/f1-cierre.md` | Lo aprendido en F1: lo confirmado, lo descubierto al cerrarla y lo que queda abierto |
-| `docs/guias/`, `docs/referencia/` | Vacías a propósito hasta que haya código |
+| `docs/guias/demo.md` | Los datos de demostración: cómo se cargan, las cuentas y qué hay |
+| `docs/referencia/` | Vacía a propósito hasta que haya código |
 
 **Si el código y un documento no coinciden, no se corrige el documento sin más.** Primero se averigua si el diseño evolucionó (se actualiza el documento dejando constancia) o si la implementación se lo saltó (y entonces es un fallo del código).
 
@@ -54,6 +55,7 @@ docker compose exec api mypy app tests       # tipos
 docker compose exec api pytest               # pruebas, contra la base axtton_test con los roles reales
 docker compose down -v                       # borra los volúmenes: necesario si cambia deploy/postgres/initdb
 docker compose exec api python -m app.scripts.create_superadmin <email>   # el primero; pide la contraseña (o SUPERADMIN_PASSWORD). Los demás, por invitación en /admin/superadmins
+docker compose exec api python -m app.scripts.seed_demo   # BORRA todo y crea la demo: dos talleres, cuentas y un mes de trabajo (docs/guias/demo.md). Solo con DEMO_SEED_ENABLED=true
 # CI: .github/workflows/ci.yml ejecuta en cada push lo mismo que aquí (backend con compose, frontend con npm ci, docs estricto).
 docker compose exec api uv add <paquete>     # dependencias: siempre dentro del contenedor, nunca en el host
 docker compose exec frontend npx tsc -b        # tipos del frontend
@@ -150,6 +152,7 @@ Ya identificadas en el diseño (arquitectura §2, §3, §4, §8 y §9); se ampli
 - **Anonimizar y abrir una orden se ponen en fila sobre la fila del cliente** (`client_repo.get_locked`): anonimizar pide `FOR UPDATE` antes de contar sus órdenes abiertas; abrir una orden o darle un vehículo, `FOR SHARE` antes de leerlo. El bloqueo de la FK al insertar la orden también espera, pero llega con el cliente ya leído sin anonimizar.
 - **Un cliente anonimizado tiene el nombre vacío, y es lo único que lo distingue en una fila ajena** (la orden, el titular, la auditoría): se enseña siempre con `clientName(t, name)`, que da "Cliente eliminado". Un `{client.name}` suelto deja un hueco en blanco.
 - **RNF-40 lo vigila un barrido** (`test_anonymize.py`): todas las tablas convertidas en texto, buscando lo que el cliente era. Una tabla o columna nueva que guarde un dato personal del cliente lo hace fallar, y hay que decidir qué hace con ella la anonimización.
+- **Los datos de demo pasan por los services y luego se mueven las fechas** (`app/scripts/seed_demo.py`): así cumplen todas las reglas, y una regla nueva que la demo no cumpla hace fallar `test_seed_demo.py`. Una pantalla o un estado nuevo que se quiera enseñar en la demo se añade ahí. Los periodos de titularidad y los trabajos los congelan triggers con cualquier rol: para moverlos, el dueño desactiva el trigger dentro de su transacción (titularidad) o se fija la fecha al crearlos (`worked_on`).
 - **Alembic no detecta los CHECK al generar** una migración: se escriben a mano (`op.create_check_constraint`), y `alembic check` tampoco los echa en falta.
 - **En los `details` de la auditoría, cada clave significa una sola cosa**: `status` es el estado de un taller, así que el de una orden va en `work_order_status`. `AuditPage` traduce cada valor según su clave.
 - **En el registro de auditoría, un cliente va por id, nunca por nombre**: es append-only y RF-15 obliga a borrar el nombre al anonimizar. El nombre se pone al leerlo (`repositories/audit.py`).

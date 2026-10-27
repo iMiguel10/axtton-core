@@ -698,6 +698,7 @@ Como en Applications Tracker (su decisión 0023):
 - **Despliegue continuo:** cada push a la rama principal, con la CI en verde, despliega.
 - **`APP_URL`**: la dirección pública del frontend. La API la usa para construir los enlaces que recibe el cliente, que apuntan a páginas del portal y no a la API (lo aprendido en F0).
 - **Copias de seguridad:** un servicio de copias diarias fuera del servidor desde F9 (RNF-33), y la restauración se prueba antes de cerrar la fase.
+- **La demo** (*decidido antes del primer despliegue, F2*): una instalación aparte, con `DEMO_SEED_ENABLED=true`, que cada noche ejecuta `python -m app.scripts.seed_demo --purge-other-accounts` (una tarea programada de Coolify). Vacía los datos, borra las cuentas que hayan creado los visitantes y vuelve a cargar los dos talleres de ejemplo con fechas relativas a ese día ([guía](../guias/demo.md)). Una instalación real no tiene la variable, y el script se niega a correr.
 
 ## 10. Pruebas
 

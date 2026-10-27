@@ -44,6 +44,13 @@ class Settings(BaseSettings):
     # Proxies propios cuyo X-Forwarded-For es de fiar (IPs o CIDR, por comas).
     trusted_proxies: str = ""
 
+    # Datos de demostración (app/scripts/seed_demo.py): el script BORRA todo, así
+    # que solo corre si esto se activa a propósito. En desarrollo y en la demo
+    # desplegada, sí; en una instalación real, nunca.
+    demo_seed_enabled: bool = False
+    # La contraseña de todas las cuentas de la demo; sin ella, la del script.
+    demo_password: str | None = None
+
 
 @lru_cache
 def get_settings() -> Settings:

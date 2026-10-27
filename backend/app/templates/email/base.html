@@ -1,0 +1,57 @@
+<!doctype html>
+{#
+  Plantilla única de los emails (infra/email.py::compose). Con tablas y estilos en
+  línea: es lo único que entienden igual Gmail, Outlook y el correo del móvil.
+  Los colores son los de la guía de marca: casi negro #0e1116, marfil #f7f7f7,
+  dorado #c9a96a (el botón: texto oscuro sobre dorado, ~8:1) y el dorado
+  oscurecido #7a5e26 para enlaces sobre blanco, que sí pasa el contraste.
+#}
+<html lang="es">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="color-scheme" content="light only" />
+    <title>{{ content.subject }}</title>
+  </head>
+  <body style="margin:0;padding:0;background:#f7f7f7;">
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#f7f7f7;">
+      <tr>
+        <td align="center" style="padding:32px 16px;">
+          <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:560px;font-family:'Geist',Helvetica,Arial,sans-serif;color:#15181d;">
+            <tr>
+              <td style="background:#0e1116;border-radius:12px 12px 0 0;padding:24px 32px;">
+                <img src="cid:{{ logo_cid }}" width="180" alt="AXTTON CORE" style="display:block;width:180px;height:auto;border:0;" />
+                {% if content.workshop_name %}
+                <p style="margin:16px 0 0;font-size:18px;font-weight:600;color:#f7f7f7;">{{ content.workshop_name }}</p>
+                {% endif %}
+              </td>
+            </tr>
+            <tr>
+              <td style="background:#ffffff;border:1px solid #e3e5e8;border-top:0;border-radius:0 0 12px 12px;padding:32px;">
+                <p style="margin:0 0 16px;font-size:16px;font-weight:600;">{{ content.greeting }}</p>
+                {% for paragraph in content.paragraphs %}
+                <p style="margin:0 0 16px;font-size:15px;line-height:1.6;">{{ paragraph }}</p>
+                {% endfor %}
+                <table role="presentation" cellpadding="0" cellspacing="0" style="margin:24px 0;">
+                  <tr>
+                    <td style="background:#c9a96a;border-radius:8px;">
+                      <a href="{{ content.action_url }}" style="display:inline-block;padding:12px 24px;font-size:15px;font-weight:600;color:#0e1116;text-decoration:none;">{{ content.action_label }}</a>
+                    </td>
+                  </tr>
+                </table>
+                <p style="margin:0 0 8px;font-size:13px;line-height:1.5;color:#5b6168;">Si el botón no funciona, copia este enlace en el navegador:</p>
+                <p style="margin:0 0 24px;font-size:13px;line-height:1.5;word-break:break-all;"><a href="{{ content.action_url }}" style="color:#7a5e26;">{{ content.action_url }}</a></p>
+                <p style="margin:0;padding-top:16px;border-top:1px solid #e3e5e8;font-size:13px;line-height:1.5;color:#5b6168;">{{ content.footnote }}</p>
+              </td>
+            </tr>
+            <tr>
+              <td style="padding:16px 32px;font-size:12px;line-height:1.5;color:#5b6168;text-align:center;">
+                {% if content.workshop_name %}{{ content.workshop_name }} gestiona sus reparaciones con AXTTON CORE.{% else %}AXTTON CORE · Gestión del taller y seguimiento de cada reparación.{% endif %}
+              </td>
+            </tr>
+          </table>
+        </td>
+      </tr>
+    </table>
+  </body>
+</html>

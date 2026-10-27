@@ -9,18 +9,68 @@ de avisos con reintentos y "nunca dos veces" llega en F5.
 
 from dataclasses import dataclass, field
 from email.message import EmailMessage
+from email.utils import formataddr, parseaddr
+from functools import cache
+from pathlib import Path
 from typing import Protocol
 
 import aiosmtplib
+from jinja2 import Environment, FileSystemLoader, select_autoescape
 
 from app.core.config import Settings
+from app.domain.emails import EmailContent
+
+TEMPLATES = Path(__file__).resolve().parent.parent / "templates" / "email"
+# El logotipo va dentro del email (CID), no enlazado: se ve sin cargar nada de
+# fuera, también en los clientes que bloquean las imágenes remotas.
+LOGO_CID = "logo@axtton"
 
 
 @dataclass(frozen=True)
 class Email:
     to: str
     subject: str
+    # El texto plano: lo que leen los clientes sin HTML, y lo que miran las pruebas.
     body: str
+    # La versión con la marca (compose); sin ella, el email sale solo en texto.
+    html: str | None = None
+    # El nombre del remitente si no es la plataforma: "Talleres Martínez
+    # (AXTTON CORE)". La dirección es siempre la de la plataforma (RF-68).
+    sender_name: str | None = None
+
+
+@cache
+def _templates() -> Environment:
+    return Environment(
+        loader=FileSystemLoader(TEMPLATES), autoescape=select_autoescape(["html"])
+    )
+
+
+def compose(to: str, content: EmailContent) -> Email:
+    """El email entero a partir de su contenido: el texto plano y el HTML con la
+    marca de la plataforma y, si es de un taller, su nombre en la cabecera y en
+    el remitente. Cuando los talleres tengan logotipo (RF-02, F3), irá aquí."""
+    text = "\n\n".join(
+        [
+            content.greeting,
+            *content.paragraphs,
+            f"{content.action_label}: {content.action_url}",
+            content.footnote,
+        ]
+    )
+    html = (
+        _templates()
+        .get_template("base.html")
+        .render(content=content, logo_cid=LOGO_CID)
+    )
+    sender = f"{content.workshop_name} (AXTTON CORE)" if content.workshop_name else None
+    return Email(
+        to=to,
+        subject=content.subject,
+        body=text,
+        html=html,
+        sender_name=sender,
+    )
 
 
 class EmailSender(Protocol):
@@ -28,6 +78,30 @@ class EmailSender(Protocol):
     def enabled(self) -> bool: ...
 
     async def send(self, email: Email) -> None: ...
+
+
+def build_message(email: Email, email_from: str) -> EmailMessage:
+    """El mensaje MIME: el texto y, si lo hay, el HTML como alternativa, con el
+    logotipo "related" al HTML (que lo pinta con cid:). El remitente lleva el
+    nombre del taller si el email es suyo, con la dirección de la plataforma."""
+    message = EmailMessage()
+    name, address = parseaddr(email_from)
+    message["From"] = formataddr((email.sender_name or name, address))
+    message["To"] = email.to
+    message["Subject"] = email.subject
+    message.set_content(email.body)
+    if email.html:
+        message.add_alternative(email.html, subtype="html")
+        html_part = message.get_body(preferencelist=("html",))
+        assert html_part is not None
+        html_part.add_related(
+            (TEMPLATES / "logo-light.png").read_bytes(),
+            maintype="image",
+            subtype="png",
+            cid=f"<{LOGO_CID}>",
+            filename="axtton-core.png",
+        )
+    return message
 
 
 class SmtpEmailSender:
@@ -38,13 +112,8 @@ class SmtpEmailSender:
         self._settings = settings
 
     async def send(self, email: Email) -> None:
-        message = EmailMessage()
-        message["From"] = self._settings.email_from
-        message["To"] = email.to
-        message["Subject"] = email.subject
-        message.set_content(email.body)
         await aiosmtplib.send(
-            message,
+            build_message(email, self._settings.email_from),
             hostname=self._settings.smtp_host,
             port=self._settings.smtp_port,
             username=self._settings.smtp_username,

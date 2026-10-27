@@ -1,9 +1,11 @@
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import type { ReactNode } from "react";
 import { useForm } from "react-hook-form";
 import { useTranslation } from "react-i18next";
 import { z } from "zod";
 
+import { LinesSkeleton } from "@/shared/components/Loading";
 import { Field } from "@/shared/components/form/Field";
 import { Button } from "@/shared/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/shared/components/ui/card";
@@ -18,14 +20,30 @@ const changeSchema = z
 type ChangeForm = z.infer<typeof changeSchema>;
 
 /** Mi cuenta: cambiar la contraseña (RF-122) y cerrar las otras sesiones (RF-123). */
-export function AccountPage({ prefix }: { prefix: AccountPrefix }) {
-  const { t } = useTranslation();
+/**
+ * `aside`: lo que va a la derecha (el taller activo, para el personal). Sin él,
+ * la contraseña y las sesiones se reparten las dos columnas.
+ */
+export function AccountPage({ prefix, aside }: { prefix: AccountPrefix; aside?: ReactNode }) {
   const api = accountApi(prefix);
-  return (
-    <section className="grid max-w-xl gap-6">
-      <h1 className="text-2xl font-semibold">{t("account.title")}</h1>
+  const security = (
+    <>
       <ChangePassword api={api} />
       <Sessions api={api} prefix={prefix} />
+    </>
+  );
+  return (
+    <section className="grid gap-6">
+      <div className="grid items-start gap-6 lg:grid-cols-2">
+        {aside ? (
+          <>
+            <div className="grid gap-6">{security}</div>
+            <div className="grid gap-6">{aside}</div>
+          </>
+        ) : (
+          security
+        )}
+      </div>
     </section>
   );
 }
@@ -117,7 +135,7 @@ function Sessions({ api, prefix }: { api: Api; prefix: AccountPrefix }) {
       </CardHeader>
       <CardContent className="grid gap-4">
         {sessions.isPending ? (
-          <p>{t("common.loading")}</p>
+          <LinesSkeleton />
         ) : sessions.isError ? (
           <p role="alert">{errorMessage(t, sessions.error)}</p>
         ) : (

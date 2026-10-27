@@ -1,11 +1,15 @@
 import { useInfiniteQuery } from "@tanstack/react-query";
 import { useState } from "react";
+import { SearchX, Users } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { Link } from "react-router-dom";
 
+import { EmptyState } from "@/shared/components/EmptyState";
+import { TableSkeleton } from "@/shared/components/Loading";
+import { SearchInput, SwitchFilter } from "@/shared/components/filters/Filters";
 import { Badge } from "@/shared/components/ui/badge";
 import { Button, buttonVariants } from "@/shared/components/ui/button";
-import { Input } from "@/shared/components/ui/input";
+import { Card, CardContent, CardHeader } from "@/shared/components/ui/card";
 import {
   Table,
   TableBody,
@@ -14,6 +18,8 @@ import {
   TableHeader,
   TableRow,
 } from "@/shared/components/ui/table";
+import { LinkRow } from "@/shared/components/table/LinkRow";
+import { MobileCard, MobileCards } from "@/shared/components/table/MobileCards";
 import { errorMessage } from "@/shared/lib/errors";
 import { useDebouncedValue } from "@/shared/lib/useDebouncedValue";
 
@@ -46,8 +52,7 @@ export function ClientsPage() {
 
   return (
     <section className="grid gap-4">
-      <div className="flex flex-wrap items-center justify-between gap-2">
-        <h1 className="text-2xl font-semibold">{t("clients.title")}</h1>
+      <div className="flex flex-wrap items-center justify-end gap-2">
         {canManageClients && (
           // Un enlace con aspecto de botón: lleva a otra pantalla, no hace nada aquí.
           <Link to="/clients/new" className={buttonVariants()}>
@@ -55,34 +60,49 @@ export function ClientsPage() {
           </Link>
         )}
       </div>
-      <div className="flex flex-wrap items-center gap-4">
-        <Input
-          type="search"
-          className="max-w-sm"
-          aria-label={t("clients.search")}
-          placeholder={t("clients.searchPlaceholder")}
-          value={search}
-          onChange={(event) => setSearch(event.target.value)}
-        />
-        <label className="flex items-center gap-2 text-sm">
-          <input
-            type="checkbox"
-            checked={archived}
-            onChange={(event) => setArchived(event.target.checked)}
+      <Card>
+        <CardHeader className="flex flex-wrap items-center gap-x-6 gap-y-3">
+          <SearchInput
+            aria-label={t("clients.search")}
+            placeholder={t("clients.searchPlaceholder")}
+            value={search}
+            onChange={(event) => setSearch(event.target.value)}
           />
-          {t("clients.showArchived")}
-        </label>
-      </div>
+          <SwitchFilter label={t("clients.showArchived")} checked={archived} onChange={setArchived} />
+        </CardHeader>
+        <CardContent>
       {clients.isPending ? (
-        <p>{t("common.loading")}</p>
+        <TableSkeleton />
       ) : clients.isError ? (
         <p role="alert">{errorMessage(t, clients.error)}</p>
       ) : rows.length === 0 ? (
-        <p className="text-muted-foreground">
-          {t(filters.q ? "clients.noResults" : archived ? "clients.noArchived" : "clients.empty")}
-        </p>
+        <EmptyState
+          icon={filters.q ? SearchX : Users}
+          title={t(filters.q ? "clients.noResults" : archived ? "clients.noArchived" : "clients.empty")}
+          action={
+            canManageClients && !filters.q && !archived && (
+              <Link to="/clients/new" className={buttonVariants({ size: "sm" })}>
+                {t("clients.new")}
+              </Link>
+            )
+          }
+        />
       ) : (
         <>
+          <MobileCards>
+            {rows.map((client) => (
+              <MobileCard
+                key={client.id}
+                to={`/clients/${client.id}`}
+                title={clientName(t, client.name)}
+                aside={
+                  client.kind === "company" && <Badge variant="outline">{t("clients.kinds.company")}</Badge>
+                }
+                lines={[client.phone, client.email]}
+              />
+            ))}
+          </MobileCards>
+          <div className="hidden md:block">
           <Table>
             <TableHeader>
               <TableRow>
@@ -93,9 +113,9 @@ export function ClientsPage() {
             </TableHeader>
             <TableBody>
               {rows.map((client) => (
-                <TableRow key={client.id}>
+                <LinkRow key={client.id} to={`/clients/${client.id}`}>
                   <TableCell>
-                    <Link to={`/clients/${client.id}`} className="font-medium hover:underline">
+                    <Link to={`/clients/${client.id}`} className="link">
                       {clientName(t, client.name)}
                     </Link>
                     {client.kind === "company" && (
@@ -106,14 +126,15 @@ export function ClientsPage() {
                   </TableCell>
                   <TableCell>{client.phone}</TableCell>
                   <TableCell className="hidden md:table-cell">{client.email ?? "—"}</TableCell>
-                </TableRow>
+                </LinkRow>
               ))}
             </TableBody>
           </Table>
+          </div>
           {clients.hasNextPage && (
             <Button
               variant="outline"
-              className="justify-self-start"
+              className="mt-4"
               disabled={clients.isFetchingNextPage}
               onClick={() => void clients.fetchNextPage()}
             >
@@ -122,6 +143,8 @@ export function ClientsPage() {
           )}
         </>
       )}
+        </CardContent>
+      </Card>
     </section>
   );
 }

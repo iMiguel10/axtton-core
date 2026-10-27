@@ -2,7 +2,9 @@ import { useInfiniteQuery } from "@tanstack/react-query";
 import i18n, { type TFunction } from "i18next";
 import { useTranslation } from "react-i18next";
 
+import { TableSkeleton } from "@/shared/components/Loading";
 import { Button } from "@/shared/components/ui/button";
+import { Card, CardContent } from "@/shared/components/ui/card";
 import {
   Table,
   TableBody,
@@ -34,13 +36,14 @@ export function AuditPage({ scope }: { scope: AuditScope }) {
 
   return (
     <section className="grid gap-6">
-      <h1 className="text-2xl font-semibold">{t("audit.title")}</h1>
       {audit.isPending ? (
-        <p>{t("common.loading")}</p>
+        <TableSkeleton />
       ) : audit.isError ? (
         <p role="alert">{errorMessage(t, audit.error)}</p>
       ) : (
         <>
+          <Card>
+            <CardContent>
           <Table>
             <TableHeader>
               <TableRow>
@@ -78,13 +81,15 @@ export function AuditPage({ scope }: { scope: AuditScope }) {
           {audit.hasNextPage && (
             <Button
               variant="outline"
-              className="justify-self-start"
+              className="mt-4"
               disabled={audit.isFetchingNextPage}
               onClick={() => void audit.fetchNextPage()}
             >
               {t("audit.loadMore")}
             </Button>
           )}
+          </CardContent>
+          </Card>
         </>
       )}
     </section>
@@ -123,7 +128,7 @@ function show(t: TFunction, field: string, value: unknown): string {
   if (field === "paid_amount_cents" && typeof value === "number") return formatEur(value);
   if (field === "payment_status") return t(`payment.statuses.${String(value)}`);
   if (field === "payment_method") return t(`payment.methods.${String(value)}`);
-  if (field === "paid_on") return new Date(`${String(value)}T00:00:00`).toLocaleDateString(i18n.language);
+  if (field === "paid_on") return new Intl.DateTimeFormat(i18n.language, { timeZone: "UTC", dateStyle: "medium" }).format(new Date(`${String(value)}T00:00:00Z`));
   if (typeof value === "boolean") return t(value ? "common.yes" : "common.no");
   return String(value);
 }

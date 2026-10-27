@@ -37,3 +37,11 @@ Thumbs.db
 
 # Referencias internas que no se publican
 Guía de marca AXTTON CORE.png
+
+# Originales de la marca sin usar todavía en la aplicación (las versiones que sí
+# usa están en frontend/src/shared/assets/brand y frontend/public). Se decidirá
+# qué hacer con ellos.
+/app_icon.png
+/favicon_axtton.png
+/logo_h.png
+/words_image.png

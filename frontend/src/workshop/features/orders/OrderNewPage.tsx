@@ -1,14 +1,16 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
-import { Link, useNavigate, useSearchParams } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 
+import { notify } from "@/shared/components/Toaster";
 import { Select } from "@/shared/components/form/Select";
 import { Card, CardContent } from "@/shared/components/ui/card";
 import { Label } from "@/shared/components/ui/label";
 import { errorMessage } from "@/shared/lib/errors";
 
 import { clientName } from "../clients/clientName";
+import { usePageCrumb } from "../layout/PageCrumb";
 import { useActiveWorkshop } from "../session/ActiveWorkshop";
 import { vehiclesApi, type Vehicle } from "../vehicles/api";
 import { VehiclePicker } from "../vehicles/VehiclePicker";
@@ -39,18 +41,16 @@ export function OrderNewPage() {
   const open = useMutation({
     mutationFn: ({ vehicleId, input }: { vehicleId: string; input: ReceptionInput }) =>
       ordersApi(workshopId).open(vehicleId, type, input),
-    onSuccess: async ({ id }) => {
+    onSuccess: async ({ id, code }) => {
       await queryClient.invalidateQueries({ queryKey: ["orders", workshopId] });
+      notify(t("orders.opened", { code }));
       navigate(`/orders/${id}`);
     },
   });
 
+  usePageCrumb(t("orders.new"), true);
   return (
     <section className="grid gap-4">
-      <Link to="/orders" className="text-muted-foreground text-sm hover:underline">
-        ← {t("orders.backToList")}
-      </Link>
-      <h1 className="text-2xl font-semibold">{t("orders.new")}</h1>
       <Card>
         <CardContent className="grid gap-3">
           <ReceptionForm

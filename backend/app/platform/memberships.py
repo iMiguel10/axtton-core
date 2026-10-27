@@ -3,7 +3,8 @@
 Cruza talleres por necesidad: hay que saber cuáles son antes de poder fijar
 ninguno para RLS. Es una de las excepciones con nombre de la regla R8
 (arquitectura §4). Devuelve solo los talleres DE LA PROPIA PERSONA, y solo su
-nombre y el rol que tiene en cada uno.
+nombre, su zona horaria (las fechas se enseñan en la del taller) y el rol que
+tiene en cada uno.
 """
 
 from dataclasses import dataclass
@@ -19,12 +20,13 @@ from app.platform.db import platform_transaction
 class Membership:
     workshop_id: UUID
     workshop_name: str
+    timezone: str
     role: str
 
 
 async def list_for_user(supertokens_user_id: str) -> list[Membership]:
     query = (
-        select(Workshop.id, Workshop.name, Employee.role)
+        select(Workshop.id, Workshop.name, Workshop.timezone, Employee.role)
         .join(Employee, Employee.workshop_id == Workshop.id)
         .join(User, User.id == Employee.user_id)
         .where(

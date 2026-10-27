@@ -5,6 +5,8 @@ import { useForm } from "react-hook-form";
 import { useTranslation } from "react-i18next";
 import { z } from "zod";
 
+import { ConfirmButton } from "@/shared/components/ConfirmButton";
+import { TableSkeleton } from "@/shared/components/Loading";
 import { Field } from "@/shared/components/form/Field";
 import { Select } from "@/shared/components/form/Select";
 import { Badge } from "@/shared/components/ui/badge";
@@ -50,7 +52,6 @@ export function EmployeesPage() {
 
   return (
     <section className="grid gap-6">
-      <h1 className="text-2xl font-semibold">{t("employees.title")}</h1>
       <NewEmployeeForm
         onCreate={async (input) => {
           await api.create(input);
@@ -64,10 +65,12 @@ export function EmployeesPage() {
       )}
       {notice && <p role="status" className="text-sm">{notice}</p>}
       {employees.isPending ? (
-        <p>{t("common.loading")}</p>
+        <TableSkeleton />
       ) : employees.isError ? (
         <p role="alert">{errorMessage(t, employees.error)}</p>
       ) : (
+        <Card>
+          <CardContent>
         <Table>
           <TableHeader>
             <TableRow>
@@ -90,11 +93,7 @@ export function EmployeesPage() {
                 onToggleActive={() =>
                   action.mutate(() => api.update(employee, { active: !employee.active }))
                 }
-                onRemoveAccess={() => {
-                  if (window.confirm(t("employees.confirmRemoveAccess", { name: employee.name }))) {
-                    action.mutate(() => api.removeAccess(employee));
-                  }
-                }}
+                onRemoveAccess={() => action.mutate(() => api.removeAccess(employee))}
                 onInvite={(email) =>
                   action.mutate(async () => {
                     const result = await api.invite(employee, email);
@@ -109,6 +108,8 @@ export function EmployeesPage() {
             ))}
           </TableBody>
         </Table>
+  </CardContent>
+</Card>
       )}
     </section>
   );
@@ -174,9 +175,18 @@ function EmployeeRow({
             {t(employee.active ? "employees.deactivate" : "employees.activate")}
           </Button>
           {employee.has_access ? (
-            <Button variant="outline" size="sm" disabled={busy} onClick={onRemoveAccess}>
+            <ConfirmButton
+              variant="outline"
+              size="sm"
+              disabled={busy}
+              title={t("employees.removeAccess")}
+              description={t("employees.confirmRemoveAccess", { name: employee.name })}
+              confirmLabel={t("employees.removeAccess")}
+              destructive
+              onConfirm={onRemoveAccess}
+            >
               {t("employees.removeAccess")}
-            </Button>
+            </ConfirmButton>
           ) : (
             employee.active &&
             !inviting && (

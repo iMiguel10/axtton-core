@@ -2,6 +2,7 @@ import { useMutation } from "@tanstack/react-query";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 
+import { notify } from "@/shared/components/Toaster";
 import { Field } from "@/shared/components/form/Field";
 import { Select } from "@/shared/components/form/Select";
 import { Badge } from "@/shared/components/ui/badge";
@@ -9,6 +10,7 @@ import { Button } from "@/shared/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/shared/components/ui/card";
 import { Label } from "@/shared/components/ui/label";
 import { errorMessage } from "@/shared/lib/errors";
+import { useDates } from "@/shared/lib/dates";
 import { formatEur, parseEurToCents } from "@/shared/money";
 
 import { useActiveWorkshop } from "../session/ActiveWorkshop";
@@ -16,6 +18,13 @@ import { ordersApi, type OrderDetail, type PaymentMethod, type PaymentStatus } f
 
 const STATUSES: PaymentStatus[] = ["pending", "paid", "no_charge"];
 const METHODS: PaymentMethod[] = ["cash", "card", "transfer", "other"];
+// Los colores de los estados de la orden (StatusBadge): pendiente, como lo que
+// espera; cobrada, como lista; sin cargo, neutro como recibida.
+const PAYMENT_COLORS: Record<PaymentStatus, string> = {
+  pending: "bg-status-pending-approval/12 text-status-pending-approval border-status-pending-approval/25",
+  paid: "bg-status-ready/12 text-status-ready border-status-ready/25",
+  no_charge: "bg-status-received/12 text-status-received border-status-received/25",
+};
 
 /** 18950 → "189,50", para volver a editarlo. */
 function centsToInput(cents: number | null): string {
@@ -42,7 +51,8 @@ export function PaymentCard({
   order: OrderDetail;
   onChanged: () => Promise<unknown>;
 }) {
-  const { t, i18n } = useTranslation();
+  const { t } = useTranslation();
+  const dates = useDates();
   const { workshopId } = useActiveWorkshop();
   const [editing, setEditing] = useState(false);
   const [status, setStatus] = useState<PaymentStatus>(order.payment_status);
@@ -58,7 +68,10 @@ export function PaymentCard({
           ? { status, method, amount_cents: cents, paid_on: paidOn }
           : { status, method: null, amount_cents: null, paid_on: null },
       ),
-    onSuccess: () => setEditing(false),
+    onSuccess: () => {
+      setEditing(false);
+      notify(t("payment.saved"));
+    },
     onSettled: onChanged,
   });
   const invalid = status === "paid" && (cents === null || cents <= 0 || !paidOn);
@@ -67,7 +80,8 @@ export function PaymentCard({
     <Card>
       <CardHeader className="flex flex-row items-center justify-between">
         <CardTitle>{t("payment.title")}</CardTitle>
-        <Badge variant={order.payment_status === "pending" ? "outline" : "secondary"}>
+        <Badge variant="outline" className={PAYMENT_COLORS[order.payment_status]}>
+          <span aria-hidden className="size-1.5 rounded-full bg-current" />
           {t(`payment.statuses.${order.payment_status}`)}
         </Badge>
       </CardHeader>
@@ -77,7 +91,7 @@ export function PaymentCard({
             {t("payment.summary", {
               amount: formatEur(order.paid_amount_cents),
               method: t(`payment.methods.${order.payment_method}`).toLowerCase(),
-              date: new Date(`${order.paid_on}T00:00:00`).toLocaleDateString(i18n.language),
+              date: dates.day(order.paid_on),
             })}
           </p>
         )}

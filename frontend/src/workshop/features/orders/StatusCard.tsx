@@ -2,6 +2,7 @@ import { useMutation } from "@tanstack/react-query";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 
+import { ConfirmButton } from "@/shared/components/ConfirmButton";
 import { Select } from "@/shared/components/form/Select";
 import { Textarea } from "@/shared/components/form/Textarea";
 import { Button } from "@/shared/components/ui/button";
@@ -119,19 +120,19 @@ export function StatusCard({
         )}
         {order.can_undo && (
           <div>
-            <Button
+            <ConfirmButton
               variant="outline"
               size="sm"
               disabled={action.isPending}
-              onClick={() => {
-                const back = t(`orders.statuses.${lastChange.from_status ?? order.status}`);
-                if (window.confirm(t("orders.confirmUndo", { status: back }))) {
-                  run(() => api.undo(order));
-                }
-              }}
+              title={t("orders.undo")}
+              description={t("orders.confirmUndo", {
+                status: t(`orders.statuses.${lastChange.from_status ?? order.status}`),
+              })}
+              confirmLabel={t("orders.undo")}
+              onConfirm={() => run(() => api.undo(order))}
             >
               {t("orders.undo")}
-            </Button>
+            </ConfirmButton>
           </div>
         )}
         {order.can_mark_no_quote && (

@@ -1,13 +1,15 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
-import { Link, useNavigate, useSearchParams } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 
+import { notify } from "@/shared/components/Toaster";
 import { Card, CardContent } from "@/shared/components/ui/card";
 import { errorMessage } from "@/shared/lib/errors";
 
 import { clientsApi } from "../clients/api";
 import { ClientPicker, type PickedClient } from "../clients/ClientPicker";
+import { usePageCrumb } from "../layout/PageCrumb";
 import { useActiveWorkshop } from "../session/ActiveWorkshop";
 import { vehiclesApi, type VehicleInput } from "./api";
 import { VehicleForm } from "./VehicleForm";
@@ -21,7 +23,8 @@ export function VehicleNewPage() {
   const { workshopId } = useActiveWorkshop();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
-  const ownerParam = useSearchParams()[0].get("owner");
+  const [params] = useSearchParams();
+  const ownerParam = params.get("owner");
   const preset = useQuery({
     queryKey: ["client", workshopId, ownerParam],
     queryFn: () => clientsApi(workshopId).get(ownerParam!),
@@ -37,19 +40,19 @@ export function VehicleNewPage() {
       vehiclesApi(workshopId).create(input, ownerId),
     onSuccess: async ({ id }) => {
       await queryClient.invalidateQueries({ queryKey: ["vehicles", workshopId] });
+      notify(t("vehicles.created"));
       navigate(`/vehicles/${id}`);
     },
   });
 
+  usePageCrumb(t("vehicles.new"), true);
   return (
     <section className="grid gap-4">
-      <Link to="/vehicles" className="text-muted-foreground text-sm hover:underline">
-        ← {t("vehicles.backToList")}
-      </Link>
-      <h1 className="text-2xl font-semibold">{t("vehicles.new")}</h1>
       <Card>
         <CardContent className="grid gap-3">
           <VehicleForm
+            // Desde la búsqueda del mostrador sin resultados: ?plate=.
+            prefillPlate={params.get("plate") ?? undefined}
             before={
               <ClientPicker
                 id="vehicle-owner"

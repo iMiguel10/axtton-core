@@ -3,6 +3,7 @@ import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Link, useParams } from "react-router-dom";
 
+import { DetailSkeleton } from "@/shared/components/Loading";
 import { Badge } from "@/shared/components/ui/badge";
 import { Button, buttonVariants } from "@/shared/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/shared/components/ui/card";
@@ -14,11 +15,14 @@ import {
   TableHeader,
   TableRow,
 } from "@/shared/components/ui/table";
+import { notify } from "@/shared/components/Toaster";
 import { errorMessage } from "@/shared/lib/errors";
+import { useDates } from "@/shared/lib/dates";
 
 import { clientName } from "../clients/clientName";
 import { ClientPicker, type PickedClient } from "../clients/ClientPicker";
 import { RelatedOrders } from "../orders/OrderBits";
+import { usePageCrumb } from "../layout/PageCrumb";
 import { useActiveWorkshop } from "../session/ActiveWorkshop";
 import { vehiclesApi, type VehicleDetail, type VehicleInput } from "./api";
 import { VehicleForm } from "./VehicleForm";
@@ -35,7 +39,6 @@ export function VehicleDetailPage() {
   const queryClient = useQueryClient();
   const queryKey = ["vehicle", workshopId, vehicleId];
   const vehicle = useQuery({ queryKey, queryFn: () => api.get(vehicleId) });
-  const [notice, setNotice] = useState<string | null>(null);
 
   // Haya ido bien o no (un 409), se vuelve a pedir: versión y titular al día.
   const refresh = () =>
@@ -46,30 +49,26 @@ export function VehicleDetailPage() {
   const save = useMutation({
     mutationFn: ({ current, input }: { current: VehicleDetail; input: VehicleInput }) =>
       api.update(current, input),
-    onMutate: () => setNotice(null),
-    onSuccess: () => setNotice(t("vehicles.saved")),
+    onSuccess: () => notify(t("vehicles.saved")),
     onSettled: refresh,
   });
   const transfer = useMutation({
     mutationFn: ({ current, to }: { current: VehicleDetail; to: PickedClient }) =>
       api.changeOwner(current, to.id),
-    onMutate: () => setNotice(null),
-    onSuccess: (_, { to }) => setNotice(t("vehicles.ownerChanged", { name: to.name })),
+    onSuccess: (_, { to }) => notify(t("vehicles.ownerChanged", { name: to.name })),
     onSettled: refresh,
   });
 
-  if (vehicle.isPending) return <p>{t("common.loading")}</p>;
+  usePageCrumb(vehicle.data?.plate);
+  if (vehicle.isPending) return <DetailSkeleton />;
   if (vehicle.isError) return <p role="alert">{errorMessage(t, vehicle.error)}</p>;
   const current = vehicle.data;
   const failed = save.error ?? transfer.error;
 
   return (
     <section className="grid gap-4">
-      <Link to="/vehicles" className="text-muted-foreground text-sm hover:underline">
-        ← {t("vehicles.backToList")}
-      </Link>
       <div>
-        <h1 className="font-mono text-2xl font-semibold">{current.plate}</h1>
+        <h1 className="tabular-nums text-2xl font-semibold">{current.plate}</h1>
         <p className="text-muted-foreground">
           {[current.make, current.model, current.year].filter(Boolean).join(" · ") || "—"}
         </p>
@@ -77,11 +76,6 @@ export function VehicleDetailPage() {
       {failed && (
         <p role="alert" className="text-destructive text-sm">
           {errorMessage(t, failed)}
-        </p>
-      )}
-      {notice && (
-        <p role="status" className="text-sm">
-          {notice}
         </p>
       )}
       <OwnerCard
@@ -142,10 +136,11 @@ function OwnerCard({
   pending: boolean;
   onChange: (to: PickedClient) => void;
 }) {
-  const { t, i18n } = useTranslation();
+  const { t } = useTranslation();
+  const dates = useDates();
   const [changing, setChanging] = useState(false);
   const [to, setTo] = useState<PickedClient | null>(null);
-  const date = (iso: string) => new Date(iso).toLocaleDateString(i18n.language);
+  const date = (iso: string) => dates.date(iso);
 
   return (
     <Card>
@@ -154,7 +149,7 @@ function OwnerCard({
       </CardHeader>
       <CardContent className="grid gap-4">
         <div className="flex flex-wrap items-center gap-2">
-          <Link to={`/clients/${vehicle.owner.id}`} className="font-medium hover:underline">
+          <Link to={`/clients/${vehicle.owner.id}`} className="link">
             {clientName(t, vehicle.owner.name)}
           </Link>
           {canChange && !changing && (
@@ -214,8 +209,9 @@ function OwnerCard({
 
 function VehicleSummary({ vehicle }: { vehicle: VehicleDetail }) {
   const { t, i18n } = useTranslation();
+  const dates = useDates();
   const date = (iso: string | null) =>
-    iso ? new Date(`${iso}T00:00:00`).toLocaleDateString(i18n.language) : null;
+    dates.day(iso);
   const rows: [string, string | null][] = [
     [t("vehicles.vin"), vehicle.vin],
     [t("vehicles.fuel"), vehicle.fuel && t(`vehicles.fuels.${vehicle.fuel}`)],

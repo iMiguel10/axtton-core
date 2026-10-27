@@ -15,12 +15,9 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.config import get_settings
 from app.core.errors import ConflictError, NotFoundError
 from app.core.tokens import hash_token, new_token
-from app.domain.invitations import (
-    INVITATION_VALIDITY,
-    invitation_email,
-    invitation_path,
-)
-from app.infra.email import Email, EmailSender
+from app.domain.emails import invitation_email
+from app.domain.invitations import INVITATION_VALIDITY, invitation_path
+from app.infra.email import EmailSender, compose
 from app.models import AuditEntry, Employee, Invitation, User, Workshop
 from app.platform.db import platform_transaction
 
@@ -97,13 +94,13 @@ async def create_workshop(
 
     sent = False
     if email_sender.enabled:
-        subject, body = invitation_email(
+        content = invitation_email(
             employee_name=admin_name,
             workshop_name=name,
             link=get_settings().app_url + invitation_path(workshop_id, token),
             first_admin=True,
         )
-        await email_sender.send(Email(to=admin_email, subject=subject, body=body))
+        await email_sender.send(compose(admin_email, content))
         sent = True
     return CreatedWorkshop(workshop_id=workshop_id, invitation_email_sent=sent)
 

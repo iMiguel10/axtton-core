@@ -41,7 +41,7 @@ export function VehiclePicker({
       <div className="grid gap-1.5">
         <span className="text-sm font-medium">{label}</span>
         <div className="flex flex-wrap items-center gap-2">
-          <span className="font-mono font-medium">{value.plate}</span>
+          <span className="tabular-nums font-medium">{value.plate}</span>
           <span className="text-muted-foreground text-sm">
             {[value.make, value.model].filter(Boolean).join(" ")}
           </span>
@@ -83,7 +83,7 @@ export function VehiclePicker({
                     setSearch("");
                   }}
                 >
-                  <span className="font-mono">{vehicle.plate}</span>
+                  <span className="tabular-nums">{vehicle.plate}</span>
                   <span className="text-muted-foreground text-xs">
                     {vehicle.owner ? clientName(t, vehicle.owner.name) : "—"}
                   </span>

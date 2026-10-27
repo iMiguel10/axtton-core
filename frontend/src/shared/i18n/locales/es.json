@@ -7,7 +7,23 @@
     "cancel": "Cancelar",
     "save": "Guardar",
     "yes": "Sí",
-    "no": "No"
+    "no": "No",
+    "close": "Cerrar",
+    "more": "Más"
+  },
+  "layout": {
+    "sidebar": "Menú",
+    "sidebarDescription": "Navegación de la aplicación",
+    "toggleSidebar": "Mostrar u ocultar el menú",
+    "workshop": "Taller",
+    "management": "Gestión",
+    "platform": "Plataforma",
+    "userMenu": "Menú de la cuenta",
+    "superadmin": "Superadministrador",
+    "language": "Idioma: {{language}}",
+    "darkTheme": "Tema oscuro",
+    "lightTheme": "Tema claro",
+    "skipToContent": "Saltar al contenido"
   },
   "audit": {
     "title": "Registro de auditoría",
@@ -62,11 +78,15 @@
     "superadmins": "Superadministradores",
     "account": "Mi cuenta",
     "workshops": "Talleres",
-    "signOut": "Cerrar sesión"
+    "signOut": "Cerrar sesión",
+    "unpaid": "Pendientes de cobro"
   },
   "auth": {
     "tagline": "Gestión del taller y seguimiento de cada reparación, en un solo sitio.",
     "signInTitle": "Iniciar sesión",
+    "signInDescription": "Escribe tu email y tu contraseña para entrar en tu taller.",
+    "noAccount": "¿No tienes cuenta? Se entra por invitación: pídela a quien administra tu taller.",
+    "forgotDescription": "Te enviaremos un enlace para elegir una contraseña nueva.",
     "email": "Email",
     "password": "Contraseña",
     "signIn": "Entrar",
@@ -109,11 +129,26 @@
   "home": {
     "searchLabel": "Buscar por matrícula, nombre o teléfono",
     "searchPlaceholder": "1234 BCD, María García, 600 111 222…",
-    "noResults": "Nada coincide. Comprueba lo escrito o da de alta al cliente.",
+    "noResults": "Nada coincide.",
     "vehicles": "Vehículos",
     "clients": "Clientes",
     "openOrders": "Órdenes abiertas",
-    "allOrders": "Ver todas"
+    "allOrders": "Ver todas",
+    "cards": {
+      "open": "Órdenes abiertas",
+      "openHint": "Recibidas, en diagnóstico, en reparación y listas",
+      "stalled": "Paradas",
+      "stalledHint": "Sin actividad en más de 3 días",
+      "ready": "Listas para recoger",
+      "readyHint": "Avisar al cliente",
+      "unpaid": "Pendientes de cobro",
+      "unpaidHint_one": "La más antigua, desde hace {{count}} día",
+      "unpaidHint_other": "La más antigua, desde hace {{count}} días",
+      "unpaidNone": "Todo cobrado"
+    },
+    "createVehicle": "Dar de alta el vehículo {{plate}}",
+    "createClientPhone": "Dar de alta un cliente con el teléfono {{value}}",
+    "createClientName": "Dar de alta a {{value}}"
   },
   "clients": {
     "title": "Clientes",
@@ -161,10 +196,14 @@
     "noVehicles": "No es titular de ningún vehículo.",
     "pickAnother": "Elegir otro",
     "pickResults": "Clientes que coinciden",
-    "orders": "Órdenes de las que es cliente"
+    "orders": "Órdenes de las que es cliente",
+    "created": "Cliente creado."
   },
   "worklog": {
     "diagnosis": "Diagnóstico para el cliente",
+    "diagnosisTab": "Diagnóstico",
+    "workTab": "Trabajos",
+    "notesTab": "Notas",
     "diagnosisHint": "Redáctalo para alguien que no es mecánico: es lo que verá el cliente. Cada vez que se guarda queda una versión.",
     "saveDiagnosis": "Guardar diagnóstico",
     "version": "Versión {{number}}, de {{name}} ({{when}})",
@@ -188,7 +227,8 @@
     "notes": "Notas internas",
     "notesHint": "Solo las ve el personal del taller; nunca el cliente. No se editan: se añaden.",
     "newNote": "Escribe una nota…",
-    "addNote": "Añadir nota"
+    "addNote": "Añadir nota",
+    "diagnosisSaved": "Diagnóstico guardado."
   },
   "payment": {
     "title": "Cobro",
@@ -215,7 +255,8 @@
     "deliveredAt": "Entregada",
     "daysPending": "Pendiente desde hace",
     "days_one": "{{count}} día",
-    "days_other": "{{count}} días"
+    "days_other": "{{count}} días",
+    "saved": "Cobro guardado."
   },
   "drafts": {
     "offline": "Sin conexión. Lo que escribas se guarda en este dispositivo y se enviará al volver.",
@@ -230,6 +271,7 @@
   },
   "orders": {
     "title": "Órdenes de trabajo",
+    "historyTab": "Historial",
     "new": "Abrir orden",
     "open": "Abrir orden",
     "backToList": "Órdenes",
@@ -316,7 +358,8 @@
       "warranty": "Garantía",
       "fixed_price": "Precio cerrado"
     },
-    "noQuoteHint": "Permite empezar a reparar sin presupuesto aprobado. La renuncia del cliente necesita la hoja de recepción firmada, que llega más adelante."
+    "noQuoteHint": "Permite empezar a reparar sin presupuesto aprobado. La renuncia del cliente necesita la hoja de recepción firmada, que llega más adelante.",
+    "opened": "Orden {{code}} abierta."
   },
   "vehicles": {
     "title": "Vehículos",
@@ -365,7 +408,8 @@
     "saved": "Cambios guardados.",
     "orders": "Órdenes",
     "pickAnother": "Elegir otro",
-    "pickResults": "Vehículos que coinciden"
+    "pickResults": "Vehículos que coinciden",
+    "created": "Vehículo dado de alta."
   },
   "employees": {
     "title": "Empleados",
@@ -400,7 +444,19 @@
     "sessions": "Sesiones abiertas",
     "sessionSince": "Abierta el {{date}}",
     "thisSession": "esta",
-    "revokeOthers": "Cerrar las demás sesiones"
+    "revokeOthers": "Cerrar las demás sesiones",
+    "activeWorkshop": "Taller activo",
+    "activeWorkshopHint": "Donde estás trabajando ahora, con tu ficha y tu rol en él.",
+    "otherWorkshops": "También trabajas en",
+    "switchTo": "Cambiar a este",
+    "settings": {
+      "title": "Configuración del taller",
+      "employees": "Fichas, accesos, roles y costes del personal",
+      "audit": "Quién hizo qué y cuándo",
+      "workshopData": "Datos del taller, logotipo y tarifas",
+      "workshopDataHint": "Razón social, NIF, registro industrial, IVA y tarifas de mano de obra",
+      "soon": "Próximamente"
+    }
   },
   "admin": {
     "title": "Talleres",
@@ -415,7 +471,10 @@
     "workshop": "Taller",
     "admins": "Administradores",
     "status": "Estado",
-    "statuses": { "active": "Activo", "inactive": "Inactivo" },
+    "statuses": {
+      "active": "Activo",
+      "inactive": "Inactivo"
+    },
     "access": "Con acceso",
     "pendingInvitations": "Invitaciones pendientes",
     "limit": "Límite de acceso",
@@ -453,7 +512,7 @@
     "already_saved": "Ya estaba guardado.",
     "id_in_use": "No se ha podido guardar: vuelve a escribirlo.",
     "rate_limited": "Demasiados intentos seguidos. Espera unos minutos y vuelve a probar.",
-    "invalid_input":"Algún dato no es válido. Revísalo, sobre todo el email.",
+    "invalid_input": "Algún dato no es válido. Revísalo, sobre todo el email.",
     "wrong_actor": "Esta cuenta no puede usar esta parte de la aplicación.",
     "workshop_not_found": "No tienes acceso a ese taller.",
     "employee_not_found": "Ese empleado ya no existe.",
@@ -467,8 +526,8 @@
     "employee_limit_reached": "El taller ha llegado a su límite de empleados con acceso.",
     "employee_already_has_access": "Este empleado ya tiene acceso.",
     "already_a_superadmin": "Esta cuenta ya es de superadministrador. Inicia sesión.",
-    "staff_cannot_be_superadmin":"Ese email ya es de una cuenta del personal de un taller. Un superadministrador necesita una cuenta propia, con otro email.",
-    "superadmin_cannot_be_employee":"Una cuenta de superadministrador no puede ser empleado de un taller.",
+    "staff_cannot_be_superadmin": "Ese email ya es de una cuenta del personal de un taller. Un superadministrador necesita una cuenta propia, con otro email.",
+    "superadmin_cannot_be_employee": "Una cuenta de superadministrador no puede ser empleado de un taller.",
     "already_an_employee": "Esa cuenta ya tiene acceso a este taller con otra ficha.",
     "single_workshop_installation": "Esta instalación es de un solo taller y ya existe.",
     "client_not_found": "Ese cliente no existe en este taller.",
@@ -494,5 +553,13 @@
     "work_order_has_work": "La orden tiene trabajos registrados: no se cancela. Anúlalos si se anotaron por error.",
     "work_entry_not_found": "Ese trabajo no existe en esta orden.",
     "work_entry_already_voided": "Ese trabajo ya estaba anulado."
+  },
+  "palette": {
+    "open": "Buscar en el taller",
+    "placeholder": "Matrícula, cliente, teléfono o apartado…",
+    "placeholderShort": "Buscar…",
+    "goTo": "Ir a",
+    "actions": "Acciones",
+    "results": "Resultados"
   }
 }

@@ -20,7 +20,8 @@ from supertokens_python.recipe.emailpassword.types import (
 )
 from supertokens_python.recipe.session.asyncio import revoke_all_sessions_for_user
 
-from app.infra.email import Email, current_email_sender
+from app.domain.emails import password_reset_email
+from app.infra.email import compose, current_email_sender
 
 
 class PlatformPasswordResetEmail(EmailDeliveryInterface[EmailTemplateVars]):
@@ -34,16 +35,7 @@ class PlatformPasswordResetEmail(EmailDeliveryInterface[EmailTemplateVars]):
             return
         link = template_vars.password_reset_link  # type: ignore[union-attr]
         await sender.send(
-            Email(
-                to=template_vars.user.email,
-                subject="Recupera tu contraseña de AXTTON CORE",
-                body=(
-                    "Has pedido cambiar tu contraseña. Abre este enlace para elegir "
-                    "una nueva (caduca en una hora y solo sirve una vez):\n\n"
-                    f"{link}\n\n"
-                    "Si no lo has pedido tú, ignora este mensaje: tu contraseña no cambia."
-                ),
-            )
+            compose(template_vars.user.email, password_reset_email(link=link))
         )
 
 

@@ -9,6 +9,8 @@ import { createRoot } from "react-dom/client";
 import { BrowserRouter } from "react-router-dom";
 
 import { applyInitialTheme } from "@/shared/components/Preferences";
+import { Toaster } from "@/shared/components/Toaster";
+import { TooltipProvider } from "@/shared/components/ui/tooltip";
 import { queryClient } from "@/shared/lib/queryClient";
 
 import { WorkshopApp } from "./WorkshopApp";
@@ -20,7 +22,12 @@ createRoot(document.getElementById("root")!).render(
   <StrictMode>
     <QueryClientProvider client={queryClient}>
       <BrowserRouter>
-        <WorkshopApp />
+        {/* Los tooltips de la barra lateral plegada (shadcn lo pide en la raíz). */}
+        <TooltipProvider>
+          <Toaster>
+            <WorkshopApp />
+          </Toaster>
+        </TooltipProvider>
       </BrowserRouter>
     </QueryClientProvider>
   </StrictMode>,

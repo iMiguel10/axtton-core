@@ -50,7 +50,11 @@ export function LoginPage() {
   }
 
   return (
-    <AuthLayout title={t("auth.signInTitle")}>
+    <AuthLayout
+      title={t("auth.signInTitle")}
+      description={t("auth.signInDescription")}
+      footer={t("auth.noAccount")}
+    >
       <form className="grid gap-4" onSubmit={form.handleSubmit(onSubmit)} noValidate>
         <Field
           id="email"
@@ -76,7 +80,7 @@ export function LoginPage() {
         <Button type="submit" disabled={isSubmitting}>
           {t("auth.signIn")}
         </Button>
-        <Link to="/forgot-password" className="text-muted-foreground text-sm underline">
+        <Link to="/forgot-password" className="link text-sm justify-self-start">
           {t("auth.forgotPassword")}
         </Link>
       </form>

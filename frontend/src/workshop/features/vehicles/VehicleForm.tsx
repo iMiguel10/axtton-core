@@ -35,9 +35,9 @@ const schema = z.object({
 });
 type Values = z.infer<typeof schema>;
 
-function toValues(vehicle?: Vehicle): Values {
+function toValues(vehicle?: Vehicle, prefillPlate?: string): Values {
   return {
-    plate: vehicle?.plate ?? "",
+    plate: vehicle?.plate ?? prefillPlate ?? "",
     vin: vehicle?.vin ?? "",
     make: vehicle?.make ?? "",
     model: vehicle?.model ?? "",
@@ -85,6 +85,7 @@ function useSuggestions(field: "make" | "model", value: string, make?: string) {
  */
 export function VehicleForm({
   vehicle,
+  prefillPlate,
   before,
   submitLabel,
   pending,
@@ -92,6 +93,8 @@ export function VehicleForm({
   onSubmit,
 }: {
   vehicle?: Vehicle;
+  /** La matrícula ya escrita en la búsqueda del mostrador. */
+  prefillPlate?: string;
   before?: ReactNode;
   submitLabel: string;
   pending: boolean;
@@ -99,7 +102,7 @@ export function VehicleForm({
   onSubmit: (input: VehicleInput) => void;
 }) {
   const { t } = useTranslation();
-  const form = useForm<Values>({ resolver: zodResolver(schema), defaultValues: toValues(vehicle) });
+  const form = useForm<Values>({ resolver: zodResolver(schema), defaultValues: toValues(vehicle, prefillPlate) });
   const { errors, isDirty } = form.formState;
   const message = (key?: string) => (key ? t(key) : undefined);
   const [make, model] = useWatch({ control: form.control, name: ["make", "model"] });

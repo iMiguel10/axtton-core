@@ -24,8 +24,8 @@ export function applyInitialTheme(): void {
   document.documentElement.classList.toggle("dark", dark);
 }
 
-export function ThemeToggle() {
-  const { t } = useTranslation();
+/** El tema actual y cómo cambiarlo: para el botón y para el menú de la cuenta. */
+export function useTheme(): { dark: boolean; toggle: () => void } {
   const [dark, setDark] = useState(() =>
     document.documentElement.classList.contains("dark"),
   );
@@ -39,6 +39,12 @@ export function ThemeToggle() {
     }
     setDark(next);
   }
+  return { dark, toggle };
+}
+
+export function ThemeToggle() {
+  const { t } = useTranslation();
+  const { dark, toggle } = useTheme();
   return (
     <Button variant="ghost" size="icon" onClick={toggle} aria-label={t("common.toggleTheme")}>
       {dark ? <Sun /> : <Moon />}

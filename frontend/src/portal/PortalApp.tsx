@@ -10,7 +10,7 @@ export function PortalApp() {
   const { t } = useTranslation();
   return (
     <main className="mx-auto grid max-w-md gap-4 p-6">
-      <Brand className="text-xl" />
+      <Brand className="h-9" />
       <p className="text-muted-foreground">{t("portal.comingSoon")}</p>
     </main>
   );

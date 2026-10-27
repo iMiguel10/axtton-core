@@ -14,13 +14,10 @@ from sqlalchemy import func, select, text, update
 from app.core.config import get_settings
 from app.core.errors import ConflictError, ForbiddenError, NotFoundError
 from app.core.tokens import hash_token, new_token
-from app.domain.invitations import (
-    INVITATION_VALIDITY,
-    superadmin_invitation_email,
-    superadmin_invitation_path,
-)
+from app.domain.emails import superadmin_invitation_email
+from app.domain.invitations import INVITATION_VALIDITY, superadmin_invitation_path
 from app.infra import identity
-from app.infra.email import Email, EmailSender
+from app.infra.email import EmailSender, compose
 from app.models import AuditEntry, SuperadminInvitation, User
 from app.platform.db import platform_transaction
 
@@ -74,10 +71,10 @@ async def invite(*, email: str, invited_by: str, email_sender: EmailSender) -> b
 
     if not email_sender.enabled:
         return False
-    subject, body = superadmin_invitation_email(
+    content = superadmin_invitation_email(
         link=get_settings().app_url + superadmin_invitation_path(token)
     )
-    await email_sender.send(Email(to=email, subject=subject, body=body))
+    await email_sender.send(compose(email, content))
     return True
 
 

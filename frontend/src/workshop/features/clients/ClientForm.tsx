@@ -27,12 +27,12 @@ const schema = z.object({
 });
 type Values = z.infer<typeof schema>;
 
-function toValues(client?: Client): Values {
+function toValues(client?: Client, prefill?: ClientPrefill): Values {
   return {
     kind: client?.kind ?? "individual",
-    name: client?.name ?? "",
+    name: client?.name ?? prefill?.name ?? "",
     taxId: client?.tax_id ?? "",
-    phone: client?.phone ?? "",
+    phone: client?.phone ?? prefill?.phone ?? "",
     email: client?.email ?? "",
     address: client?.address ?? "",
     notes: client?.notes ?? "",
@@ -58,19 +58,24 @@ function toInput(values: Values): ClientInput {
  * `key={client.version}`: si otra persona guardó antes (409), la ficha se recarga
  * y el formulario vuelve a empezar con lo último, en vez de pisarlo.
  */
+/** Lo que ya se escribió en la búsqueda del mostrador y no encontró a nadie. */
+export type ClientPrefill = { name?: string; phone?: string };
+
 export function ClientForm({
   client,
+  prefill,
   submitLabel,
   pending,
   onSubmit,
 }: {
   client?: Client;
+  prefill?: ClientPrefill;
   submitLabel: string;
   pending: boolean;
   onSubmit: (input: ClientInput) => void;
 }) {
   const { t } = useTranslation();
-  const form = useForm<Values>({ resolver: zodResolver(schema), defaultValues: toValues(client) });
+  const form = useForm<Values>({ resolver: zodResolver(schema), defaultValues: toValues(client, prefill) });
   const { errors, isDirty } = form.formState;
   const message = (key?: string) => (key ? t(key) : undefined);
 

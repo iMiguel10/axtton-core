@@ -30,6 +30,23 @@
   --color-card: var(--card);
   --color-foreground: var(--foreground);
   --color-background: var(--background);
+  --color-status-received: var(--status-received);
+  --color-status-diagnosing: var(--status-diagnosing);
+  --color-status-pending-approval: var(--status-pending-approval);
+  --color-status-approved: var(--status-approved);
+  --color-status-in-repair: var(--status-in-repair);
+  --color-status-waiting-parts: var(--status-waiting-parts);
+  --color-status-ready: var(--status-ready);
+  --color-status-delivered: var(--status-delivered);
+  --color-status-cancelled: var(--status-cancelled);
+  --color-sidebar: var(--sidebar);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-ring: var(--sidebar-ring);
   --radius-sm: calc(var(--radius) * 0.6);
   --radius-md: calc(var(--radius) * 0.8);
   --radius-lg: var(--radius);
@@ -70,6 +87,29 @@
   --brand: #0e1116;
   --brand-foreground: #f7f7f7;
   --brand-accent: #c9a96a;
+  /* Barra lateral: el panel oscuro de la marca en los dos temas, como la antigua
+     cabecera y el panel de acceso. Sobre casi negro, el dorado pasa de sobra
+     (~8:1) y marca el apartado activo; el texto es marfil y el secundario, plata. */
+  --sidebar: #0e1116;
+  --sidebar-foreground: #c9ced6;
+  --sidebar-primary: #c9a96a;
+  --sidebar-primary-foreground: #0e1116;
+  --sidebar-accent: #1f232a;
+  --sidebar-accent-foreground: #f7f7f7;
+  --sidebar-border: #2a2e35;
+  --sidebar-ring: #c9a96a;
+  /* Un color por estado de la orden (especificación §6), para distinguirlos de un
+     vistazo. En claro, los tonos 700: como texto sobre su fondo al 12 % pasan de
+     4.5:1 (RNF-23). El color nunca va solo: la etiqueta dice el estado. */
+  --status-received: #475569;
+  --status-diagnosing: #6d28d9;
+  --status-pending-approval: #c2410c;
+  --status-approved: #4338ca;
+  --status-in-repair: #1d4ed8;
+  --status-waiting-parts: #a16207;
+  --status-ready: #047857;
+  --status-delivered: #0369a1;
+  --status-cancelled: #b91c1c;
 }
 
 .dark {
@@ -92,6 +132,18 @@
   --border: #2a2e35;
   --input: #2a2e35;
   --ring: #c9a96a;
+  /* Un punto más oscura que el fondo: en oscuro, la barra se distingue del contenido. */
+  --sidebar: #0a0c10;
+  /* En oscuro, los tonos 300: claros sobre su fondo oscuro. */
+  --status-received: #cbd5e1;
+  --status-diagnosing: #c4b5fd;
+  --status-pending-approval: #fdba74;
+  --status-approved: #a5b4fc;
+  --status-in-repair: #93c5fd;
+  --status-waiting-parts: #fde047;
+  --status-ready: #6ee7b7;
+  --status-delivered: #bae6fd;
+  --status-cancelled: #fca5a5;
 }
 
 @layer base {
@@ -100,5 +152,22 @@
   }
   body {
     @apply bg-background text-foreground font-sans antialiased;
+  }
+}
+
+/* Un enlace dentro del texto (el cliente de una orden, el titular de un
+   vehículo): dorado oscurecido, que sí pasa el contraste (--accent-foreground,
+   ver la paleta), y subrayado siempre, no solo al pasar el ratón. */
+@utility link {
+  @apply text-accent-foreground font-medium underline decoration-ring/50 underline-offset-4 transition-colors hover:decoration-current;
+}
+
+/* La barra de la pantalla de arranque (AppSplash). */
+@keyframes loading-bar {
+  from {
+    transform: translateX(-100%);
+  }
+  to {
+    transform: translateX(300%);
   }
 }

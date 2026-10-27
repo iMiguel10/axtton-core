@@ -7,7 +7,23 @@
     "cancel": "Cancel",
     "save": "Save",
     "yes": "Yes",
-    "no": "No"
+    "no": "No",
+    "close": "Close",
+    "more": "More"
+  },
+  "layout": {
+    "sidebar": "Menu",
+    "sidebarDescription": "App navigation",
+    "toggleSidebar": "Show or hide the menu",
+    "workshop": "Workshop",
+    "management": "Management",
+    "platform": "Platform",
+    "userMenu": "Account menu",
+    "superadmin": "Superadmin",
+    "language": "Language: {{language}}",
+    "darkTheme": "Dark theme",
+    "lightTheme": "Light theme",
+    "skipToContent": "Skip to content"
   },
   "audit": {
     "title": "Audit log",
@@ -62,11 +78,15 @@
     "superadmins": "Superadmins",
     "account": "My account",
     "workshops": "Workshops",
-    "signOut": "Sign out"
+    "signOut": "Sign out",
+    "unpaid": "Awaiting payment"
   },
   "auth": {
     "tagline": "Run the workshop and follow every repair, in one place.",
     "signInTitle": "Sign in",
+    "signInDescription": "Enter your email and password to get into your workshop.",
+    "noAccount": "No account? Access is by invitation: ask whoever runs your workshop.",
+    "forgotDescription": "We will send you a link to choose a new password.",
     "email": "Email",
     "password": "Password",
     "signIn": "Sign in",
@@ -109,11 +129,26 @@
   "home": {
     "searchLabel": "Search by plate, name or phone",
     "searchPlaceholder": "1234 BCD, María García, 600 111 222…",
-    "noResults": "Nothing matches. Check what you typed or add the client.",
+    "noResults": "Nothing matches.",
     "vehicles": "Vehicles",
     "clients": "Clients",
     "openOrders": "Open work orders",
-    "allOrders": "See all"
+    "allOrders": "See all",
+    "cards": {
+      "open": "Open orders",
+      "openHint": "Received, diagnosing, in repair and ready",
+      "stalled": "Stalled",
+      "stalledHint": "No activity for more than 3 days",
+      "ready": "Ready for pick-up",
+      "readyHint": "Let the client know",
+      "unpaid": "Awaiting payment",
+      "unpaidHint_one": "The oldest, for {{count}} day",
+      "unpaidHint_other": "The oldest, for {{count}} days",
+      "unpaidNone": "All paid"
+    },
+    "createVehicle": "Add vehicle {{plate}}",
+    "createClientPhone": "Add a client with phone {{value}}",
+    "createClientName": "Add {{value}} as a client"
   },
   "clients": {
     "title": "Clients",
@@ -161,10 +196,14 @@
     "noVehicles": "They do not own any vehicle.",
     "pickAnother": "Choose another",
     "pickResults": "Matching clients",
-    "orders": "Work orders they are the client of"
+    "orders": "Work orders they are the client of",
+    "created": "Client created."
   },
   "worklog": {
     "diagnosis": "Diagnosis for the client",
+    "diagnosisTab": "Diagnosis",
+    "workTab": "Work",
+    "notesTab": "Notes",
     "diagnosisHint": "Write it for someone who is not a mechanic: it is what the client will see. Each save keeps a version.",
     "saveDiagnosis": "Save diagnosis",
     "version": "Version {{number}}, by {{name}} ({{when}})",
@@ -188,7 +227,8 @@
     "notes": "Internal notes",
     "notesHint": "Only the workshop staff see them; never the client. They are not edited: they are added.",
     "newNote": "Write a note…",
-    "addNote": "Add note"
+    "addNote": "Add note",
+    "diagnosisSaved": "Diagnosis saved."
   },
   "payment": {
     "title": "Payment",
@@ -215,7 +255,8 @@
     "deliveredAt": "Delivered",
     "daysPending": "Pending for",
     "days_one": "{{count}} day",
-    "days_other": "{{count}} days"
+    "days_other": "{{count}} days",
+    "saved": "Payment saved."
   },
   "drafts": {
     "offline": "No connection. What you write is kept on this device and will be sent when it's back.",
@@ -230,6 +271,7 @@
   },
   "orders": {
     "title": "Work orders",
+    "historyTab": "History",
     "new": "Open work order",
     "open": "Open work order",
     "backToList": "Work orders",
@@ -316,7 +358,8 @@
       "warranty": "Warranty",
       "fixed_price": "Fixed price"
     },
-    "noQuoteHint": "Lets the repair start without an approved quote. The client's waiver needs the signed reception sheet, which arrives later."
+    "noQuoteHint": "Lets the repair start without an approved quote. The client's waiver needs the signed reception sheet, which arrives later.",
+    "opened": "Order {{code}} opened."
   },
   "vehicles": {
     "title": "Vehicles",
@@ -365,7 +408,8 @@
     "saved": "Changes saved.",
     "orders": "Work orders",
     "pickAnother": "Choose another",
-    "pickResults": "Matching vehicles"
+    "pickResults": "Matching vehicles",
+    "created": "Vehicle added."
   },
   "employees": {
     "title": "Employees",
@@ -400,7 +444,19 @@
     "sessions": "Open sessions",
     "sessionSince": "Opened on {{date}}",
     "thisSession": "this one",
-    "revokeOthers": "Close the other sessions"
+    "revokeOthers": "Close the other sessions",
+    "activeWorkshop": "Active workshop",
+    "activeWorkshopHint": "Where you are working now, with your staff record and role.",
+    "otherWorkshops": "You also work at",
+    "switchTo": "Switch to this one",
+    "settings": {
+      "title": "Workshop settings",
+      "employees": "Staff records, access, roles and costs",
+      "audit": "Who did what and when",
+      "workshopData": "Workshop details, logo and labour rates",
+      "workshopDataHint": "Legal name, tax ID, industrial registry, VAT and labour rates",
+      "soon": "Coming soon"
+    }
   },
   "admin": {
     "title": "Workshops",
@@ -415,7 +471,10 @@
     "workshop": "Workshop",
     "admins": "Administrators",
     "status": "Status",
-    "statuses": { "active": "Active", "inactive": "Inactive" },
+    "statuses": {
+      "active": "Active",
+      "inactive": "Inactive"
+    },
     "access": "With access",
     "pendingInvitations": "Pending invitations",
     "limit": "Access limit",
@@ -453,7 +512,7 @@
     "already_saved": "It was already saved.",
     "id_in_use": "Couldn't save it: please write it again.",
     "rate_limited": "Too many attempts in a row. Wait a few minutes and try again.",
-    "invalid_input":"Some of the data is not valid. Check it, especially the email.",
+    "invalid_input": "Some of the data is not valid. Check it, especially the email.",
     "wrong_actor": "This account cannot use this part of the application.",
     "workshop_not_found": "You do not have access to that workshop.",
     "employee_not_found": "That employee no longer exists.",
@@ -467,8 +526,8 @@
     "employee_limit_reached": "The workshop has reached its limit of employees with access.",
     "employee_already_has_access": "This employee already has access.",
     "already_a_superadmin": "This account is already a superadmin. Sign in.",
-    "staff_cannot_be_superadmin":"That email already belongs to a workshop staff account. A superadmin needs an account of their own, with another email.",
-    "superadmin_cannot_be_employee":"A superadmin account cannot be an employee of a workshop.",
+    "staff_cannot_be_superadmin": "That email already belongs to a workshop staff account. A superadmin needs an account of their own, with another email.",
+    "superadmin_cannot_be_employee": "A superadmin account cannot be an employee of a workshop.",
     "already_an_employee": "That account already has access to this workshop with another record.",
     "single_workshop_installation": "This is a single-workshop installation and the workshop already exists.",
     "client_not_found": "That client does not exist in this workshop.",
@@ -494,5 +553,13 @@
     "work_order_has_work": "The work order has recorded work: it cannot be cancelled. Void the entries if they were recorded by mistake.",
     "work_entry_not_found": "That work entry does not exist in this work order.",
     "work_entry_already_voided": "That work entry was already voided."
+  },
+  "palette": {
+    "open": "Search the workshop",
+    "placeholder": "Plate, client, phone or section…",
+    "placeholderShort": "Search…",
+    "goTo": "Go to",
+    "actions": "Actions",
+    "results": "Results"
   }
 }

@@ -37,7 +37,15 @@ export function ForgotPasswordPage() {
   }
 
   return (
-    <AuthLayout title={t("auth.forgotTitle")}>
+    <AuthLayout
+      title={t("auth.forgotTitle")}
+      description={t("auth.forgotDescription")}
+      footer={
+        <Link to="/login" className="link">
+          {t("auth.backToSignIn")}
+        </Link>
+      }
+    >
       {sent ? (
         <p role="status">{t("auth.resetEmailSent")}</p>
       ) : (
@@ -60,9 +68,6 @@ export function ForgotPasswordPage() {
           </Button>
         </form>
       )}
-      <Link to="/login" className="text-muted-foreground text-sm underline">
-        {t("auth.backToSignIn")}
-      </Link>
     </AuthLayout>
   );
 }

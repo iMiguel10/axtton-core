@@ -1,8 +1,12 @@
+import { Wallet } from "lucide-react";
 import { useInfiniteQuery } from "@tanstack/react-query";
 import { useTranslation } from "react-i18next";
 import { Link } from "react-router-dom";
 
+import { EmptyState } from "@/shared/components/EmptyState";
+import { TableSkeleton } from "@/shared/components/Loading";
 import { Button } from "@/shared/components/ui/button";
+import { Card, CardContent } from "@/shared/components/ui/card";
 import {
   Table,
   TableBody,
@@ -11,12 +15,14 @@ import {
   TableHeader,
   TableRow,
 } from "@/shared/components/ui/table";
+import { LinkRow } from "@/shared/components/table/LinkRow";
+import { MobileCard, MobileCards } from "@/shared/components/table/MobileCards";
+import { When } from "@/shared/components/When";
 import { errorMessage } from "@/shared/lib/errors";
 
 import { clientName } from "../clients/clientName";
 import { useActiveWorkshop } from "../session/ActiveWorkshop";
 import { ordersApi, PAGE_SIZE } from "./api";
-import { formatDateTime } from "./OrderBits";
 
 /**
  * Las entregadas pendientes de cobro, la que más lleva primero (RF-29). Los días
@@ -24,7 +30,7 @@ import { formatDateTime } from "./OrderBits";
  * presupuestos (F3): hoy no hay de dónde sacarlo.
  */
 export function UnpaidOrdersPage() {
-  const { t, i18n } = useTranslation();
+  const { t } = useTranslation();
   const { workshopId } = useActiveWorkshop();
   const orders = useInfiniteQuery({
     queryKey: ["orders", workshopId, "unpaid"],
@@ -37,17 +43,31 @@ export function UnpaidOrdersPage() {
 
   return (
     <section className="grid gap-4">
-      <Link to="/orders" className="text-muted-foreground text-sm hover:underline">
-        ← {t("orders.backToList")}
-      </Link>
-      <h1 className="text-2xl font-semibold">{t("payment.unpaidTitle")}</h1>
+      <Card>
+        <CardContent>
       {orders.isPending ? (
-        <p>{t("common.loading")}</p>
+        <TableSkeleton />
       ) : orders.isError ? (
         <p role="alert">{errorMessage(t, orders.error)}</p>
       ) : rows.length === 0 ? (
-        <p className="text-muted-foreground">{t("payment.noneUnpaid")}</p>
+        <EmptyState icon={Wallet} title={t("payment.noneUnpaid")} />
       ) : (
+        <>
+        <MobileCards>
+          {rows.map((order) => (
+            <MobileCard
+              key={order.id}
+              to={`/orders/${order.id}`}
+              title={order.code}
+              aside={<span className="text-sm font-medium tabular-nums">{t("payment.days", { count: order.days_pending })}</span>}
+              lines={[
+                <span key="v" className="text-foreground tabular-nums">{order.vehicle.plate}</span>,
+                clientName(t, order.client.name),
+              ]}
+            />
+          ))}
+        </MobileCards>
+        <div className="hidden md:block">
         <Table>
           <TableHeader>
             <TableRow>
@@ -60,13 +80,13 @@ export function UnpaidOrdersPage() {
           </TableHeader>
           <TableBody>
             {rows.map((order) => (
-              <TableRow key={order.id}>
+              <LinkRow key={order.id} to={`/orders/${order.id}`}>
                 <TableCell>
-                  <Link to={`/orders/${order.id}`} className="font-mono font-medium hover:underline">
+                  <Link to={`/orders/${order.id}`} className="link tabular-nums">
                     {order.code}
                   </Link>
                 </TableCell>
-                <TableCell className="font-mono">{order.vehicle.plate}</TableCell>
+                <TableCell className="tabular-nums">{order.vehicle.plate}</TableCell>
                 <TableCell>
                   {clientName(t, order.client.name)}
                   {order.client.phone && (
@@ -74,23 +94,30 @@ export function UnpaidOrdersPage() {
                   )}
                 </TableCell>
                 <TableCell className="hidden md:table-cell">
-                  {formatDateTime(order.delivered_at, i18n.language)}
+                  <When iso={order.delivered_at} />
                 </TableCell>
                 <TableCell className="text-right tabular-nums">
                   {t("payment.days", { count: order.days_pending })}
                 </TableCell>
-              </TableRow>
+              </LinkRow>
             ))}
           </TableBody>
         </Table>
+        </div>
+        </>
       )}
       {orders.hasNextPage && (
-        <div>
-          <Button variant="outline" disabled={orders.isFetchingNextPage} onClick={() => void orders.fetchNextPage()}>
-            {t("orders.loadMore")}
-          </Button>
-        </div>
+        <Button
+          variant="outline"
+          className="mt-4"
+          disabled={orders.isFetchingNextPage}
+          onClick={() => void orders.fetchNextPage()}
+        >
+          {t("orders.loadMore")}
+        </Button>
       )}
+        </CardContent>
+      </Card>
     </section>
   );
 }

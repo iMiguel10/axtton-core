@@ -5,6 +5,7 @@ import { useForm } from "react-hook-form";
 import { useTranslation } from "react-i18next";
 import { z } from "zod";
 
+import { useDates } from "@/shared/lib/dates";
 import { Field } from "@/shared/components/form/Field";
 import { Select } from "@/shared/components/form/Select";
 import { Textarea } from "@/shared/components/form/Textarea";
@@ -28,19 +29,14 @@ const schema = z.object({
 });
 type Values = z.infer<typeof schema>;
 
-/** "2026-11-02T18:00" en la hora del navegador, para un <input type="datetime-local">. */
-function toLocalInput(iso: string | null): string {
-  if (!iso) return "";
-  const date = new Date(iso);
-  const pad = (n: number) => String(n).padStart(2, "0");
-  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}`;
-}
+type Dates = ReturnType<typeof useDates>;
 
-function toValues(order?: OrderDetail): Values {
+function toValues(dates: Dates, order?: OrderDetail): Values {
   return {
     odometerKm: order?.odometer_km?.toString() ?? "",
     reason: order?.reason ?? "",
-    expectedDelivery: toLocalInput(order?.expected_delivery_at ?? null),
+    // En la hora del taller, no en la del navegador (shared/lib/dates).
+    expectedDelivery: dates.toInput(order?.expected_delivery_at ?? null),
     droppedOffByName: order?.dropped_off_by_name ?? "",
     droppedOffByPhone: order?.dropped_off_by_phone ?? "",
     receptionNotes: order?.reception_notes ?? "",
@@ -48,15 +44,13 @@ function toValues(order?: OrderDetail): Values {
   };
 }
 
-function toInput(values: Values): ReceptionInput {
+function toInput(dates: Dates, values: Values): ReceptionInput {
   return {
     odometer_km: values.odometerKm ? Number(values.odometerKm) : null,
     reason: values.reason || null,
-    // El navegador interpreta la hora en su zona; el ISO lleva el desfase, así
-    // que el servidor sabe qué instante es (la API rechaza horas sin zona).
-    expected_delivery_at: values.expectedDelivery
-      ? new Date(values.expectedDelivery).toISOString()
-      : null,
+    // Lo escrito es hora del taller; se manda como instante ISO (la API
+    // rechaza horas sin zona).
+    expected_delivery_at: values.expectedDelivery ? dates.fromInput(values.expectedDelivery) : null,
     dropped_off_by_name: values.droppedOffByName || null,
     dropped_off_by_phone: values.droppedOffByPhone || null,
     reception_notes: values.receptionNotes || null,
@@ -85,6 +79,7 @@ export function ReceptionForm({
   onSubmit: (input: ReceptionInput) => void;
 }) {
   const { t } = useTranslation();
+  const dates = useDates();
   const { workshopId } = useActiveWorkshop();
   // El directorio del taller: solo fichas activas, con id y nombre.
   const staff = useQuery({
@@ -99,13 +94,13 @@ export function ReceptionForm({
     ...(staff.data ?? []),
     ...(responsible && !staff.data?.some((m) => m.id === responsible.id) ? [responsible] : []),
   ];
-  const form = useForm<Values>({ resolver: zodResolver(schema), defaultValues: toValues(order) });
+  const form = useForm<Values>({ resolver: zodResolver(schema), defaultValues: toValues(dates, order) });
   const { errors, isDirty } = form.formState;
 
   return (
     <form
       className="grid gap-4 md:grid-cols-2"
-      onSubmit={form.handleSubmit((values) => onSubmit(toInput(values)))}
+      onSubmit={form.handleSubmit((values) => onSubmit(toInput(dates, values)))}
       noValidate
     >
       {before && <div className="grid gap-4 md:col-span-2 md:grid-cols-2">{before}</div>}

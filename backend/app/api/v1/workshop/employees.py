@@ -8,9 +8,10 @@ from fastapi import APIRouter, BackgroundTasks, Depends, status
 from app.api.deps import get_email_sender
 from app.api.v1.workshop.deps import WorkshopContext, require
 from app.core.config import get_settings
-from app.domain.invitations import invitation_email, invitation_path
+from app.domain.emails import invitation_email
+from app.domain.invitations import invitation_path
 from app.domain.permissions import Action, can
-from app.infra.email import Email, EmailSender
+from app.infra.email import EmailSender, compose
 from app.schemas.employees import (
     EmployeeCreate,
     EmployeeCreated,
@@ -104,14 +105,12 @@ async def invite(
     )
     if not email_sender.enabled:
         return InvitationQueued(invitation_email_queued=False)
-    subject, text = invitation_email(
+    content = invitation_email(
         employee_name=invitation.employee_name,
         workshop_name=invitation.workshop_name,
         link=get_settings().app_url
         + invitation_path(workshop.workshop_id, invitation.token),
         first_admin=False,
     )
-    background.add_task(
-        email_sender.send, Email(to=invitation.email, subject=subject, body=text)
-    )
+    background.add_task(email_sender.send, compose(invitation.email, content))
     return InvitationQueued(invitation_email_queued=True)

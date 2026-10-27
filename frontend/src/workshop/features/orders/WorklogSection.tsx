@@ -1,7 +1,11 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useState, type FormEvent } from "react";
+import { useState, type FormEvent, type ReactNode } from "react";
+import { Wrench } from "lucide-react";
 import { useTranslation } from "react-i18next";
 
+import { EmptyState } from "@/shared/components/EmptyState";
+import { notify } from "@/shared/components/Toaster";
+import { ConfirmButton } from "@/shared/components/ConfirmButton";
 import { Field } from "@/shared/components/form/Field";
 import { Select } from "@/shared/components/form/Select";
 import { Textarea } from "@/shared/components/form/Textarea";
@@ -9,13 +13,14 @@ import { Badge } from "@/shared/components/ui/badge";
 import { Button } from "@/shared/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/shared/components/ui/card";
 import { Label } from "@/shared/components/ui/label";
+import { When } from "@/shared/components/When";
 import { errorMessage } from "@/shared/lib/errors";
+import { useDates } from "@/shared/lib/dates";
 import { cn } from "@/shared/lib/utils";
 
 import { newDraftId, unlessAlreadySaved, useDraft } from "../../lib/useDraft";
 import { useActiveWorkshop } from "../session/ActiveWorkshop";
 import { fetchStaff, worklogApi, type DiagnosisVersion, type Worklog } from "./api";
-import { formatDateTime } from "./OrderBits";
 
 /**
  * Diagnóstico para el cliente, trabajos realizados y notas internas de una
@@ -28,14 +33,28 @@ import { formatDateTime } from "./OrderBits";
  * TanStack Query las dejaría en pausa en vez de fallar, y el borrador no
  * sabría que está pendiente.
  */
+export type WorklogParts = {
+  diagnosis: ReactNode;
+  work: ReactNode;
+  notes: ReactNode;
+  /** Para las pestañas: cuántos trabajos sin anular y cuántas notas hay. */
+  counts: { work: number; notes: number };
+};
+
+/**
+ * `layout` recibe las tres partes y decide dónde va cada una (la ficha las pone
+ * en pestañas). Así se pide el registro una sola vez y hay un solo "cargando".
+ */
 export function WorklogSection({
   orderId,
   orderCode,
   closed,
+  layout,
 }: {
   orderId: string;
   orderCode: string;
   closed: boolean;
+  layout: (parts: WorklogParts | null) => ReactNode;
 }) {
   const { t } = useTranslation();
   const { workshopId } = useActiveWorkshop();
@@ -53,11 +72,16 @@ export function WorklogSection({
   // Con datos ya cargados, un fallo al recargar (sin conexión) no se los lleva:
   // los formularios, con lo que se está escribiendo, siguen ahí.
   if (!log.data) {
-    return log.isError ? <p role="alert">{errorMessage(t, log.error)}</p> : <p>{t("common.loading")}</p>;
+    if (log.isError) return <p role="alert">{errorMessage(t, log.error)}</p>;
+    return layout(null);
   }
   const scope = { workshopId, orderId, orderCode };
-  return (
-    <>
+  return layout({
+    counts: {
+      work: log.data.work_entries.filter((entry) => !entry.voided_at).length,
+      notes: log.data.notes.length,
+    },
+    diagnosis: (
       <DiagnosisCard
         // Sin key por versión: tras un 409, remontar el editor borraría lo que
         // estaba escribiendo quien guardó segundo.
@@ -66,10 +90,10 @@ export function WorklogSection({
         closed={closed}
         onSaved={refresh}
       />
-      <WorkCard scope={scope} log={log.data} closed={closed} onChanged={refresh} />
-      <NotesCard scope={scope} log={log.data} onAdded={refresh} />
-    </>
-  );
+    ),
+    work: <WorkCard scope={scope} log={log.data} closed={closed} onChanged={refresh} />,
+    notes: <NotesCard scope={scope} log={log.data} onAdded={refresh} />,
+  });
 }
 
 type OrderScope = { workshopId: string; orderId: string; orderCode: string };
@@ -104,7 +128,8 @@ function DiagnosisCard({
   closed: boolean;
   onSaved: () => Promise<unknown>;
 }) {
-  const { t, i18n } = useTranslation();
+  const { t } = useTranslation();
+  const dates = useDates();
   const current = versions[0];
   const currentNo = current?.version_no ?? 0;
   const [text, setText] = useState(current?.text ?? "");
@@ -120,6 +145,7 @@ function DiagnosisCard({
     onSuccess: ({ version_no }) => {
       setBase(version_no);
       draft.discard();
+      notify(t("worklog.diagnosisSaved"));
     },
     onError: (error, input) => draft.failed(input, error),
     onSettled: onSaved,
@@ -223,7 +249,7 @@ function DiagnosisCard({
             {t("worklog.version", {
               number: current.version_no,
               name: current.employee_name,
-              when: formatDateTime(current.created_at, i18n.language),
+              when: dates.dateTime(current.created_at),
             })}
             {versions.length > 1 && (
               <>
@@ -250,7 +276,7 @@ function DiagnosisCard({
                   {t("worklog.version", {
                     number: version.version_no,
                     name: version.employee_name,
-                    when: formatDateTime(version.created_at, i18n.language),
+                    when: dates.dateTime(version.created_at),
                   })}
                 </span>
                 <p className="text-sm whitespace-pre-line">{version.text}</p>
@@ -283,6 +309,7 @@ function WorkCard({
   onChanged: () => Promise<unknown>;
 }) {
   const { t, i18n } = useTranslation();
+  const dates = useDates();
   const { employeeId } = useActiveWorkshop();
   const api = worklogApi(scope.workshopId, scope.orderId);
   const staff = useQuery({
@@ -363,7 +390,7 @@ function WorkCard({
           </p>
         )}
         {log.work_entries.length === 0 ? (
-          <p className="text-muted-foreground text-sm">{t("worklog.noWork")}</p>
+          <EmptyState compact icon={Wrench} title={t("worklog.noWork")} />
         ) : (
           <ul className="grid gap-2">
             {log.work_entries.map((entry) => (
@@ -377,25 +404,25 @@ function WorkCard({
                   </span>
                   {entry.voided_at && <Badge variant="secondary">{t("worklog.voided")}</Badge>}
                   {entry.can_void && !closed && (
-                    <Button
+                    <ConfirmButton
                       variant="ghost"
                       size="xs"
                       className="ml-auto"
                       disabled={voiding.isPending}
-                      onClick={() => {
-                        if (window.confirm(t("worklog.confirmVoid"))) {
-                          voiding.mutate(entry.id);
-                        }
-                      }}
+                      title={t("worklog.void")}
+                      description={t("worklog.confirmVoid")}
+                      confirmLabel={t("worklog.void")}
+                      destructive
+                      onConfirm={() => voiding.mutate(entry.id)}
                     >
                       {t("worklog.void")}
-                    </Button>
+                    </ConfirmButton>
                   )}
                 </div>
                 <span className="text-muted-foreground text-xs">
                   {t("worklog.entryMeta", {
                     worker: entry.employee.name,
-                    date: new Date(`${entry.worked_on}T00:00:00`).toLocaleDateString(i18n.language),
+                    date: dates.day(entry.worked_on),
                     hours: hoursOf(entry.hours),
                     recorder: entry.recorded_by_name,
                   })}
@@ -462,7 +489,7 @@ function NotesCard({
   log: Worklog;
   onAdded: () => Promise<unknown>;
 }) {
-  const { t, i18n } = useTranslation();
+  const { t } = useTranslation();
   const [note, setNote] = useState<NoteDraft>(() => ({ id: newDraftId(), body: "" }));
   const add = useMutation({
     mutationFn: (input: NoteDraft) =>
@@ -498,7 +525,7 @@ function NotesCard({
             {log.notes.map((entry) => (
               <li key={entry.seq} className="grid gap-0.5 border-l-2 pl-3">
                 <span className="text-muted-foreground text-xs">
-                  {entry.employee_name} · {formatDateTime(entry.created_at, i18n.language)}
+                  {entry.employee_name} · <When iso={entry.created_at} />
                 </span>
                 <p className="text-sm whitespace-pre-line">{entry.body}</p>
               </li>

@@ -2,8 +2,10 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { createContext, useContext, useState, type ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 
+import { AppSplash } from "@/shared/components/Loading";
 import { Brand } from "@/shared/components/Brand";
 import { Button } from "@/shared/components/ui/button";
+import { TimeZoneProvider } from "@/shared/lib/dates";
 import { errorMessage } from "@/shared/lib/errors";
 
 import { signOut } from "../../lib/session";
@@ -77,7 +79,7 @@ export function ActiveWorkshopProvider({ children }: { children: ReactNode }) {
   }
 
   if (me.isPending || active.isLoading) {
-    return <p className="p-6">{t("common.loading")}</p>;
+    return <AppSplash />;
   }
   if (me.isError || active.isError) {
     return (
@@ -91,9 +93,10 @@ export function ActiveWorkshopProvider({ children }: { children: ReactNode }) {
     return <WorkshopSelector workshops={workshops} onSelect={select} />;
   }
 
+  const membership = workshops.find((w) => w.workshop_id === workshopId)!;
   const value: ActiveWorkshopValue = {
     workshopId,
-    workshopName: workshops.find((w) => w.workshop_id === workshopId)!.workshop_name,
+    workshopName: membership.workshop_name,
     role: active.data.role,
     employeeId: active.data.employee_id,
     canManageEmployees: active.data.role === "admin",
@@ -105,14 +108,19 @@ export function ActiveWorkshopProvider({ children }: { children: ReactNode }) {
     workshops,
     select,
   };
-  return <ActiveWorkshopContext value={value}>{children}</ActiveWorkshopContext>;
+  return (
+    <ActiveWorkshopContext value={value}>
+      {/* Todas las fechas de debajo, en la zona de este taller (shared/lib/dates). */}
+      <TimeZoneProvider timeZone={membership.timezone}>{children}</TimeZoneProvider>
+    </ActiveWorkshopContext>
+  );
 }
 
 function CenteredMessage({ children }: { children: ReactNode }) {
   const { t } = useTranslation();
   return (
     <main className="mx-auto grid max-w-md gap-4 p-6 pt-24">
-      <Brand className="text-xl" />
+      <Brand className="h-9" />
       <p role="alert">{children}</p>
       <Button variant="outline" onClick={() => void signOut()}>
         {t("nav.signOut")}
@@ -131,7 +139,7 @@ function WorkshopSelector({
   const { t } = useTranslation();
   return (
     <main className="mx-auto grid max-w-md gap-4 p-6 pt-24">
-      <Brand className="text-xl" />
+      <Brand className="h-9" />
       <h1 className="text-2xl font-semibold">{t("workshop.chooseTitle")}</h1>
       <ul className="grid gap-2">
         {workshops.map((w) => (

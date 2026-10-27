@@ -5,6 +5,7 @@ import { useTranslation } from "react-i18next";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import EmailPassword from "supertokens-web-js/recipe/emailpassword";
 
+import { LinesSkeleton } from "@/shared/components/Loading";
 import { Field } from "@/shared/components/form/Field";
 import { Button } from "@/shared/components/ui/button";
 import { apiRequest } from "@/shared/lib/apiClient";
@@ -51,7 +52,7 @@ export function InvitationPage() {
   });
 
   if (invitation.isPending) {
-    return <AuthLayout title={t("invitation.title")}>{t("common.loading")}</AuthLayout>;
+    return <AuthLayout title={t("invitation.title")}><LinesSkeleton /></AuthLayout>;
   }
   if (invitation.isError) {
     return (
@@ -66,9 +67,11 @@ export function InvitationPage() {
 
   const { workshop_name, employee_name, email } = invitation.data;
   return (
-    <AuthLayout title={t("invitation.title")}>
-      <p>{t("invitation.intro", { name: employee_name, workshop: workshop_name, email })}</p>
-      <p className="text-muted-foreground text-sm">{t("invitation.existingAccountHint")}</p>
+    <AuthLayout
+      title={t("invitation.title")}
+      description={t("invitation.intro", { name: employee_name, workshop: workshop_name, email })}
+      footer={t("invitation.existingAccountHint")}
+    >
       <form
         className="grid gap-4"
         onSubmit={form.handleSubmit((values) => accept.mutate(values))}

@@ -4,6 +4,7 @@ import { useForm } from "react-hook-form";
 import { useTranslation } from "react-i18next";
 import { z } from "zod";
 
+import { TableSkeleton } from "@/shared/components/Loading";
 import { Field } from "@/shared/components/form/Field";
 import { Button } from "@/shared/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/shared/components/ui/card";
@@ -37,7 +38,6 @@ export function AdminSuperadminsPage() {
 
   return (
     <section className="grid max-w-2xl gap-6">
-      <h1 className="text-2xl font-semibold">{t("superadmins.title")}</h1>
       <Card>
         <CardHeader>
           <CardTitle>{t("superadmins.invite")}</CardTitle>
@@ -74,7 +74,7 @@ export function AdminSuperadminsPage() {
       </Card>
 
       {list.isPending ? (
-        <p>{t("common.loading")}</p>
+        <TableSkeleton />
       ) : list.isError ? (
         <p role="alert">{errorMessage(t, list.error)}</p>
       ) : (

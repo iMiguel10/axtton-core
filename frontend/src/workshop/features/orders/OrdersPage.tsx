@@ -1,9 +1,13 @@
 import { useInfiniteQuery } from "@tanstack/react-query";
 import { useState } from "react";
+import { ClipboardList } from "lucide-react";
 import { useTranslation } from "react-i18next";
-import { Link } from "react-router-dom";
 
-import { Button, buttonVariants } from "@/shared/components/ui/button";
+import { EmptyState } from "@/shared/components/EmptyState";
+import { TableSkeleton } from "@/shared/components/Loading";
+import { SegmentedFilter, SwitchFilter } from "@/shared/components/filters/Filters";
+import { Button } from "@/shared/components/ui/button";
+import { Card, CardContent, CardHeader } from "@/shared/components/ui/card";
 import { errorMessage } from "@/shared/lib/errors";
 import { cn } from "@/shared/lib/utils";
 
@@ -17,7 +21,7 @@ const STATES: OrderFilters["state"][] = ["open", "closed", "all"];
  * las que llevan más tiempo paradas destacadas. */
 export function OrdersPage() {
   const { t } = useTranslation();
-  const { workshopId, canManageOrders } = useActiveWorkshop();
+  const { workshopId } = useActiveWorkshop();
   const [state, setState] = useState<OrderFilters["state"]>("open");
   const [mine, setMine] = useState(false);
   const [stalledFirst, setStalledFirst] = useState(false);
@@ -35,52 +39,24 @@ export function OrdersPage() {
 
   return (
     <section className="grid gap-4">
-      <div className="flex flex-wrap items-center justify-between gap-2">
-        <h1 className="text-2xl font-semibold">{t("orders.title")}</h1>
-        <div className="flex flex-wrap gap-2">
-          <Link to="/orders/unpaid" className={buttonVariants({ variant: "outline" })}>
-            {t("payment.unpaidTitle")}
-          </Link>
-          {canManageOrders && (
-            <Link to="/orders/new" className={buttonVariants()}>
-              {t("orders.new")}
-            </Link>
-          )}
-        </div>
-      </div>
-      <div className="flex flex-wrap items-center gap-4">
-        <div role="group" aria-label={t("orders.state")} className="flex gap-1">
-          {STATES.map((value) => (
-            <Button
-              key={value}
-              size="sm"
-              variant={state === value ? "default" : "outline"}
-              aria-pressed={state === value}
-              onClick={() => setState(value)}
-            >
-              {t(`orders.states.${value}`)}
-            </Button>
-          ))}
-        </div>
-        <label className="flex items-center gap-2 text-sm">
-          <input type="checkbox" checked={mine} onChange={(e) => setMine(e.target.checked)} />
-          {t("orders.mine")}
-        </label>
-        <label className="flex items-center gap-2 text-sm">
-          <input
-            type="checkbox"
-            checked={stalledFirst}
-            onChange={(e) => setStalledFirst(e.target.checked)}
+      <Card>
+        <CardHeader className="flex flex-wrap items-center gap-x-6 gap-y-3">
+          <SegmentedFilter
+            label={t("orders.state")}
+            value={state}
+            options={STATES.map((value) => ({ value, label: t(`orders.states.${value}`) }))}
+            onChange={setState}
           />
-          {t("orders.stalledFirst")}
-        </label>
-      </div>
+          <SwitchFilter label={t("orders.mine")} checked={mine} onChange={setMine} />
+          <SwitchFilter label={t("orders.stalledFirst")} checked={stalledFirst} onChange={setStalledFirst} />
+        </CardHeader>
+        <CardContent>
       {orders.isPending ? (
-        <p>{t("common.loading")}</p>
+        <TableSkeleton />
       ) : orders.isError ? (
         <p role="alert">{errorMessage(t, orders.error)}</p>
       ) : rows.length === 0 ? (
-        <p className="text-muted-foreground">{t(mine ? "orders.noneMine" : "orders.none")}</p>
+        <EmptyState icon={ClipboardList} title={t(mine ? "orders.noneMine" : "orders.none")} />
       ) : (
         <div className={cn(orders.isPlaceholderData && "opacity-60")}>
           <OrdersTable orders={rows} />
@@ -96,6 +72,8 @@ export function OrdersPage() {
           )}
         </div>
       )}
+        </CardContent>
+      </Card>
     </section>
   );
 }

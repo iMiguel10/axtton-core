@@ -13,6 +13,9 @@ class WhoAmI(BaseModel):
 class WorkshopMembership(BaseModel):
     workshop_id: UUID
     workshop_name: str
+    # IANA ("Europe/Madrid"): las fechas se enseñan en la del taller, no en la
+    # del navegador.
+    timezone: str
     role: str
 
 

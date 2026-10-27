@@ -5,6 +5,7 @@ import { useForm } from "react-hook-form";
 import { useTranslation } from "react-i18next";
 import { z } from "zod";
 
+import { TableSkeleton } from "@/shared/components/Loading";
 import { Field } from "@/shared/components/form/Field";
 import { Badge } from "@/shared/components/ui/badge";
 import { Button } from "@/shared/components/ui/button";
@@ -42,7 +43,6 @@ export function AdminWorkshopsPage() {
 
   return (
     <section className="grid gap-6">
-      <h1 className="text-2xl font-semibold">{t("admin.title")}</h1>
       {me.isSuccess && workshops.isSuccess && canCreate && <NewWorkshopForm />}
       {me.isSuccess && workshops.isSuccess && !canCreate && (
         <p className="text-muted-foreground text-sm">{t("admin.singleInstallation")}</p>
@@ -53,10 +53,12 @@ export function AdminWorkshopsPage() {
         </p>
       )}
       {workshops.isPending ? (
-        <p>{t("common.loading")}</p>
+        <TableSkeleton />
       ) : workshops.isError ? (
         <p role="alert">{errorMessage(t, workshops.error)}</p>
       ) : (
+        <Card>
+          <CardContent>
         <Table>
           <TableHeader>
             <TableRow>
@@ -82,6 +84,8 @@ export function AdminWorkshopsPage() {
             ))}
           </TableBody>
         </Table>
+  </CardContent>
+</Card>
       )}
     </section>
   );

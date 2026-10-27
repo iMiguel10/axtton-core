@@ -5,6 +5,7 @@ import { useTranslation } from "react-i18next";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import EmailPassword from "supertokens-web-js/recipe/emailpassword";
 
+import { LinesSkeleton } from "@/shared/components/Loading";
 import { Field } from "@/shared/components/form/Field";
 import { Button } from "@/shared/components/ui/button";
 import { apiRequest } from "@/shared/lib/apiClient";
@@ -44,7 +45,7 @@ export function SuperadminInvitationPage() {
   });
 
   if (invitation.isPending) {
-    return <AuthLayout title={t("superadminInvitation.title")}>{t("common.loading")}</AuthLayout>;
+    return <AuthLayout title={t("superadminInvitation.title")}><LinesSkeleton /></AuthLayout>;
   }
   if (invitation.isError) {
     return (
@@ -58,8 +59,10 @@ export function SuperadminInvitationPage() {
   }
 
   return (
-    <AuthLayout title={t("superadminInvitation.title")}>
-      <p>{t("superadminInvitation.intro", { email: invitation.data.email })}</p>
+    <AuthLayout
+      title={t("superadminInvitation.title")}
+      description={t("superadminInvitation.intro", { email: invitation.data.email })}
+    >
       <form
         className="grid gap-4"
         onSubmit={form.handleSubmit((values) => accept.mutate(values))}

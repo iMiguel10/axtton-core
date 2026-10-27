@@ -1,16 +1,23 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
+import { Car } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { Link, useParams } from "react-router-dom";
 
+import { EmptyState } from "@/shared/components/EmptyState";
+import { ConfirmButton } from "@/shared/components/ConfirmButton";
+import { DetailSkeleton, LinesSkeleton } from "@/shared/components/Loading";
 import { Badge } from "@/shared/components/ui/badge";
 import { Button, buttonVariants } from "@/shared/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/shared/components/ui/card";
 import { Input } from "@/shared/components/ui/input";
 import { Label } from "@/shared/components/ui/label";
+import { notify } from "@/shared/components/Toaster";
 import { errorMessage } from "@/shared/lib/errors";
+import { useDates } from "@/shared/lib/dates";
 
 import { clientName } from "./clientName";
+import { usePageCrumb } from "../layout/PageCrumb";
 import { useActiveWorkshop } from "../session/ActiveWorkshop";
 import { RelatedOrders } from "../orders/OrderBits";
 import { vehiclesApi } from "../vehicles/api";
@@ -20,14 +27,14 @@ import { ClientForm } from "./ClientForm";
 /** Ficha de un cliente (RF-10): editable para quien gestiona clientes, de solo
  * lectura para el mecánico (especificación §3). */
 export function ClientDetailPage() {
-  const { t, i18n } = useTranslation();
+  const { t } = useTranslation();
+  const dates = useDates();
   const { clientId = "" } = useParams();
   const { workshopId, canManageClients } = useActiveWorkshop();
   const api = clientsApi(workshopId);
   const queryClient = useQueryClient();
   const queryKey = ["client", workshopId, clientId];
   const client = useQuery({ queryKey, queryFn: () => api.get(clientId) });
-  const [saved, setSaved] = useState(false);
 
   // Haya ido bien o no (un 409 si otra persona guardó antes), se vuelve a pedir
   // la ficha: así el formulario tiene la versión al día y lo último guardado.
@@ -39,59 +46,61 @@ export function ClientDetailPage() {
   const save = useMutation({
     mutationFn: ({ current, input }: { current: Client; input: ClientInput }) =>
       api.update(current, input),
-    onMutate: () => setSaved(false),
-    onSuccess: () => setSaved(true),
+    onSuccess: () => notify(t("clients.saved")),
     onSettled: refresh,
   });
   const archive = useMutation({
     mutationFn: (current: Client) => api.setArchived(current, current.archived_at === null),
-    onMutate: () => setSaved(false),
     onSettled: refresh,
   });
 
-  if (client.isPending) return <p>{t("common.loading")}</p>;
+  usePageCrumb(client.data ? clientName(t, client.data.name) : null);
+  if (client.isPending) return <DetailSkeleton />;
   if (client.isError) return <p role="alert">{errorMessage(t, client.error)}</p>;
   const current = client.data;
   const failed = save.error ?? archive.error;
 
   return (
     <section className="grid gap-4">
-      <Link to="/clients" className="text-muted-foreground text-sm hover:underline">
-        ← {t("clients.backToList")}
-      </Link>
       <div className="flex flex-wrap items-center gap-2">
         <h1 className="text-2xl font-semibold">{clientName(t, current.name)}</h1>
         {current.archived_at && <Badge variant="secondary">{t("clients.archived")}</Badge>}
-        {canManageClients && !current.anonymized_at && (
-          <Button
-            variant="outline"
-            size="sm"
-            className="ml-auto"
-            disabled={archive.isPending}
-            onClick={() => {
-              const archiving = current.archived_at === null;
-              if (!archiving || window.confirm(t("clients.confirmArchive", { name: current.name }))) {
-                archive.mutate(current);
-              }
-            }}
-          >
-            {t(current.archived_at ? "clients.unarchive" : "clients.archive")}
-          </Button>
-        )}
+        {canManageClients &&
+          !current.anonymized_at &&
+          (current.archived_at ? (
+            <Button
+              variant="outline"
+              size="sm"
+              className="ml-auto"
+              disabled={archive.isPending}
+              onClick={() => archive.mutate(current)}
+            >
+              {t("clients.unarchive")}
+            </Button>
+          ) : (
+            // Archivar pide confirmación; desarchivar, no: no se pierde nada.
+            <ConfirmButton
+              variant="outline"
+              size="sm"
+              className="ml-auto"
+              disabled={archive.isPending}
+              title={t("clients.archive")}
+              description={t("clients.confirmArchive", { name: current.name })}
+              confirmLabel={t("clients.archive")}
+              onConfirm={() => archive.mutate(current)}
+            >
+              {t("clients.archive")}
+            </ConfirmButton>
+          ))}
       </div>
       {failed && (
         <p role="alert" className="text-destructive text-sm">
           {errorMessage(t, failed)}
         </p>
       )}
-      {saved && (
-        <p role="status" className="text-sm">
-          {t("clients.saved")}
-        </p>
-      )}
       {current.anonymized_at && (
         <p role="status" className="bg-muted rounded-lg p-3 text-sm">
-          {t("clients.anonymizedNotice", { date: new Date(current.anonymized_at).toLocaleDateString(i18n.language) })}
+          {t("clients.anonymizedNotice", { date: dates.date(current.anonymized_at) })}
         </p>
       )}
       <Card>
@@ -149,17 +158,17 @@ function ClientVehicles({ client, canAdd }: { client: Client; canAdd: boolean })
       </CardHeader>
       <CardContent>
         {vehicles.isPending ? (
-          <p>{t("common.loading")}</p>
+          <LinesSkeleton />
         ) : vehicles.isError ? (
           <p role="alert">{errorMessage(t, vehicles.error)}</p>
         ) : vehicles.data.length === 0 ? (
-          <p className="text-muted-foreground text-sm">{t("clients.noVehicles")}</p>
+          <EmptyState compact icon={Car} title={t("clients.noVehicles")} />
         ) : (
           <ul className="grid gap-1">
             {vehicles.data.map((vehicle) => (
               <li key={vehicle.id}>
-                <Link to={`/vehicles/${vehicle.id}`} className="hover:underline">
-                  <span className="font-mono font-medium">{vehicle.plate}</span>
+                <Link to={`/vehicles/${vehicle.id}`} className="link">
+                  <span className="tabular-nums font-medium">{vehicle.plate}</span>
                   {(vehicle.make || vehicle.model) && (
                     <span className="text-muted-foreground">
                       {" · "}

@@ -17,6 +17,8 @@ class ClientRead(BaseModel):
     notes: str | None
     language: Language
     archived_at: datetime | None
+    # Anonimizado (RF-15): nombre y teléfono vacíos, lo demás nulo, para siempre.
+    anonymized_at: datetime | None
     created_at: datetime
     # El cliente la devuelve al editar: es el bloqueo optimista (RNF-15).
     version: int

@@ -29,7 +29,9 @@
       "superadmin_invited": "Superadmin invited",
       "vehicle_owner_changed": "Owner changed",
       "status_change_undone": "Status change undone",
-      "no_quote_marked": "No quote"
+      "no_quote_marked": "No quote",
+      "payment_recorded": "Payment",
+      "client_anonymized": "Client anonymized"
     },
     "fields": {
       "email": "Email",
@@ -42,7 +44,11 @@
       "max_employees_with_access": "Access limit",
       "client_id": "Owner",
       "no_quote_reason": "Reason",
-      "work_order_status": "Work order status"
+      "work_order_status": "Work order status",
+      "payment_status": "Payment",
+      "payment_method": "Payment method",
+      "paid_amount_cents": "Amount",
+      "paid_on": "Payment date"
     }
   },
   "nav": {
@@ -141,6 +147,12 @@
     "notes": "Internal notes",
     "notesHint": "Only the workshop staff see them; the client never does.",
     "archived": "Archived",
+    "deleted": "Deleted client",
+    "anonymize": "Erase their data (anonymize)",
+    "anonymizeHint": "If the client asks for their data to be erased: name, tax ID, contact details, address and notes are deleted, and their orders and vehicles stay under \"Deleted client\". This cannot be undone. With an open order, deliver or cancel it first.",
+    "anonymizeConfirm": "To confirm, type their name: {{name}}",
+    "anonymizeNow": "Erase their data for good",
+    "anonymizedNotice": "Client deleted on {{date}}: their personal data was erased at their request. Their orders are kept.",
     "archive": "Archive",
     "unarchive": "Unarchive",
     "confirmArchive": "Archive {{name}}? They will no longer appear in the list, but nothing is deleted.",
@@ -177,6 +189,33 @@
     "notesHint": "Only the workshop staff see them; never the client. They are not edited: they are added.",
     "newNote": "Write a note…",
     "addNote": "Add note"
+  },
+  "payment": {
+    "title": "Payment",
+    "status": "Payment status",
+    "statuses": {
+      "pending": "Awaiting payment",
+      "paid": "Paid",
+      "no_charge": "No charge"
+    },
+    "method": "Payment method",
+    "methods": {
+      "cash": "Cash",
+      "card": "Card",
+      "transfer": "Bank transfer",
+      "other": "Other"
+    },
+    "amount": "Amount (€)",
+    "date": "Payment date",
+    "summary": "{{amount}} by {{method}}, on {{date}}",
+    "record": "Record payment",
+    "change": "Correct payment",
+    "unpaidTitle": "Awaiting payment",
+    "noneUnpaid": "No delivered orders are awaiting payment.",
+    "deliveredAt": "Delivered",
+    "daysPending": "Pending for",
+    "days_one": "{{count}} day",
+    "days_other": "{{count}} days"
   },
   "drafts": {
     "offline": "No connection. What you write is kept on this device and will be sent when it's back.",
@@ -406,6 +445,11 @@
   "errors": {
     "unknown": "Something went wrong. Please try again.",
     "network": "Couldn't reach the server. Check the connection and try again.",
+    "payment_not_now": "Payment is recorded when the order is delivered, or afterwards.",
+    "payment_details_required": "A paid order needs a payment method, an amount and a date.",
+    "paid_on_in_future": "The payment date cannot be later than today.",
+    "client_anonymized": "This client was deleted (anonymized). To open an order for their vehicle, change the owner first.",
+    "client_has_open_orders": "The client has open orders: deliver or cancel them before erasing their data.",
     "already_saved": "It was already saved.",
     "id_in_use": "Couldn't save it: please write it again.",
     "rate_limited": "Too many attempts in a row. Wait a few minutes and try again.",

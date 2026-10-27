@@ -16,6 +16,7 @@ import {
 import { errorMessage } from "@/shared/lib/errors";
 import { useDebouncedValue } from "@/shared/lib/useDebouncedValue";
 
+import { clientName } from "../clients/clientName";
 import { useActiveWorkshop } from "../session/ActiveWorkshop";
 import { vehiclesApi, PAGE_SIZE } from "./api";
 
@@ -90,7 +91,7 @@ export function VehiclesPage() {
                   <TableCell>
                     {vehicle.owner ? (
                       <Link to={`/clients/${vehicle.owner.id}`} className="hover:underline">
-                        {vehicle.owner.name}
+                        {clientName(t, vehicle.owner.name)}
                       </Link>
                     ) : (
                       "—"

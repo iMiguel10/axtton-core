@@ -8,6 +8,7 @@ import { Card, CardContent } from "@/shared/components/ui/card";
 import { Label } from "@/shared/components/ui/label";
 import { errorMessage } from "@/shared/lib/errors";
 
+import { clientName } from "../clients/clientName";
 import { useActiveWorkshop } from "../session/ActiveWorkshop";
 import { vehiclesApi, type Vehicle } from "../vehicles/api";
 import { VehiclePicker } from "../vehicles/VehiclePicker";
@@ -77,7 +78,7 @@ export function OrderNewPage() {
                 </div>
                 {vehicle && (
                   <p className="text-sm md:col-span-2">
-                    {t("orders.clientWillBe", { name: vehicle.owner?.name ?? "—" })}
+                    {t("orders.clientWillBe", { name: vehicle.owner ? clientName(t, vehicle.owner.name) : "—" })}
                   </p>
                 )}
               </>

@@ -1,14 +1,15 @@
 from collections.abc import Collection
 from dataclasses import dataclass
-from datetime import datetime
-from typing import Literal
+from datetime import date, datetime
+from typing import Any, Literal
 from uuid import UUID
 
-from sqlalchemy import Select, or_, select, text
+from sqlalchemy import ColumnElement, Select, func, or_, select, text, update
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy.orm import aliased
+from sqlalchemy.orm import InstrumentedAttribute, aliased
 
+from app.domain.work_orders import CLOSED, PaymentStatus, WorkOrderStatus
 from app.models import (
     Client,
     Employee,
@@ -17,6 +18,7 @@ from app.models import (
     WorkOrder,
     WorkOrderCounter,
     WorkOrderStatusChange,
+    Workshop,
 )
 
 
@@ -220,3 +222,75 @@ async def get_for_activity(session: AsyncSession, order_id: UUID) -> WorkOrder |
         .execution_options(populate_existing=True)
     )
     return (await session.scalars(query)).one_or_none()
+
+
+async def local_date(session: AsyncSession, workshop_id: UUID) -> date:
+    """Hoy en la zona horaria del taller: un cobro no puede ser de mañana."""
+    today = await session.scalar(
+        text(
+            "SELECT (clock_timestamp() AT TIME ZONE timezone)::date"
+            " FROM workshops WHERE id = :w"
+        ),
+        {"w": workshop_id},
+    )
+    assert today is not None
+    return today  # type: ignore[no-any-return]
+
+
+async def unpaid_page(
+    session: AsyncSession, *, limit: int, offset: int
+) -> list[tuple[OrderRow, int]]:
+    """Las entregadas pendientes de cobro (RF-29), la más antigua primero, con
+    los días que lleva pendiente: de la fecha de entrega a hoy, las dos en la
+    zona del taller (ix_work_orders_unpaid)."""
+
+    def local_day(at: ColumnElement[datetime] | InstrumentedAttribute[Any]) -> Any:
+        return func.date(func.timezone(Workshop.timezone, at))
+
+    days = local_day(func.clock_timestamp()) - local_day(WorkOrder.delivered_at)
+    rows = await session.execute(
+        _with_context()
+        .add_columns(days)
+        .join(Workshop, Workshop.id == WorkOrder.workshop_id)
+        .where(
+            WorkOrder.status == WorkOrderStatus.DELIVERED,
+            WorkOrder.payment_status == PaymentStatus.PENDING,
+        )
+        .order_by(WorkOrder.delivered_at, WorkOrder.id)
+        .limit(limit)
+        .offset(offset)
+    )
+    return [(OrderRow(o, v, c, name), int(d)) for o, v, c, name, d in rows]
+
+
+async def count_open_for_client(session: AsyncSession, client_id: UUID) -> int:
+    """Las órdenes abiertas de un cliente: con alguna, no se le anonimiza."""
+    count = await session.scalar(
+        select(func.count()).where(
+            WorkOrder.client_id == client_id,
+            WorkOrder.status.not_in(CLOSED),
+        )
+    )
+    return count or 0
+
+
+async def forget_dropped_off_by(session: AsyncSession, client_id: UUID) -> None:
+    """Al anonimizar (RF-15): quien trajo el coche en sus órdenes es un nombre y
+    un teléfono, y no se quedan. Sube la versión: quien tuviera la ficha abierta
+    vuelve a cargarla."""
+    await session.execute(
+        update(WorkOrder)
+        .where(
+            WorkOrder.client_id == client_id,
+            or_(
+                WorkOrder.dropped_off_by_name.is_not(None),
+                WorkOrder.dropped_off_by_phone.is_not(None),
+            ),
+        )
+        .values(
+            dropped_off_by_name=None,
+            dropped_off_by_phone=None,
+            version=WorkOrder.version + 1,
+        )
+        .execution_options(synchronize_session=False)
+    )

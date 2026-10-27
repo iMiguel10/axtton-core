@@ -557,6 +557,63 @@ async def test_two_orders_opened_at_once_get_consecutive_numbers(
 
 
 @pytest.mark.asyncio
+@pytest.mark.parametrize("first_one", ["anonymize", "open"])
+async def test_an_anonymization_and_an_order_for_the_client_never_both_apply(
+    engines: Engines,
+    two_workshops: TwoWorkshops,
+    make_account: MakeAccount,
+    first_one: str,
+) -> None:
+    """RF-15: no se anonimiza a un cliente con una orden abierta, y no se abre
+    una orden para un anonimizado. Las dos van a la vez sobre María.
+
+    El bloqueo de la FK de la orden no basta: espera, pero al insertar, con el
+    cliente ya leído sin anonimizar (comprobado quitando el bloqueo: la orden
+    se abre para la anonimizada). Por eso abrir pide FOR SHARE sobre el cliente
+    antes de leerlo, y anonimizar FOR UPDATE antes de contar sus órdenes: la
+    segunda espera y ve lo que hizo la primera."""
+    from app.services import clients as client_service
+
+    a = two_workshops.a
+    ana, maria, _, car = await shop_with_a_car(engines, make_account, a)
+
+    async def anonymize(session: AsyncSession) -> None:
+        await client_service.anonymize_client(
+            session, a, ana.user_id, maria, expected_version=1
+        )
+
+    steps = {"anonymize": anonymize, "open": lambda s: open_order(s, a, ana, car)}
+    second_one = "open" if first_one == "anonymize" else "anonymize"
+    async with open_transaction(a) as first, open_transaction(a) as second:
+        await steps[first_one](first)
+        work = asyncio.create_task(steps[second_one](second))
+        await asyncio.sleep(GRACE)
+        assert not work.done(), "la segunda debería esperar al cliente"
+        await first.commit()
+        outcome = await finish(second, work)
+
+    expected = (
+        "client_anonymized" if first_one == "anonymize" else "client_has_open_orders"
+    )
+    assert isinstance(outcome, ConflictError), outcome
+    assert outcome.code == expected
+    async with engines.platform.connect() as conn:
+        anonymized, orders = (
+            await conn.execute(
+                text(
+                    "SELECT anonymized_at IS NOT NULL,"
+                    " (SELECT count(*) FROM work_orders WHERE client_id = :c)"
+                    " FROM clients WHERE id = :c"
+                ),
+                {"c": maria},
+            )
+        ).one()
+    assert (anonymized, orders) == (
+        (True, 0) if first_one == "anonymize" else (False, 1)
+    )
+
+
+@pytest.mark.asyncio
 async def test_an_order_rolled_back_leaves_a_gap_not_a_repeated_number(
     engines: Engines, two_workshops: TwoWorkshops, make_account: MakeAccount
 ) -> None:

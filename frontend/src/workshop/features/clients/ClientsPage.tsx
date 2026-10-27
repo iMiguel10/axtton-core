@@ -17,6 +17,7 @@ import {
 import { errorMessage } from "@/shared/lib/errors";
 import { useDebouncedValue } from "@/shared/lib/useDebouncedValue";
 
+import { clientName } from "./clientName";
 import { useActiveWorkshop } from "../session/ActiveWorkshop";
 import { clientsApi, PAGE_SIZE } from "./api";
 
@@ -95,7 +96,7 @@ export function ClientsPage() {
                 <TableRow key={client.id}>
                   <TableCell>
                     <Link to={`/clients/${client.id}`} className="font-medium hover:underline">
-                      {client.name}
+                      {clientName(t, client.name)}
                     </Link>
                     {client.kind === "company" && (
                       <Badge variant="outline" className="ml-2">

@@ -16,6 +16,7 @@ import {
 } from "@/shared/components/ui/table";
 import { errorMessage } from "@/shared/lib/errors";
 
+import { clientName } from "../clients/clientName";
 import { ClientPicker, type PickedClient } from "../clients/ClientPicker";
 import { RelatedOrders } from "../orders/OrderBits";
 import { useActiveWorkshop } from "../session/ActiveWorkshop";
@@ -154,7 +155,7 @@ function OwnerCard({
       <CardContent className="grid gap-4">
         <div className="flex flex-wrap items-center gap-2">
           <Link to={`/clients/${vehicle.owner.id}`} className="font-medium hover:underline">
-            {vehicle.owner.name}
+            {clientName(t, vehicle.owner.name)}
           </Link>
           {canChange && !changing && (
             <Button variant="outline" size="sm" className="ml-auto" onClick={() => setChanging(true)}>
@@ -193,7 +194,7 @@ function OwnerCard({
           <TableBody>
             {vehicle.ownerships.map((period) => (
               <TableRow key={period.started_at}>
-                <TableCell>{period.client.name}</TableCell>
+                <TableCell>{clientName(t, period.client.name)}</TableCell>
                 <TableCell>{date(period.started_at)}</TableCell>
                 <TableCell>
                   {period.ended_at ? (

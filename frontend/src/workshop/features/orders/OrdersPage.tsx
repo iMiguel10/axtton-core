@@ -37,11 +37,16 @@ export function OrdersPage() {
     <section className="grid gap-4">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <h1 className="text-2xl font-semibold">{t("orders.title")}</h1>
-        {canManageOrders && (
-          <Link to="/orders/new" className={buttonVariants()}>
-            {t("orders.new")}
+        <div className="flex flex-wrap gap-2">
+          <Link to="/orders/unpaid" className={buttonVariants({ variant: "outline" })}>
+            {t("payment.unpaidTitle")}
           </Link>
-        )}
+          {canManageOrders && (
+            <Link to="/orders/new" className={buttonVariants()}>
+              {t("orders.new")}
+            </Link>
+          )}
+        </div>
       </div>
       <div className="flex flex-wrap items-center gap-4">
         <div role="group" aria-label={t("orders.state")} className="flex gap-1">

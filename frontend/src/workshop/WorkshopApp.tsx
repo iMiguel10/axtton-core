@@ -19,6 +19,7 @@ import { HomePage } from "./features/home/HomePage";
 import { AppLayout } from "./features/layout/AppLayout";
 import { ConnectionNotice } from "./features/layout/ConnectionNotice";
 import { OrderDetailPage } from "./features/orders/OrderDetailPage";
+import { UnpaidOrdersPage } from "./features/orders/UnpaidOrdersPage";
 import { OrderNewPage } from "./features/orders/OrderNewPage";
 import { OrdersPage } from "./features/orders/OrdersPage";
 import { ActiveWorkshopProvider, useActiveWorkshop } from "./features/session/ActiveWorkshop";
@@ -102,6 +103,7 @@ function StaffRoutes() {
         <Route path="/" element={<HomePage />} />
         <Route path="/orders" element={<OrdersPage />} />
         {canManageOrders && <Route path="/orders/new" element={<OrderNewPage />} />}
+        <Route path="/orders/unpaid" element={<UnpaidOrdersPage />} />
         <Route path="/orders/:orderId" element={<OrderDetailPage />} />
         <Route path="/clients" element={<ClientsPage />} />
         {canManageClients && <Route path="/clients/new" element={<ClientNewPage />} />}

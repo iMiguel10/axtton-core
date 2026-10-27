@@ -85,6 +85,7 @@ Hay **dos roles en el taller, a propósito**: en el taller pequeño al que se di
 | Crear fichas de empleado, darles acceso, cambiar su rol y desactivarlas (también de otros administradores) | ✔ | ✘ | ✘ |
 | Crear y editar clientes y vehículos | ✔ | ✘ (solo ver) | ✘ |
 | Cambiar el titular de un vehículo | ✔ | ✘ | ✘ |
+| Anonimizar a un cliente que lo pide (RF-15; *fila añadida en F2*) | ✔ | ✘ | ✘ |
 | Generar el informe de actuaciones de un vehículo (RF-18) | ✔ | ✘ | ✘ |
 | Abrir, cancelar y entregar órdenes; asignar el mecánico responsable | ✔ | ✘ | ✘ |
 | Crear, mover y cancelar citas; convertir una cita en orden | ✔ | ✘ (solo ver) | ✘ |
@@ -203,7 +204,7 @@ Taller (organización, el "tenant")
 - **RF-12** Un cliente puede ser titular de varios vehículos. Cambiar el titular de un vehículo cierra el periodo de titularidad anterior y abre uno nuevo; no cambia el cliente de las órdenes ya abiertas, y desde ese momento el titular anterior no ve en el portal las órdenes nuevas ni el nuevo titular las anteriores.
 - **RF-13** La ficha del vehículo muestra al taller su historial completo de órdenes, de todos sus titulares, y sus periodos de titularidad.
 - **RF-14** La búsqueda principal admite matrícula, nombre o teléfono desde una única caja, porque es lo que se pregunta en el mostrador con el cliente delante.
-- **RF-15** Borrar un cliente que lo pide **anonimiza** sus datos: se eliminan nombre, NIF, contacto, dirección, notas y acceso al portal, y sus órdenes, presupuestos y movimientos de stock se conservan ligados a un "cliente eliminado". Es irreversible y queda registrado quién lo hizo y cuándo.
+- **RF-15** Borrar un cliente que lo pide **anonimiza** sus datos: se eliminan nombre, NIF, contacto, dirección, notas y acceso al portal, y sus órdenes, presupuestos y movimientos de stock se conservan ligados a un "cliente eliminado". Es irreversible y queda registrado quién lo hizo y cuándo. *Precisión al construirlo (F2):* no se puede con una orden abierta (aún necesita a quién avisar); también se borra quién trajo el coche en sus órdenes; sus vehículos siguen a su nombre en el historial y, para abrirles una orden, se cambia antes el titular. Lo hace solo el administrador, escribiendo el nombre del cliente para confirmar.
 - **RF-16** Registrar en el vehículo la fecha de la próxima ITV y la próxima revisión, por fecha y/o kilómetros. Al entregar una orden de tipo mantenimiento, el sistema propone la siguiente revisión a partir de los intervalos que configure el taller.
 - **RF-17** Una pantalla de próximos vencimientos lista los vehículos con ITV o revisión en los próximos N días, para que el taller pueda llamar o dar cita.
 - **RF-18** El taller genera en PDF un **informe de actuaciones** del vehículo con todas sus órdenes, de cualquier titular: fecha, kilómetros, texto de diagnóstico para el cliente, trabajos realizados y piezas montadas. Por defecto no incluye los nombres de titulares anteriores ni los importes, porque el informe suele acabar en manos del comprador del coche; el administrador puede incluirlos de forma explícita al generarlo.
@@ -218,8 +219,8 @@ Taller (organización, el "tenant")
 - **RF-25** Cada orden tiene un **mecánico responsable**, que asigna y cambia el administrador (puede quedar sin asignar al abrirla). Los **mecánicos que han trabajado** en la orden no se mantienen a mano: se obtienen de los trabajos registrados (RF-23), así que la lista nunca se desincroniza de lo que se hizo.
 - **RF-26** Una orden entregada o cancelada queda cerrada: solo se pueden añadir notas internas y registrar su cobro.
 - **RF-27** Una orden se puede marcar como **sin presupuesto** con uno de estos motivos: el cliente **renuncia al presupuesto**, que la normativa exige por escrito y firmado por el cliente en el resguardo de depósito, así que solo se admite si la hoja de recepción lleva la renuncia y está firmada (RF-52); garantía o trabajo a precio cerrado. Queda en el historial con autor y fecha, y permite empezar a trabajar sin presupuesto aprobado. *Al construirlo (F2):* marcarla, cambiar el motivo o quitarla es una acción del administrador, solo antes de empezar la reparación, y queda en el registro de auditoría (RNF-16) con autor, fecha y el motivo anterior y el nuevo. La renuncia se rechaza hasta que exista la hoja de recepción firmada (F6).
-- **RF-28** Al entregar, o después, se registra el **cobro**: cobrada o pendiente, forma de pago (efectivo, tarjeta, transferencia, otra), importe y fecha. Es una marca operativa, no una factura ni un apunte contable.
-- **RF-29** Un listado muestra las órdenes entregadas pendientes de cobro, con su importe y los días que llevan pendientes.
+- **RF-28** Al entregar, o después, se registra el **cobro**: cobrada o pendiente, forma de pago (efectivo, tarjeta, transferencia, otra), importe y fecha. Es una marca operativa, no una factura ni un apunte contable. *Precisión al construirlo (F2):* además de cobrada o pendiente, **sin cargo** (una garantía, un diagnóstico gratuito), para que no quede para siempre en RF-29. La fecha es el día del cobro, nunca posterior a hoy. Se puede corregir, y cada cambio queda en la auditoría.
+- **RF-29** Un listado muestra las órdenes entregadas pendientes de cobro, con su importe y los días que llevan pendientes. *Precisión (F2):* el importe a cobrar sale del presupuesto aceptado, que llega en F3; hasta entonces el listado da los días pendientes, sin importe.
 
 ### Presupuestos (RF-30…)
 

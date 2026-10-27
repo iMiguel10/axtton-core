@@ -21,6 +21,7 @@ router = APIRouter(prefix="/clients")
 
 Viewer = Annotated[WorkshopContext, Depends(require(Action.VIEW_CLIENTS))]
 Manager = Annotated[WorkshopContext, Depends(require(Action.MANAGE_CLIENTS))]
+Anonymizer = Annotated[WorkshopContext, Depends(require(Action.ANONYMIZE_CLIENT))]
 
 
 @router.get("")
@@ -74,4 +75,18 @@ async def unarchive_client(
 ) -> None:
     await client_service.set_archived(
         workshop.session, client_id, expected_version=body.version, archived=False
+    )
+
+
+@router.post("/{client_id}/anonymize", status_code=status.HTTP_204_NO_CONTENT)
+async def anonymize_client(
+    client_id: UUID, body: VersionOnly, workshop: Anonymizer
+) -> None:
+    """Borrar a un cliente que lo pide (RF-15). Irreversible."""
+    await client_service.anonymize_client(
+        workshop.session,
+        workshop.workshop_id,
+        workshop.user_id,
+        client_id,
+        expected_version=body.version,
     )

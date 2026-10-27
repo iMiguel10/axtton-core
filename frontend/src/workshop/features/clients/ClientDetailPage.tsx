@@ -6,8 +6,11 @@ import { Link, useParams } from "react-router-dom";
 import { Badge } from "@/shared/components/ui/badge";
 import { Button, buttonVariants } from "@/shared/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/shared/components/ui/card";
+import { Input } from "@/shared/components/ui/input";
+import { Label } from "@/shared/components/ui/label";
 import { errorMessage } from "@/shared/lib/errors";
 
+import { clientName } from "./clientName";
 import { useActiveWorkshop } from "../session/ActiveWorkshop";
 import { RelatedOrders } from "../orders/OrderBits";
 import { vehiclesApi } from "../vehicles/api";
@@ -17,7 +20,7 @@ import { ClientForm } from "./ClientForm";
 /** Ficha de un cliente (RF-10): editable para quien gestiona clientes, de solo
  * lectura para el mecánico (especificación §3). */
 export function ClientDetailPage() {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const { clientId = "" } = useParams();
   const { workshopId, canManageClients } = useActiveWorkshop();
   const api = clientsApi(workshopId);
@@ -57,9 +60,9 @@ export function ClientDetailPage() {
         ← {t("clients.backToList")}
       </Link>
       <div className="flex flex-wrap items-center gap-2">
-        <h1 className="text-2xl font-semibold">{current.name}</h1>
+        <h1 className="text-2xl font-semibold">{clientName(t, current.name)}</h1>
         {current.archived_at && <Badge variant="secondary">{t("clients.archived")}</Badge>}
-        {canManageClients && (
+        {canManageClients && !current.anonymized_at && (
           <Button
             variant="outline"
             size="sm"
@@ -86,9 +89,14 @@ export function ClientDetailPage() {
           {t("clients.saved")}
         </p>
       )}
+      {current.anonymized_at && (
+        <p role="status" className="bg-muted rounded-lg p-3 text-sm">
+          {t("clients.anonymizedNotice", { date: new Date(current.anonymized_at).toLocaleDateString(i18n.language) })}
+        </p>
+      )}
       <Card>
         <CardContent>
-          {canManageClients ? (
+          {canManageClients && !current.anonymized_at ? (
             <ClientForm
               // Con otra versión, el formulario vuelve a empezar desde lo guardado.
               key={current.version}
@@ -112,6 +120,7 @@ export function ClientDetailPage() {
           <RelatedOrders filters={{ clientId: current.id }} show={{ vehicle: true }} />
         </CardContent>
       </Card>
+      {canManageClients && !current.anonymized_at && <AnonymizeCard client={current} onDone={refresh} />}
     </section>
   );
 }
@@ -183,9 +192,76 @@ function ClientSummary({ client }: { client: Client }) {
       {rows.map(([label, value]) => (
         <div key={label} className="contents">
           <dt className="text-muted-foreground text-sm">{label}</dt>
-          <dd className="whitespace-pre-line">{value ?? "—"}</dd>
+          <dd className="whitespace-pre-line">{value || "—"}</dd>
         </div>
       ))}
     </dl>
+  );
+}
+
+/**
+ * Borrar a un cliente que lo pide (RF-15). Es irreversible, así que no basta un
+ * clic ni un `confirm`: hay que escribir su nombre. Con una orden abierta, el
+ * servidor lo rechaza (esa orden aún necesita a quién avisar).
+ */
+function AnonymizeCard({ client, onDone }: { client: Client; onDone: () => Promise<unknown> }) {
+  const { t } = useTranslation();
+  const { workshopId } = useActiveWorkshop();
+  const [open, setOpen] = useState(false);
+  const [typed, setTyped] = useState("");
+  const anonymize = useMutation({
+    mutationFn: () => clientsApi(workshopId).anonymize(client),
+    onSettled: onDone,
+  });
+  return (
+    <Card className="border-destructive/40">
+      <CardHeader>
+        <CardTitle>{t("clients.anonymize")}</CardTitle>
+      </CardHeader>
+      <CardContent className="grid gap-3">
+        <p className="text-muted-foreground text-sm">{t("clients.anonymizeHint")}</p>
+        {anonymize.isError && (
+          <p role="alert" className="text-destructive text-sm">
+            {errorMessage(t, anonymize.error)}
+          </p>
+        )}
+        {open ? (
+          <form
+            className="grid gap-2"
+            onSubmit={(event) => {
+              event.preventDefault();
+              anonymize.mutate();
+            }}
+          >
+            <Label htmlFor="anonymize-confirm">{t("clients.anonymizeConfirm", { name: client.name })}</Label>
+            <Input
+              id="anonymize-confirm"
+              autoComplete="off"
+              value={typed}
+              onChange={(event) => setTyped(event.target.value)}
+            />
+            <div className="flex flex-wrap gap-2">
+              <Button
+                type="submit"
+                variant="destructive"
+                size="sm"
+                disabled={anonymize.isPending || typed.trim() !== client.name.trim()}
+              >
+                {t("clients.anonymizeNow")}
+              </Button>
+              <Button type="button" variant="ghost" size="sm" onClick={() => setOpen(false)}>
+                {t("common.cancel")}
+              </Button>
+            </div>
+          </form>
+        ) : (
+          <div>
+            <Button variant="outline" size="sm" onClick={() => setOpen(true)}>
+              {t("clients.anonymize")}
+            </Button>
+          </div>
+        )}
+      </CardContent>
+    </Card>
   );
 }

@@ -1,5 +1,5 @@
 import { useInfiniteQuery } from "@tanstack/react-query";
-import type { TFunction } from "i18next";
+import i18n, { type TFunction } from "i18next";
 import { useTranslation } from "react-i18next";
 
 import { Button } from "@/shared/components/ui/button";
@@ -14,6 +14,7 @@ import {
 import { errorMessage } from "@/shared/lib/errors";
 import { formatEur } from "@/shared/money";
 
+import { clientName } from "../clients/clientName";
 import { fetchAuditPage, type AuditEntry, type AuditScope } from "./api";
 
 /** Registro de auditoría (RNF-16), del taller activo o de la plataforma. */
@@ -62,7 +63,11 @@ export function AuditPage({ scope }: { scope: AuditScope }) {
                     <TableCell>
                       {t(`audit.actions.${entry.action}`, { defaultValue: entry.action })}
                     </TableCell>
-                    <TableCell>{entry.target_name ?? "—"}</TableCell>
+                    <TableCell>
+                      {entry.target_type === "client"
+                        ? clientName(t, entry.target_name)
+                        : (entry.target_name ?? "—")}
+                    </TableCell>
                     <TableCell>
                       <Details entry={entry} t={t} />
                     </TableCell>
@@ -107,12 +112,18 @@ function Details({ entry, t }: { entry: AuditEntry; t: TFunction }) {
 
 /** Un valor guardado, como lo leería una persona. */
 function show(t: TFunction, field: string, value: unknown): string {
+  // Un cliente anonimizado (RF-15) llega con el nombre vacío.
+  if (field === "client_id" && value === "") return clientName(t, "");
   if (value === null || value === undefined || value === "") return "—";
   if (field === "role") return t(`roles.${String(value)}`);
   if (field === "status") return t(`admin.statuses.${String(value)}`);
   if (field === "work_order_status") return t(`orders.statuses.${String(value)}`);
   if (field === "no_quote_reason") return t(`orders.noQuoteReasons.${String(value)}`);
   if (field === "hourly_cost_cents" && typeof value === "number") return formatEur(value);
+  if (field === "paid_amount_cents" && typeof value === "number") return formatEur(value);
+  if (field === "payment_status") return t(`payment.statuses.${String(value)}`);
+  if (field === "payment_method") return t(`payment.methods.${String(value)}`);
+  if (field === "paid_on") return new Date(`${String(value)}T00:00:00`).toLocaleDateString(i18n.language);
   if (typeof value === "boolean") return t(value ? "common.yes" : "common.no");
   return String(value);
 }

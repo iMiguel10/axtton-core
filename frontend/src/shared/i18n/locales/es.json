@@ -29,7 +29,9 @@
       "superadmin_invited": "Invitación de superadministrador",
       "vehicle_owner_changed": "Cambio de titular",
       "status_change_undone": "Cambio de estado deshecho",
-      "no_quote_marked": "Sin presupuesto"
+      "no_quote_marked": "Sin presupuesto",
+      "payment_recorded": "Cobro",
+      "client_anonymized": "Cliente anonimizado"
     },
     "fields": {
       "email": "Email",
@@ -42,7 +44,11 @@
       "max_employees_with_access": "Límite de acceso",
       "client_id": "Titular",
       "no_quote_reason": "Motivo",
-      "work_order_status": "Estado de la orden"
+      "work_order_status": "Estado de la orden",
+      "payment_status": "Cobro",
+      "payment_method": "Forma de pago",
+      "paid_amount_cents": "Importe",
+      "paid_on": "Fecha de cobro"
     }
   },
   "nav": {
@@ -141,6 +147,12 @@
     "notes": "Notas internas",
     "notesHint": "Solo las ve el personal del taller; el cliente nunca.",
     "archived": "Archivado",
+    "deleted": "Cliente eliminado",
+    "anonymize": "Borrar sus datos (anonimizar)",
+    "anonymizeHint": "Si el cliente pide que se borren sus datos: se eliminan nombre, NIF, contacto, dirección y notas, y sus órdenes y vehículos quedan a nombre de \"Cliente eliminado\". No se puede deshacer. Con una orden abierta, primero hay que entregarla o cancelarla.",
+    "anonymizeConfirm": "Para confirmar, escribe su nombre: {{name}}",
+    "anonymizeNow": "Borrar sus datos para siempre",
+    "anonymizedNotice": "Cliente eliminado el {{date}}: sus datos personales se borraron a petición suya. Sus órdenes se conservan.",
     "archive": "Archivar",
     "unarchive": "Desarchivar",
     "confirmArchive": "¿Archivar a {{name}}? Dejará de aparecer en el listado, pero no se borra nada.",
@@ -177,6 +189,33 @@
     "notesHint": "Solo las ve el personal del taller; nunca el cliente. No se editan: se añaden.",
     "newNote": "Escribe una nota…",
     "addNote": "Añadir nota"
+  },
+  "payment": {
+    "title": "Cobro",
+    "status": "Estado del cobro",
+    "statuses": {
+      "pending": "Pendiente de cobro",
+      "paid": "Cobrada",
+      "no_charge": "Sin cargo"
+    },
+    "method": "Forma de pago",
+    "methods": {
+      "cash": "Efectivo",
+      "card": "Tarjeta",
+      "transfer": "Transferencia",
+      "other": "Otra"
+    },
+    "amount": "Importe (€)",
+    "date": "Fecha de cobro",
+    "summary": "{{amount}} en {{method}}, el {{date}}",
+    "record": "Registrar el cobro",
+    "change": "Corregir el cobro",
+    "unpaidTitle": "Pendientes de cobro",
+    "noneUnpaid": "No hay órdenes entregadas pendientes de cobro.",
+    "deliveredAt": "Entregada",
+    "daysPending": "Pendiente desde hace",
+    "days_one": "{{count}} día",
+    "days_other": "{{count}} días"
   },
   "drafts": {
     "offline": "Sin conexión. Lo que escribas se guarda en este dispositivo y se enviará al volver.",
@@ -406,6 +445,11 @@
   "errors": {
     "unknown": "Algo ha fallado. Inténtalo de nuevo.",
     "network": "No se ha podido conectar con el servidor. Comprueba la conexión e inténtalo de nuevo.",
+    "payment_not_now": "El cobro se registra al entregar la orden, o después.",
+    "payment_details_required": "Una orden cobrada necesita forma de pago, importe y fecha.",
+    "paid_on_in_future": "La fecha de cobro no puede ser posterior a hoy.",
+    "client_anonymized": "Este cliente fue eliminado (anonimizado). Para abrir una orden de su vehículo, cambia antes el titular.",
+    "client_has_open_orders": "El cliente tiene órdenes abiertas: entrégalas o cancélalas antes de borrar sus datos.",
     "already_saved": "Ya estaba guardado.",
     "id_in_use": "No se ha podido guardar: vuelve a escribirlo.",
     "rate_limited": "Demasiados intentos seguidos. Espera unos minutos y vuelve a probar.",

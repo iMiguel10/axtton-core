@@ -1,10 +1,12 @@
-from datetime import datetime
+from datetime import date, datetime
 from uuid import UUID
 
 from pydantic import AwareDatetime, BaseModel, ConfigDict, Field
 
 from app.domain.work_orders import (
     NoQuoteReason,
+    PaymentMethod,
+    PaymentStatus,
     StatusChangeCause,
     WorkOrderStatus,
     WorkOrderType,
@@ -84,6 +86,11 @@ class WorkOrderDetailRead(WorkOrderRead):
     dropped_off_by_phone: str | None
     reception_notes: str | None
     delivered_at: datetime | None
+    # El cobro (RF-28): solo una cobrada lleva forma, importe y fecha.
+    payment_status: PaymentStatus
+    payment_method: PaymentMethod | None
+    paid_amount_cents: int | None
+    paid_on: date | None
     # Por `seq`, del primero al último (invariante 5: el último es el estado).
     history: list[StatusChangeRead]
     # Lo que puede hacer quien la consulta, según su rol en este taller. Es una
@@ -91,6 +98,7 @@ class WorkOrderDetailRead(WorkOrderRead):
     allowed_transitions: list[TransitionRead]
     can_undo: bool
     can_mark_no_quote: bool
+    can_record_payment: bool
 
 
 class _ReceptionFields(BaseModel):
@@ -143,3 +151,24 @@ class NoQuoteChange(BaseModel):
     version: int
     # Nulo: deja de estar marcada.
     reason: NoQuoteReason | None
+
+
+class PaymentChange(BaseModel):
+    """El cobro entero, no un parche: lo que no venga queda vacío. Si está
+    cobrada, forma de pago, importe y fecha son obligatorios (el service)."""
+
+    version: int
+    status: PaymentStatus
+    method: PaymentMethod | None = None
+    # En céntimos, como todos los importes (arquitectura §3).
+    amount_cents: int | None = Field(default=None, gt=0, le=10_000_000_00)
+    paid_on: date | None = None
+
+
+class UnpaidOrderRead(WorkOrderRead):
+    """Una entregada pendiente de cobro (RF-29). El importe a cobrar llegará con
+    los presupuestos (F3): hoy no hay de dónde sacarlo."""
+
+    delivered_at: datetime
+    # De la entrega a hoy, en días del taller.
+    days_pending: int

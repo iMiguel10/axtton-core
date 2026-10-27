@@ -11,6 +11,7 @@ import { errorMessage } from "@/shared/lib/errors";
 import { cn } from "@/shared/lib/utils";
 import { useDebouncedValue } from "@/shared/lib/useDebouncedValue";
 
+import { clientName } from "../clients/clientName";
 import { ordersApi } from "../orders/api";
 import { OrdersTable } from "../orders/OrderBits";
 import { useActiveWorkshop } from "../session/ActiveWorkshop";
@@ -98,7 +99,7 @@ function SearchResults({ result }: { result: SearchResult }) {
                   </span>
                   {vehicle.owner && (
                     <Link to={`/clients/${vehicle.owner.id}`} className="text-sm hover:underline">
-                      {vehicle.owner.name}
+                      {clientName(t, vehicle.owner.name)}
                     </Link>
                   )}
                   <span className="ml-auto">{openOrder(vehicle.id)}</span>

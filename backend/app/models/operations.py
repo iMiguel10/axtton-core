@@ -28,6 +28,8 @@ from sqlalchemy import (
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.domain.work_orders import (
+    PaymentMethod,
+    PaymentStatus,
     StatusChangeCause,
     WorkOrderStatus,
     WorkOrderType,
@@ -61,6 +63,15 @@ class Client(IdMixin, CreatedAtMixin, UpdatedAtMixin, Base):
             postgresql_where=text("email IS NOT NULL"),
         ),
         Index("ix_clients_workshop_id_name", "workshop_id", "name"),
+        # Anonimizado (RF-15): no queda ningún dato personal en la fila, y la
+        # base de datos lo garantiza aunque un día lo escriba otro código.
+        # Que no se pueda deshacer lo vigila un trigger (migración 0009payment).
+        CheckConstraint(
+            "anonymized_at IS NULL OR (name = '' AND phone = '' AND email IS NULL"
+            " AND tax_id IS NULL AND address IS NULL AND notes IS NULL"
+            " AND archived_at IS NOT NULL)",
+            name="anonymized_empty",
+        ),
         # Sin índices trigram para la búsqueda: bajo RLS, Postgres no puede usar
         # un índice para LIKE (su operador no es LEAKPROOF), así que no servirían.
         # La búsqueda recorre las filas del taller, y nunca las de otro
@@ -80,6 +91,8 @@ class Client(IdMixin, CreatedAtMixin, UpdatedAtMixin, Base):
     # Idioma de los avisos y del portal.
     language: Mapped[str] = mapped_column(String(2), server_default="es")
     archived_at: Mapped[datetime | None]
+    # Cuándo se anonimizó (RF-15); quién, en el registro de auditoría.
+    anonymized_at: Mapped[datetime | None]
     # Para la búsqueda del mostrador (RF-14), normalizados al guardar: el nombre
     # en minúsculas y sin tildes ("maria" encuentra "María"), y solo los dígitos
     # del teléfono ("600111222" encuentra "600 111 222"). Las calcula Postgres:
@@ -242,6 +255,31 @@ class WorkOrder(IdMixin, CreatedAtMixin, UpdatedAtMixin, Base):
         ),
         CheckConstraint("odometer_km >= 0", name="odometer_km"),
         CheckConstraint("number > 0", name="number"),
+        # El cobro (RF-28): solo una orden cerrada deja de estar pendiente, y
+        # una cobrada lleva forma de pago, importe y fecha; las demás, nada.
+        CheckConstraint(sql_in("payment_status", PaymentStatus), name="payment_status"),
+        CheckConstraint(sql_in("payment_method", PaymentMethod), name="payment_method"),
+        CheckConstraint("paid_amount_cents > 0", name="paid_amount_cents"),
+        CheckConstraint(
+            "payment_status = 'pending' OR status IN ('delivered', 'cancelled')",
+            name="payment_when_closed",
+        ),
+        CheckConstraint(
+            "(payment_status = 'paid') = (payment_method IS NOT NULL)"
+            " AND (payment_status = 'paid') = (paid_amount_cents IS NOT NULL)"
+            " AND (payment_status = 'paid') = (paid_on IS NOT NULL)",
+            name="payment_details",
+        ),
+        # Las entregadas pendientes de cobro (RF-29), de la más antigua a la más
+        # reciente. Por workshop_id primero: bajo RLS, la igualdad sí usa índices.
+        Index(
+            "ix_work_orders_unpaid",
+            "workshop_id",
+            "delivered_at",
+            postgresql_where=text(
+                "status = 'delivered' AND payment_status = 'pending'"
+            ),
+        ),
         Index("ix_work_orders_workshop_id_vehicle_id", "workshop_id", "vehicle_id"),
         Index("ix_work_orders_workshop_id_client_id", "workshop_id", "client_id"),
         Index("ix_work_orders_workshop_id_status", "workshop_id", "status"),
@@ -269,6 +307,13 @@ class WorkOrder(IdMixin, CreatedAtMixin, UpdatedAtMixin, Base):
     # Daños visibles y objetos en el coche al recibirlo.
     reception_notes: Mapped[str | None] = mapped_column(String(2000))
     delivered_at: Mapped[datetime | None]
+    # El cobro (RF-28): una marca operativa, no una factura. El importe lo
+    # escribe quien cobra (con F3 lo propondrá el presupuesto aceptado); la
+    # fecha es el día en que se cobró, que puede ser anterior a anotarlo.
+    payment_status: Mapped[str] = mapped_column(String(20), server_default="pending")
+    payment_method: Mapped[str | None] = mapped_column(String(20))
+    paid_amount_cents: Mapped[int | None] = mapped_column(BigInteger)
+    paid_on: Mapped[date | None]
     # Para "las que llevan más tiempo paradas" (RF-24): cambios de estado y
     # trabajos registrados, no cualquier edición.
     last_activity_at: Mapped[datetime] = mapped_column(

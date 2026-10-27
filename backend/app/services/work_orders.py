@@ -8,6 +8,7 @@ taller activo (RLS fijada).
 
 from collections.abc import Collection
 from dataclasses import dataclass
+from datetime import date
 from typing import Any, Literal
 from uuid import UUID
 
@@ -26,6 +27,7 @@ from app.domain.work_orders import (
     NO_QUOTE_STATUSES,
     LastChange,
     NoQuoteReason,
+    PaymentStatus,
     StatusChangeCause,
     Transition,
     TransitionRefused,
@@ -134,8 +136,14 @@ async def open_order(
         raise NotFoundError("vehicle_not_found")
     ownership = await vehicle_repo.current_ownership(session, vehicle_id)
     assert ownership is not None, "un vehículo siempre tiene titular"
-    client = await client_repo.get(session, ownership.client_id)
+    # Compartido, como el del vehículo: no se abre una orden para un cliente
+    # que se está anonimizando, ni se le anonimiza mientras se le abre una.
+    client = await client_repo.get_locked(session, ownership.client_id, shared=True)
     assert client is not None
+    if client.anonymized_at is not None:
+        # Su vehículo sigue siendo suyo en el historial; quien lo trae ahora es
+        # otro titular, y hay que cambiarlo antes (RF-12).
+        raise ConflictError("client_anonymized")
     if client.archived_at is not None:
         raise ConflictError("client_archived")
     values = _blank_to_none(fields)
@@ -446,3 +454,78 @@ async def set_no_quote(
         )
     )
     await session.flush()
+
+
+# --- Cobro (RF-28, RF-29) ---------------------------------------------------
+
+
+async def record_payment(
+    session: AsyncSession,
+    workshop_id: UUID,
+    user_id: UUID,
+    order_id: UUID,
+    *,
+    expected_version: int,
+    status: str,
+    method: str | None,
+    amount_cents: int | None,
+    paid_on: date | None,
+) -> None:
+    """Registrar o corregir el cobro de una orden cerrada (RF-26, RF-28).
+
+    Es una marca operativa, no una factura: se puede corregir, y cada cambio
+    queda en la auditoría con quién y cuándo. Solo una cobrada lleva forma de
+    pago, importe y fecha; pasar a pendiente o a sin cargo los quita.
+    """
+    order = await _locked(session, order_id, expected_version)
+    if order.status not in CLOSED:
+        raise ConflictError("payment_not_now")
+    if status == PaymentStatus.PAID:
+        if method is None or amount_cents is None or paid_on is None:
+            raise ValidationFailedError("payment_details_required")
+        if paid_on > await order_repo.local_date(session, workshop_id):
+            raise ValidationFailedError("paid_on_in_future")
+    else:
+        method = amount_cents = paid_on = None
+    before = (
+        order.payment_status,
+        order.payment_method,
+        order.paid_amount_cents,
+        order.paid_on,
+    )
+    after = (status, method, amount_cents, paid_on)
+    if before == after:
+        return
+    (
+        order.payment_status,
+        order.payment_method,
+        order.paid_amount_cents,
+        order.paid_on,
+    ) = after
+    keys = ("payment_status", "payment_method", "paid_amount_cents", "paid_on")
+    session.add(
+        AuditEntry(
+            workshop_id=workshop_id,
+            actor_user_id=user_id,
+            action="payment_recorded",
+            target_type="work_order",
+            target_id=order_id,
+            # Solo lo que cambió; las fechas, como texto ISO (es JSON).
+            details={
+                key: [_json(old), _json(new)]
+                for key, old, new in zip(keys, before, after, strict=True)
+                if old != new
+            },
+        )
+    )
+    await session.flush()
+
+
+def _json(value: object) -> object:
+    return value.isoformat() if isinstance(value, date) else value
+
+
+async def unpaid_orders(
+    session: AsyncSession, *, limit: int, offset: int
+) -> list[tuple[OrderRow, int]]:
+    return await order_repo.unpaid_page(session, limit=limit, offset=offset)

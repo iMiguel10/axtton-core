@@ -14,6 +14,7 @@ import {
 } from "@/shared/components/ui/table";
 import { errorMessage } from "@/shared/lib/errors";
 
+import { clientName } from "../clients/clientName";
 import { useActiveWorkshop } from "../session/ActiveWorkshop";
 import { ordersApi, STALLED_DAYS, type Order, type OrderFilters, type Status } from "./api";
 
@@ -98,7 +99,7 @@ export function OrdersTable({
                 </TableCell>
               )}
               {show.client && (
-                <TableCell className="hidden md:table-cell">{order.client.name}</TableCell>
+                <TableCell className="hidden md:table-cell">{clientName(t, order.client.name)}</TableCell>
               )}
               <TableCell className="hidden md:table-cell">
                 {order.responsible?.name ?? "—"}

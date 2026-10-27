@@ -41,6 +41,11 @@ class Action(StrEnum):
     # (RF-22, RF-23): los dos roles. Anular un trabajo que anotó otro es de
     # quien gestiona órdenes (MANAGE_ORDERS).
     WRITE_WORKLOG = "write_worklog"
+    # Registrar el cobro de una orden (RF-28): solo el administrador.
+    RECORD_PAYMENT = "record_payment"
+    # Anonimizar a un cliente que lo pide (RF-15): irreversible, solo el
+    # administrador. Fila propia: no es "editar un cliente".
+    ANONYMIZE_CLIENT = "anonymize_client"
 
 
 ROLE_PERMISSIONS: dict[Role, frozenset[Action]] = {

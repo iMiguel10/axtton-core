@@ -75,7 +75,25 @@ export type OrderDetail = Order & {
   allowed_transitions: AllowedTransition[];
   can_undo: boolean;
   can_mark_no_quote: boolean;
+  // El cobro (RF-28): solo una cobrada lleva forma, importe (céntimos) y fecha.
+  payment_status: PaymentStatus;
+  payment_method: PaymentMethod | null;
+  paid_amount_cents: number | null;
+  paid_on: string | null;
+  can_record_payment: boolean;
 };
+
+export type PaymentStatus = "pending" | "paid" | "no_charge";
+export type PaymentMethod = "cash" | "card" | "transfer" | "other";
+export type PaymentInput = {
+  status: PaymentStatus;
+  method: PaymentMethod | null;
+  amount_cents: number | null;
+  paid_on: string | null;
+};
+
+/** Una entregada pendiente de cobro (RF-29). */
+export type UnpaidOrder = Order & { delivered_at: string; days_pending: number };
 
 export type ReceptionInput = {
   odometer_km: number | null;
@@ -101,7 +119,7 @@ export const PAGE_SIZE = 50;
 export const STALLED_DAYS = 3;
 
 export function ordersApi(workshopId: string) {
-  const request = <T>(path: string, method: "GET" | "POST" | "PATCH", body?: unknown) =>
+  const request = <T>(path: string, method: "GET" | "POST" | "PATCH" | "PUT", body?: unknown) =>
     apiRequest<T>(`/workshop/orders${path}`, { method, body, workshopId });
   return {
     list: (filters: OrderFilters, offset = 0) => {
@@ -135,6 +153,10 @@ export function ordersApi(workshopId: string) {
       request<void>(`/${order.id}/undo`, "POST", { version: order.version }),
     setNoQuote: (order: Order, reason: NoQuoteReason | null) =>
       request<void>(`/${order.id}/no-quote`, "POST", { version: order.version, reason }),
+    recordPayment: (order: Order, input: PaymentInput) =>
+      request<void>(`/${order.id}/payment`, "PUT", { version: order.version, ...input }),
+    unpaid: (offset = 0) =>
+      request<UnpaidOrder[]>(`/unpaid?limit=${PAGE_SIZE}&offset=${offset}`, "GET"),
   };
 }
 

@@ -123,9 +123,13 @@ def _check_version(vehicle: Vehicle, expected: int) -> None:
 async def _new_owner(session: AsyncSession, client_id: UUID) -> Client:
     """El cliente que va a ser titular: del taller (si no, no existe) y sin
     archivar (archivar es sacarlo de la circulación)."""
-    client = await client_repo.get(session, client_id)
+    # Bloqueo compartido: un vehículo no pasa a un cliente mientras se le
+    # anonimiza (client_repo.get_locked).
+    client = await client_repo.get_locked(session, client_id, shared=True)
     if client is None:
         raise NotFoundError("client_not_found")
+    if client.anonymized_at is not None:
+        raise ConflictError("client_anonymized")
     if client.archived_at is not None:
         raise ConflictError("client_archived")
     return client

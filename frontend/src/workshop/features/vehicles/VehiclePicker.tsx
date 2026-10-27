@@ -6,6 +6,7 @@ import { Button } from "@/shared/components/ui/button";
 import { Input } from "@/shared/components/ui/input";
 import { useDebouncedValue } from "@/shared/lib/useDebouncedValue";
 
+import { clientName } from "../clients/clientName";
 import { useActiveWorkshop } from "../session/ActiveWorkshop";
 import { vehiclesApi, type Vehicle } from "./api";
 
@@ -84,7 +85,7 @@ export function VehiclePicker({
                 >
                   <span className="font-mono">{vehicle.plate}</span>
                   <span className="text-muted-foreground text-xs">
-                    {vehicle.owner?.name ?? "—"}
+                    {vehicle.owner ? clientName(t, vehicle.owner.name) : "—"}
                   </span>
                 </Button>
               </li>

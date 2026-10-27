@@ -11,7 +11,7 @@ from uuid import UUID
 from fastapi import APIRouter, Depends, Query, status
 
 from app.api.v1.workshop.deps import WorkshopContext, require
-from app.domain.permissions import Action
+from app.domain.permissions import Action, can
 from app.domain.work_orders import CLOSED, OPEN, WorkOrderStatus, order_code
 from app.repositories.work_orders import OrderRow
 from app.schemas.work_orders import (
@@ -20,9 +20,11 @@ from app.schemas.work_orders import (
     OrderClient,
     OrderRef,
     OrderVehicle,
+    PaymentChange,
     StatusChange,
     StatusChangeRead,
     TransitionRead,
+    UnpaidOrderRead,
     VersionOnly,
     WorkOrderCreate,
     WorkOrderCreated,
@@ -38,6 +40,7 @@ Viewer = Annotated[WorkshopContext, Depends(require(Action.VIEW_ORDERS))]
 Manager = Annotated[WorkshopContext, Depends(require(Action.MANAGE_ORDERS))]
 Undoer = Annotated[WorkshopContext, Depends(require(Action.UNDO_STATUS_CHANGE))]
 NoQuoteMarker = Annotated[WorkshopContext, Depends(require(Action.MARK_NO_QUOTE))]
+Payer = Annotated[WorkshopContext, Depends(require(Action.RECORD_PAYMENT))]
 
 STATES = {"open": OPEN, "closed": CLOSED, "all": None}
 
@@ -108,6 +111,29 @@ async def list_orders(
     return [WorkOrderRead.model_validate(_summary(row)) for row in rows]
 
 
+@router.get("/unpaid")
+async def unpaid_orders(
+    workshop: Viewer,
+    limit: Annotated[int, Query(ge=1, le=100)] = 50,
+    offset: Annotated[int, Query(ge=0)] = 0,
+) -> list[UnpaidOrderRead]:
+    """Las entregadas pendientes de cobro, la más antigua primero (RF-29). Va
+    antes que `/{order_id}`: si no, "unpaid" se tomaría por un id y sería un 422."""
+    rows = await order_service.unpaid_orders(
+        workshop.session, limit=limit, offset=offset
+    )
+    return [
+        UnpaidOrderRead.model_validate(
+            {
+                **_summary(row),
+                "delivered_at": row.order.delivered_at,
+                "days_pending": days,
+            }
+        )
+        for row, days in rows
+    ]
+
+
 @router.get("/{order_id}")
 async def get_order(order_id: UUID, workshop: Viewer) -> WorkOrderDetailRead:
     detail = await order_service.get_order(workshop.session, order_id, workshop.role)
@@ -155,6 +181,12 @@ async def get_order(order_id: UUID, workshop: Viewer) -> WorkOrderDetailRead:
             ],
             "can_undo": detail.can_undo,
             "can_mark_no_quote": detail.can_mark_no_quote,
+            "can_record_payment": can(workshop.role, Action.RECORD_PAYMENT)
+            and order.status in CLOSED,
+            "payment_status": order.payment_status,
+            "payment_method": order.payment_method,
+            "paid_amount_cents": order.paid_amount_cents,
+            "paid_on": order.paid_on,
         }
     )
 
@@ -223,4 +255,19 @@ async def set_no_quote(
         order_id,
         expected_version=body.version,
         reason=body.reason.value if body.reason else None,
+    )
+
+
+@router.put("/{order_id}/payment", status_code=status.HTTP_204_NO_CONTENT)
+async def record_payment(order_id: UUID, body: PaymentChange, workshop: Payer) -> None:
+    await order_service.record_payment(
+        workshop.session,
+        workshop.workshop_id,
+        workshop.user_id,
+        order_id,
+        expected_version=body.version,
+        status=body.status.value,
+        method=body.method.value if body.method else None,
+        amount_cents=body.amount_cents,
+        paid_on=body.paid_on,
     )

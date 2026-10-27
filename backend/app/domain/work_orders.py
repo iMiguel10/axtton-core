@@ -65,6 +65,24 @@ class NoQuoteReason(StrEnum):
     FIXED_PRICE = "fixed_price"
 
 
+class PaymentStatus(StrEnum):
+    """El cobro de una orden (RF-28). No es un estado del ciclo de vida (§6):
+    una entregada puede estar cobrada o pendiente."""
+
+    PENDING = "pending"
+    PAID = "paid"
+    # No se cobra (una garantía, un diagnóstico gratuito): sin esto, quedaría
+    # para siempre entre las pendientes de cobro (RF-29). Añadido en F2.
+    NO_CHARGE = "no_charge"
+
+
+class PaymentMethod(StrEnum):
+    CASH = "cash"
+    CARD = "card"
+    TRANSFER = "transfer"
+    OTHER = "other"
+
+
 @dataclass(frozen=True)
 class Transition:
     """Un cambio de estado que se hace a mano (causa `manual`)."""

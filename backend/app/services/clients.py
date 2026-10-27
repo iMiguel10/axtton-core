@@ -14,8 +14,10 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.errors import ConflictError, NotFoundError
 from app.domain.clients import normalize_email, normalize_tax_id
-from app.models import Client
+from app.models import AuditEntry, Client
 from app.repositories import clients as client_repo
+from app.repositories import vehicles as vehicle_repo
+from app.repositories import work_orders as order_repo
 from app.services.integrity import flush_or_conflict
 
 # Campos que se pueden cambiar con PATCH. Archivar tiene sus propias operaciones.
@@ -45,6 +47,15 @@ async def _get(session: AsyncSession, client_id: UUID) -> Client:
     client = await client_repo.get(session, client_id)
     if client is None:
         raise NotFoundError("client_not_found")
+    return client
+
+
+async def _get_editable(session: AsyncSession, client_id: UUID) -> Client:
+    """Un anonimizado no se edita ni se desarchiva (RF-15: es irreversible). El
+    trigger clients_anonymized_frozen lo impide igual; esto da el 409."""
+    client = await _get(session, client_id)
+    if client.anonymized_at is not None:
+        raise ConflictError("client_anonymized")
     return client
 
 
@@ -94,7 +105,7 @@ async def update_client(
     expected_version: int,
     changes: dict[str, Any],
 ) -> None:
-    client = await _get(session, client_id)
+    client = await _get_editable(session, client_id)
     _check_version(client, expected_version)
     values = _normalized(changes)
     email = values.get("email")
@@ -115,9 +126,66 @@ async def set_archived(
 ) -> None:
     """Archivar lo saca de los listados, sin borrar nada (RF-10). Desarchivar lo
     devuelve tal cual estaba."""
-    client = await _get(session, client_id)
+    client = await _get_editable(session, client_id)
     _check_version(client, expected_version)
     if (client.archived_at is not None) == archived:
         return
     client.archived_at = datetime.now(UTC) if archived else None
+    await session.flush()
+
+
+# Lo que queda de un cliente anonimizado: la fila, su tipo y su idioma, sin un
+# solo dato personal. El CHECK ck_clients_anonymized_empty exige exactamente esto.
+ANONYMIZED = {
+    "name": "",
+    "phone": "",
+    "email": None,
+    "tax_id": None,
+    "address": None,
+    "notes": None,
+}
+
+
+async def anonymize_client(
+    session: AsyncSession,
+    workshop_id: UUID,
+    user_id: UUID,
+    client_id: UUID,
+    *,
+    expected_version: int,
+) -> None:
+    """Borrar a un cliente que lo pide (RF-15, RNF-40): se vacían sus datos
+    personales y se conserva la fila, con sus órdenes y vehículos ligados a un
+    "cliente eliminado". Es irreversible y queda en la auditoría.
+
+    Con alguna orden abierta no se puede: esa orden aún necesita a quién avisar.
+    """
+    # Exclusivo y antes de contar: abrir una orden pide el compartido, así que
+    # una apertura a la vez espera, y luego ve al cliente anonimizado.
+    client = await client_repo.get_locked(session, client_id, shared=False)
+    if client is None:
+        raise NotFoundError("client_not_found")
+    if client.anonymized_at is not None:
+        raise ConflictError("client_anonymized")
+    _check_version(client, expected_version)
+    if await order_repo.count_open_for_client(session, client_id):
+        raise ConflictError("client_has_open_orders")
+
+    now = await vehicle_repo.db_now(session)
+    for field, value in ANONYMIZED.items():
+        setattr(client, field, value)
+    client.archived_at = client.archived_at or now
+    client.anonymized_at = now
+    await order_repo.forget_dropped_off_by(session, client_id)
+    session.add(
+        AuditEntry(
+            workshop_id=workshop_id,
+            actor_user_id=user_id,
+            action="client_anonymized",
+            target_type="client",
+            # Solo el id: el nombre ya no existe en ninguna parte (RF-15).
+            target_id=client_id,
+            details={},
+        )
+    )
     await session.flush()

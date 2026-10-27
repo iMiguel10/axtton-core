@@ -25,7 +25,7 @@ export class ApiError extends Error {
 }
 
 type RequestOptions = {
-  method?: "GET" | "POST" | "PATCH" | "DELETE";
+  method?: "GET" | "POST" | "PATCH" | "PUT" | "DELETE";
   body?: unknown;
   /** El taller activo: va en X-Workshop-Id y el backend lo valida (A6). */
   workshopId?: string;

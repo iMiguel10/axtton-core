@@ -14,6 +14,8 @@ export type Client = {
   notes: string | null;
   language: Language;
   archived_at: string | null;
+  /** Anonimizado (RF-15): nombre y teléfono vacíos, lo demás nulo, para siempre. */
+  anonymized_at: string | null;
   created_at: string;
   /** Se devuelve al editar: bloqueo optimista (RNF-15). */
   version: number;
@@ -55,5 +57,8 @@ export function clientsApi(workshopId: string) {
       request<void>(`/${client.id}/${archived ? "archive" : "unarchive"}`, "POST", {
         version: client.version,
       }),
+    /** Irreversible (RF-15). */
+    anonymize: (client: Client) =>
+      request<void>(`/${client.id}/anonymize`, "POST", { version: client.version }),
   };
 }

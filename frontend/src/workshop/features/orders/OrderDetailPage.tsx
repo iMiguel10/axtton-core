@@ -6,10 +6,12 @@ import { Link, useParams } from "react-router-dom";
 import { Card, CardContent, CardHeader, CardTitle } from "@/shared/components/ui/card";
 import { errorMessage } from "@/shared/lib/errors";
 
+import { clientName } from "../clients/clientName";
 import { useActiveWorkshop } from "../session/ActiveWorkshop";
 import { ordersApi, type OrderDetail, type ReceptionInput } from "./api";
 import { formatDateTime, StatusBadge } from "./OrderBits";
 import { ReceptionForm } from "./ReceptionForm";
+import { PaymentCard } from "./PaymentCard";
 import { StatusCard } from "./StatusCard";
 import { WorklogSection } from "./WorklogSection";
 
@@ -86,7 +88,7 @@ export function OrderDetailPage() {
           </CardHeader>
           <CardContent>
             <Link to={`/clients/${current.client.id}`} className="font-medium hover:underline">
-              {current.client.name}
+              {clientName(t, current.client.name)}
             </Link>
             <p className="text-muted-foreground text-sm">{current.client.phone}</p>
             <p className="text-muted-foreground mt-1 text-xs">{t("orders.clientHint")}</p>
@@ -94,6 +96,7 @@ export function OrderDetailPage() {
         </Card>
       </div>
       <StatusCard order={current} onChanged={refresh} />
+      {CLOSED.includes(current.status) && <PaymentCard order={current} onChanged={refresh} />}
       <WorklogSection orderId={current.id} orderCode={current.code} closed={CLOSED.includes(current.status)} />
       {save.isError && (
         <p role="alert" className="text-destructive text-sm">

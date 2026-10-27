@@ -40,7 +40,14 @@ async def list_page(
     actor = aliased(Employee)
     target = aliased(Employee)
     query = (
-        select(AuditEntry, actor.name, target.name, Vehicle.plate, _order_code())
+        select(
+            AuditEntry,
+            actor.name,
+            target.name,
+            Vehicle.plate,
+            _order_code(),
+            Client.name,
+        )
         .outerjoin(actor, actor.user_id == AuditEntry.actor_user_id)
         .outerjoin(
             target,
@@ -63,6 +70,15 @@ async def list_page(
                 WorkOrder.id == AuditEntry.target_id,
             ),
         )
+        # Un cliente anonimizado tiene el nombre vacío: la interfaz lo enseña
+        # como "cliente eliminado".
+        .outerjoin(
+            Client,
+            and_(
+                AuditEntry.target_type == "client",
+                Client.id == AuditEntry.target_id,
+            ),
+        )
         .order_by(AuditEntry.seq.desc())
         .limit(limit)
     )
@@ -77,10 +93,14 @@ async def list_page(
             action=entry.action,
             actor_name=actor_name,
             target_type=entry.target_type,
-            target_name=employee_name or plate or order_code,
+            target_name=(
+                client_name
+                if entry.target_type == "client"
+                else employee_name or plate or order_code
+            ),
             details=_with_client_names(entry.details, client_names),
         )
-        for entry, actor_name, employee_name, plate, order_code in rows
+        for entry, actor_name, employee_name, plate, order_code, client_name in rows
     ]
 
 

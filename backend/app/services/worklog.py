@@ -27,6 +27,12 @@ from app.services.integrity import flush_or_conflict
 DIAGNOSIS_UNIQUE = {
     "uq_diagnosis_versions_work_order_id_version_no": "modified_by_someone_else"
 }
+# Una nota o un trabajo llevan el id que generó el navegador al empezar el
+# borrador (RNF-22). Si la respuesta se perdió con la conexión, el reenvío
+# encuentra lo ya guardado y no lo anota otra vez; si llegan los dos a la vez,
+# la clave primaria para al segundo.
+NOTE_ID = {"pk_internal_notes": "already_saved"}
+ENTRY_ID = {"pk_work_entries": "already_saved"}
 
 
 @dataclass(frozen=True)
@@ -59,6 +65,13 @@ def _check_open(order: WorkOrder | None) -> WorkOrder:
     if order.status in CLOSED:
         raise ConflictError("work_order_closed")
     return order
+
+
+def _check_replay(same_request: bool) -> None:
+    """Un id que ya existe solo vale como reenvío de la misma petición: misma
+    orden y mismo autor. Cualquier otro uso del id es un error."""
+    if not same_request:
+        raise ConflictError("id_in_use")
 
 
 def _can_void(entry: WorkEntry, employee_id: UUID, role: str) -> bool:
@@ -120,21 +133,31 @@ async def add_note(
     employee_id: UUID,
     order_id: UUID,
     *,
+    note_id: UUID | None = None,
     body: str,
 ) -> None:
     """Añade una entrada al hilo de notas internas (RF-22). También con la
     orden cerrada: es lo único que admite, además del cobro (RF-26)."""
+    if note_id is not None:
+        existing = await worklog_repo.get_note(session, note_id)
+        if existing is not None:
+            _check_replay(
+                existing.work_order_id == order_id
+                and existing.employee_id == employee_id
+            )
+            return
     if await order_repo.get(session, order_id) is None:
         raise NotFoundError("work_order_not_found")
-    session.add(
-        InternalNote(
-            workshop_id=workshop_id,
-            work_order_id=order_id,
-            employee_id=employee_id,
-            body=body,
-        )
+    note = InternalNote(
+        workshop_id=workshop_id,
+        work_order_id=order_id,
+        employee_id=employee_id,
+        body=body,
     )
-    await session.flush()
+    if note_id is not None:
+        note.id = note_id
+    session.add(note)
+    await flush_or_conflict(session, NOTE_ID)
 
 
 async def add_work_entry(
@@ -143,12 +166,23 @@ async def add_work_entry(
     recorder_id: UUID,
     order_id: UUID,
     *,
+    entry_id: UUID | None = None,
     employee_id: UUID,
     description: str,
     worked_on: date,
     hours: Decimal | None,
 ) -> UUID:
     """Registra un trabajo (RF-23): quién lo hizo, aunque lo anote otro."""
+    if entry_id is not None:
+        # Antes que mirar si la orden sigue abierta: el reenvío de un trabajo
+        # ya guardado vale aunque la hayan cerrado después.
+        existing = await worklog_repo.get_entry(session, entry_id)
+        if existing is not None:
+            _check_replay(
+                existing.work_order_id == order_id
+                and existing.recorded_by_employee_id == recorder_id
+            )
+            return existing.id
     # FOR NO KEY UPDATE, no FOR SHARE: aquí también se actualiza la orden
     # (repositories/work_orders.py::get_for_activity).
     _check_open(await order_repo.get_for_activity(session, order_id))
@@ -164,8 +198,10 @@ async def add_work_entry(
         worked_on=worked_on,
         hours=hours,
     )
+    if entry_id is not None:
+        entry.id = entry_id
     session.add(entry)
-    await session.flush()
+    await flush_or_conflict(session, ENTRY_ID)
     await worklog_repo.touch_activity(
         session, order_id, await vehicle_repo.db_now(session)
     )

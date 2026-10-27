@@ -1,5 +1,7 @@
 import Session from "supertokens-web-js/recipe/session";
 
+import { clearDrafts } from "./drafts";
+
 export type Actor = "staff" | "superadmin" | "client";
 
 /**
@@ -15,6 +17,9 @@ export async function currentActor(): Promise<Actor | null> {
 }
 
 export async function signOut(): Promise<void> {
+  // Antes de salir, no en el evento SIGN_OUT: la navegación de debajo podría
+  // cortar el borrado a medias (arquitectura §12: tablet compartida).
+  await clearDrafts();
   await Session.signOut();
   window.location.assign("/login");
 }

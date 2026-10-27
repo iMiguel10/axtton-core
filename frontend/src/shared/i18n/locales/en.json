@@ -178,6 +178,17 @@
     "newNote": "Write a note…",
     "addNote": "Add note"
   },
+  "drafts": {
+    "offline": "No connection. What you write is kept on this device and will be sent when it's back.",
+    "pending": "Not sent: it will be sent as soon as the connection is back.",
+    "restored": "Draft recovered from this device.",
+    "pendingList": "Waiting to be sent:",
+    "kinds": {
+      "diagnosis": "diagnosis of {{code}}",
+      "note": "note on {{code}}",
+      "work": "work on {{code}}"
+    }
+  },
   "orders": {
     "title": "Work orders",
     "new": "Open work order",
@@ -394,6 +405,9 @@
   },
   "errors": {
     "unknown": "Something went wrong. Please try again.",
+    "network": "Couldn't reach the server. Check the connection and try again.",
+    "already_saved": "It was already saved.",
+    "id_in_use": "Couldn't save it: please write it again.",
     "rate_limited": "Too many attempts in a row. Wait a few minutes and try again.",
     "invalid_input":"Some of the data is not valid. Check it, especially the email.",
     "wrong_actor": "This account cannot use this part of the application.",

@@ -61,12 +61,17 @@ class DiagnosisSaved(BaseModel):
 class NoteCreate(BaseModel):
     model_config = ConfigDict(str_strip_whitespace=True)
 
+    # Lo genera el navegador al empezar el borrador (RNF-22): reenviarlo tras
+    # perder la conexión no anota dos veces lo mismo.
+    id: UUID | None = None
     body: str = Field(min_length=1, max_length=5000)
 
 
 class WorkEntryCreate(BaseModel):
     model_config = ConfigDict(str_strip_whitespace=True)
 
+    # Como en NoteCreate: el id del borrador, para reenviarlo sin duplicar.
+    id: UUID | None = None
     # Quien lo hizo: una ficha activa del taller, tenga acceso o no.
     employee_id: UUID
     description: str = Field(min_length=1, max_length=2000)

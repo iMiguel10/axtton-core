@@ -43,8 +43,11 @@ export function OrderDetailPage() {
     onSettled: refresh,
   });
 
-  if (order.isPending) return <p>{t("common.loading")}</p>;
-  if (order.isError) return <p role="alert">{errorMessage(t, order.error)}</p>;
+  // Un fallo al recargar (sin conexión) no se lleva la ficha ya cargada: debajo
+  // están los borradores que se están escribiendo (RNF-22).
+  if (!order.data) {
+    return order.isError ? <p role="alert">{errorMessage(t, order.error)}</p> : <p>{t("common.loading")}</p>;
+  }
   const current = order.data;
   const editable = canManageOrders && !CLOSED.includes(current.status);
 
@@ -91,7 +94,7 @@ export function OrderDetailPage() {
         </Card>
       </div>
       <StatusCard order={current} onChanged={refresh} />
-      <WorklogSection orderId={current.id} closed={CLOSED.includes(current.status)} />
+      <WorklogSection orderId={current.id} orderCode={current.code} closed={CLOSED.includes(current.status)} />
       {save.isError && (
         <p role="alert" className="text-destructive text-sm">
           {errorMessage(t, save.error)}

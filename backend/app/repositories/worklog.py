@@ -75,6 +75,14 @@ async def count_active_entries(session: AsyncSession, order_id: UUID) -> int:
     return count or 0
 
 
+async def get_note(session: AsyncSession, note_id: UUID) -> InternalNote | None:
+    return await session.get(InternalNote, note_id)
+
+
+async def get_entry(session: AsyncSession, entry_id: UUID) -> WorkEntry | None:
+    return await session.get(WorkEntry, entry_id)
+
+
 async def get_entry_for_update(
     session: AsyncSession, order_id: UUID, entry_id: UUID
 ) -> WorkEntry | None:

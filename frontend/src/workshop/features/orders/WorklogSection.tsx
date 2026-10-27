@@ -12,6 +12,7 @@ import { Label } from "@/shared/components/ui/label";
 import { errorMessage } from "@/shared/lib/errors";
 import { cn } from "@/shared/lib/utils";
 
+import { newDraftId, unlessAlreadySaved, useDraft } from "../../lib/useDraft";
 import { useActiveWorkshop } from "../session/ActiveWorkshop";
 import { fetchStaff, worklogApi, type DiagnosisVersion, type Worklog } from "./api";
 import { formatDateTime } from "./OrderBits";
@@ -20,8 +21,22 @@ import { formatDateTime } from "./OrderBits";
  * Diagnóstico para el cliente, trabajos realizados y notas internas de una
  * orden (RF-22, RF-23, RF-25). Lo escribe todo el personal; con la orden
  * cerrada, solo las notas (RF-26).
+ *
+ * Lo que se está escribiendo es un borrador en el dispositivo (RNF-22): no se
+ * pierde al quedarse sin conexión, y lo que no se pudo enviar se envía al
+ * volver. Las mutaciones corren con `networkMode: "always"`: sin conexión,
+ * TanStack Query las dejaría en pausa en vez de fallar, y el borrador no
+ * sabría que está pendiente.
  */
-export function WorklogSection({ orderId, closed }: { orderId: string; closed: boolean }) {
+export function WorklogSection({
+  orderId,
+  orderCode,
+  closed,
+}: {
+  orderId: string;
+  orderCode: string;
+  closed: boolean;
+}) {
   const { t } = useTranslation();
   const { workshopId } = useActiveWorkshop();
   const queryKey = ["worklog", workshopId, orderId];
@@ -35,50 +50,100 @@ export function WorklogSection({ orderId, closed }: { orderId: string; closed: b
       queryClient.invalidateQueries({ queryKey: ["order", workshopId, orderId] }),
     ]);
 
-  if (log.isPending) return <p>{t("common.loading")}</p>;
-  if (log.isError) return <p role="alert">{errorMessage(t, log.error)}</p>;
+  // Con datos ya cargados, un fallo al recargar (sin conexión) no se los lleva:
+  // los formularios, con lo que se está escribiendo, siguen ahí.
+  if (!log.data) {
+    return log.isError ? <p role="alert">{errorMessage(t, log.error)}</p> : <p>{t("common.loading")}</p>;
+  }
+  const scope = { workshopId, orderId, orderCode };
   return (
     <>
       <DiagnosisCard
         // Sin key por versión: tras un 409, remontar el editor borraría lo que
         // estaba escribiendo quien guardó segundo.
-        orderId={orderId}
+        scope={scope}
         versions={log.data.diagnosis}
         closed={closed}
         onSaved={refresh}
       />
-      <WorkCard orderId={orderId} log={log.data} closed={closed} onChanged={refresh} />
-      <NotesCard orderId={orderId} log={log.data} onAdded={refresh} />
+      <WorkCard scope={scope} log={log.data} closed={closed} onChanged={refresh} />
+      <NotesCard scope={scope} log={log.data} onAdded={refresh} />
     </>
   );
 }
 
+type OrderScope = { workshopId: string; orderId: string; orderCode: string };
+
+/** Lo que dice cada tarjeta de su borrador. */
+function DraftStatus({ pending, restored }: { pending: boolean; restored: boolean }) {
+  const { t } = useTranslation();
+  if (pending) {
+    return (
+      <p role="status" className="text-sm font-medium">
+        {t("drafts.pending")}
+      </p>
+    );
+  }
+  return restored ? (
+    <p role="status" className="text-muted-foreground text-xs">
+      {t("drafts.restored")}
+    </p>
+  ) : null;
+}
+
+type DiagnosisDraft = { text: string; base: number };
+
 function DiagnosisCard({
-  orderId,
+  scope,
   versions,
   closed,
   onSaved,
 }: {
-  orderId: string;
+  scope: OrderScope;
   versions: DiagnosisVersion[];
   closed: boolean;
   onSaved: () => Promise<unknown>;
 }) {
   const { t, i18n } = useTranslation();
-  const { workshopId } = useActiveWorkshop();
   const current = versions[0];
   const currentNo = current?.version_no ?? 0;
   const [text, setText] = useState(current?.text ?? "");
   // La versión desde la que se está editando. Si aparece otra más nueva (la
-  // guardó otra persona), se avisa y se decide; nunca se pisa en silencio
-  // (RNF-15).
+  // guardó otra persona, quizá mientras este borrador esperaba la conexión),
+  // se avisa y se decide; nunca se pisa en silencio (RNF-15).
   const [base, setBase] = useState(currentNo);
   const [showVersions, setShowVersions] = useState(false);
   const save = useMutation({
-    mutationFn: () => worklogApi(workshopId, orderId).saveDiagnosis(base, text),
-    onSuccess: ({ version_no }) => setBase(version_no),
+    mutationFn: (input: DiagnosisDraft) =>
+      worklogApi(scope.workshopId, scope.orderId).saveDiagnosis(input.base, input.text),
+    networkMode: "always",
+    onSuccess: ({ version_no }) => {
+      setBase(version_no);
+      draft.discard();
+    },
+    onError: (error, input) => draft.failed(input, error),
     onSettled: onSaved,
   });
+  const draft = useDraft<DiagnosisDraft>(
+    { ...scope, kind: "diagnosis" },
+    {
+      onRestore: (saved) => {
+        setText(saved.text);
+        setBase(saved.base);
+      },
+      resend: (saved) => save.mutate(saved),
+    },
+  );
+  const edit = (next: DiagnosisDraft) => {
+    setText(next.text);
+    setBase(next.base);
+    // Volver a dejarlo como está guardado no es un borrador.
+    if (next.base === currentNo && next.text.trim() === (current?.text ?? "").trim()) {
+      draft.discard();
+    } else {
+      draft.save(next);
+    }
+  };
   const outdated = currentNo !== base;
   const unchanged = !outdated && text.trim() === (current?.text ?? "").trim();
 
@@ -100,8 +165,7 @@ function DiagnosisCard({
                 size="sm"
                 variant="outline"
                 onClick={() => {
-                  setText(current.text);
-                  setBase(currentNo);
+                  edit({ text: current.text, base: currentNo });
                   save.reset();
                 }}
               >
@@ -111,7 +175,7 @@ function DiagnosisCard({
                 size="sm"
                 variant="outline"
                 onClick={() => {
-                  setBase(currentNo);
+                  edit({ text, base: currentNo });
                   save.reset();
                 }}
               >
@@ -120,7 +184,8 @@ function DiagnosisCard({
             </div>
           </div>
         ) : (
-          save.isError && (
+          save.isError &&
+          !draft.pending && (
             <p role="alert" className="text-destructive text-sm">
               {errorMessage(t, save.error)}
             </p>
@@ -133,7 +198,7 @@ function DiagnosisCard({
             className="grid gap-2"
             onSubmit={(event) => {
               event.preventDefault();
-              save.mutate();
+              save.mutate({ text, base });
             }}
           >
             <Label htmlFor="diagnosis-text" className="sr-only">
@@ -143,8 +208,9 @@ function DiagnosisCard({
               id="diagnosis-text"
               className="min-h-28"
               value={text}
-              onChange={(event) => setText(event.target.value)}
+              onChange={(event) => edit({ text: event.target.value, base })}
             />
+            <DraftStatus pending={draft.pending} restored={draft.restored} />
             <div>
               <Button type="submit" size="sm" disabled={save.isPending || outdated || unchanged || !text.trim()}>
                 {t("worklog.saveDiagnosis")}
@@ -203,50 +269,81 @@ function today(): string {
   return `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}`;
 }
 
+type WorkDraft = { id: string; worker: string; description: string; workedOn: string; hours: string };
+
 function WorkCard({
-  orderId,
+  scope,
   log,
   closed,
   onChanged,
 }: {
-  orderId: string;
+  scope: OrderScope;
   log: Worklog;
   closed: boolean;
   onChanged: () => Promise<unknown>;
 }) {
   const { t, i18n } = useTranslation();
-  const { workshopId, employeeId } = useActiveWorkshop();
-  const api = worklogApi(workshopId, orderId);
+  const { employeeId } = useActiveWorkshop();
+  const api = worklogApi(scope.workshopId, scope.orderId);
   const staff = useQuery({
-    queryKey: ["staff", workshopId],
-    queryFn: () => fetchStaff(workshopId),
+    queryKey: ["staff", scope.workshopId],
+    queryFn: () => fetchStaff(scope.workshopId),
     staleTime: 60_000,
   });
-  const [worker, setWorker] = useState(employeeId);
-  const [description, setDescription] = useState("");
-  const [workedOn, setWorkedOn] = useState(today);
-  const [hours, setHours] = useState("");
+  const blank = (): WorkDraft => ({
+    id: newDraftId(),
+    worker: employeeId,
+    description: "",
+    workedOn: today(),
+    hours: "",
+  });
+  const [form, setForm] = useState(blank);
 
-  const action = useMutation({
-    mutationFn: (run: () => Promise<unknown>) => run(),
+  const add = useMutation({
+    mutationFn: (input: WorkDraft) =>
+      unlessAlreadySaved(
+        api.addWork({
+          id: input.id,
+          employee_id: input.worker,
+          description: input.description,
+          worked_on: input.workedOn,
+          // Se admite "1,5" como en el resto de importes en español.
+          hours: input.hours.trim() ? input.hours.trim().replace(",", ".") : null,
+        }),
+      ),
+    networkMode: "always",
+    onSuccess: () => {
+      setForm(blank());
+      draft.discard();
+    },
+    onError: (error, input) => draft.failed(input, error),
+    onSettled: onChanged,
+  });
+  const draft = useDraft<WorkDraft>(
+    { ...scope, kind: "work" },
+    { onRestore: setForm, resend: (saved) => add.mutate(saved) },
+  );
+  const edit = (change: Partial<WorkDraft>) => {
+    // Lo pendiente quizá llegó (se perdió solo la respuesta): si se cambia, es
+    // otro envío con otro id. Con el mismo, el servidor lo tomaría por un
+    // reenvío y el cambio se perdería sin avisar.
+    const next = { ...form, ...change, id: draft.pending ? newDraftId() : form.id };
+    setForm(next);
+    // Quién y cuándo vienen ya puestos: sin qué ni horas, no hay nada escrito.
+    if (!next.description.trim() && !next.hours.trim()) draft.discard();
+    else draft.save(next);
+  };
+  const voiding = useMutation({
+    mutationFn: (entryId: string) => api.voidWork(entryId),
     onSettled: onChanged,
   });
   const submit = (event: FormEvent) => {
     event.preventDefault();
-    action.mutate(async () => {
-      await api.addWork({
-        employee_id: worker,
-        description,
-        worked_on: workedOn,
-        // Se admite "1,5" como en el resto de importes en español.
-        hours: hours.trim() ? hours.trim().replace(",", ".") : null,
-      });
-      setDescription("");
-      setHours("");
-    });
+    add.mutate(form);
   };
   const hoursOf = (value: string | null) =>
     value === null ? "—" : Number(value).toLocaleString(i18n.language);
+  const error = voiding.error ?? (draft.pending ? null : add.error);
 
   return (
     <Card>
@@ -260,9 +357,9 @@ function WorkCard({
             {log.workers.join(", ")}
           </p>
         )}
-        {action.isError && (
+        {error && (
           <p role="alert" className="text-destructive text-sm">
-            {errorMessage(t, action.error)}
+            {errorMessage(t, error)}
           </p>
         )}
         {log.work_entries.length === 0 ? (
@@ -284,10 +381,10 @@ function WorkCard({
                       variant="ghost"
                       size="xs"
                       className="ml-auto"
-                      disabled={action.isPending}
+                      disabled={voiding.isPending}
                       onClick={() => {
                         if (window.confirm(t("worklog.confirmVoid"))) {
-                          action.mutate(() => api.voidWork(entry.id));
+                          voiding.mutate(entry.id);
                         }
                       }}
                     >
@@ -308,42 +405,45 @@ function WorkCard({
           </ul>
         )}
         {!closed && (
-          <form className="grid gap-3 border-t pt-3 md:grid-cols-[2fr_1fr_1fr_1fr_auto] md:items-end" onSubmit={submit}>
-            <Field
-              id="work-description"
-              label={t("worklog.description")}
-              required
-              value={description}
-              onChange={(event) => setDescription(event.target.value)}
-            />
-            <div className="grid gap-1.5">
-              <Label htmlFor="work-worker">{t("worklog.doneBy")}</Label>
-              <Select id="work-worker" value={worker} onChange={(event) => setWorker(event.target.value)}>
-                {(staff.data ?? []).map((member) => (
-                  <option key={member.id} value={member.id}>
-                    {member.name}
-                  </option>
-                ))}
-              </Select>
+          <form className="grid gap-3 border-t pt-3" onSubmit={submit}>
+            <div className="grid gap-3 md:grid-cols-[2fr_1fr_1fr_1fr_auto] md:items-end">
+              <Field
+                id="work-description"
+                label={t("worklog.description")}
+                required
+                value={form.description}
+                onChange={(event) => edit({ description: event.target.value })}
+              />
+              <div className="grid gap-1.5">
+                <Label htmlFor="work-worker">{t("worklog.doneBy")}</Label>
+                <Select id="work-worker" value={form.worker} onChange={(event) => edit({ worker: event.target.value })}>
+                  {(staff.data ?? []).map((member) => (
+                    <option key={member.id} value={member.id}>
+                      {member.name}
+                    </option>
+                  ))}
+                </Select>
+              </div>
+              <Field
+                id="work-date"
+                type="date"
+                label={t("worklog.date")}
+                required
+                value={form.workedOn}
+                onChange={(event) => edit({ workedOn: event.target.value })}
+              />
+              <Field
+                id="work-hours"
+                inputMode="decimal"
+                label={t("worklog.hours")}
+                value={form.hours}
+                onChange={(event) => edit({ hours: event.target.value })}
+              />
+              <Button type="submit" disabled={add.isPending || !form.description.trim() || !form.workedOn}>
+                {t("worklog.addWork")}
+              </Button>
             </div>
-            <Field
-              id="work-date"
-              type="date"
-              label={t("worklog.date")}
-              required
-              value={workedOn}
-              onChange={(event) => setWorkedOn(event.target.value)}
-            />
-            <Field
-              id="work-hours"
-              inputMode="decimal"
-              label={t("worklog.hours")}
-              value={hours}
-              onChange={(event) => setHours(event.target.value)}
-            />
-            <Button type="submit" disabled={action.isPending || !description.trim() || !workedOn}>
-              {t("worklog.addWork")}
-            </Button>
+            <DraftStatus pending={draft.pending} restored={draft.restored} />
           </form>
         )}
       </CardContent>
@@ -351,23 +451,40 @@ function WorkCard({
   );
 }
 
+type NoteDraft = { id: string; body: string };
+
 function NotesCard({
-  orderId,
+  scope,
   log,
   onAdded,
 }: {
-  orderId: string;
+  scope: OrderScope;
   log: Worklog;
   onAdded: () => Promise<unknown>;
 }) {
   const { t, i18n } = useTranslation();
-  const { workshopId } = useActiveWorkshop();
-  const [body, setBody] = useState("");
+  const [note, setNote] = useState<NoteDraft>(() => ({ id: newDraftId(), body: "" }));
   const add = useMutation({
-    mutationFn: () => worklogApi(workshopId, orderId).addNote(body),
-    onSuccess: () => setBody(""),
+    mutationFn: (input: NoteDraft) =>
+      unlessAlreadySaved(worklogApi(scope.workshopId, scope.orderId).addNote(input.id, input.body)),
+    networkMode: "always",
+    onSuccess: () => {
+      setNote({ id: newDraftId(), body: "" });
+      draft.discard();
+    },
+    onError: (error, input) => draft.failed(input, error),
     onSettled: onAdded,
   });
+  const draft = useDraft<NoteDraft>(
+    { ...scope, kind: "note" },
+    { onRestore: setNote, resend: (saved) => add.mutate(saved) },
+  );
+  const edit = (body: string) => {
+    const next = { id: draft.pending ? newDraftId() : note.id, body };
+    setNote(next);
+    if (body.trim()) draft.save(next);
+    else draft.discard();
+  };
 
   return (
     <Card>
@@ -378,17 +495,17 @@ function NotesCard({
         <p className="text-muted-foreground text-xs">{t("worklog.notesHint")}</p>
         {log.notes.length > 0 && (
           <ol className="grid gap-2">
-            {log.notes.map((note) => (
-              <li key={note.seq} className="grid gap-0.5 border-l-2 pl-3">
+            {log.notes.map((entry) => (
+              <li key={entry.seq} className="grid gap-0.5 border-l-2 pl-3">
                 <span className="text-muted-foreground text-xs">
-                  {note.employee_name} · {formatDateTime(note.created_at, i18n.language)}
+                  {entry.employee_name} · {formatDateTime(entry.created_at, i18n.language)}
                 </span>
-                <p className="text-sm whitespace-pre-line">{note.body}</p>
+                <p className="text-sm whitespace-pre-line">{entry.body}</p>
               </li>
             ))}
           </ol>
         )}
-        {add.isError && (
+        {add.isError && !draft.pending && (
           <p role="alert" className="text-destructive text-sm">
             {errorMessage(t, add.error)}
           </p>
@@ -397,7 +514,7 @@ function NotesCard({
           className="grid gap-2"
           onSubmit={(event) => {
             event.preventDefault();
-            add.mutate();
+            add.mutate(note);
           }}
         >
           <Label htmlFor="note-body" className="sr-only">
@@ -406,11 +523,12 @@ function NotesCard({
           <Textarea
             id="note-body"
             placeholder={t("worklog.newNote")}
-            value={body}
-            onChange={(event) => setBody(event.target.value)}
+            value={note.body}
+            onChange={(event) => edit(event.target.value)}
           />
+          <DraftStatus pending={draft.pending} restored={draft.restored} />
           <div>
-            <Button type="submit" size="sm" disabled={add.isPending || !body.trim()}>
+            <Button type="submit" size="sm" disabled={add.isPending || !note.body.trim()}>
               {t("worklog.addNote")}
             </Button>
           </div>

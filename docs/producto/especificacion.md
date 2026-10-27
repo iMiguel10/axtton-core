@@ -465,7 +465,7 @@ Medido en el servidor con un taller de **50.000 órdenes, 20.000 vehículos y 5.
 
 - **RNF-20** La interfaz del taller es usable en el móvil del mecánico (diagnóstico, trabajos, piezas) y el portal está pensado primero para el móvil.
 - **RNF-21** Abrir una orden para un cliente y vehículo ya registrados lleva menos de un minuto.
-- **RNF-22** La aplicación funciona **solo con conexión**, pero no pierde lo escrito: lo que el mecánico está escribiendo (diagnóstico, nota, trabajo) se guarda como borrador en el dispositivo y se envía al recuperar la conexión, con el mismo aviso de RNF-15 si algo cambió entretanto. La interfaz muestra claramente cuándo no hay conexión y qué está pendiente de enviar.
+- **RNF-22** La aplicación funciona **solo con conexión**, pero no pierde lo escrito: lo que el mecánico está escribiendo (diagnóstico, nota, trabajo) se guarda como borrador en el dispositivo y se envía al recuperar la conexión, con el mismo aviso de RNF-15 si algo cambió entretanto. La interfaz muestra claramente cuándo no hay conexión y qué está pendiente de enviar. *Precisión al construirlo (F2):* lo pendiente se envía solo si la orden está abierta en pantalla al volver la conexión, o al volver a abrirla; desde la cabecera se llega a cada orden con algo pendiente. Los borradores no salen del dispositivo: si se cambia de dispositivo, no siguen a la persona.
 - **RNF-23** Accesibilidad: se puede usar con teclado, con contraste suficiente y con etiquetas en todos los controles (criterios de nivel AA de WCAG 2.2 como referencia), con especial cuidado en el portal, que usa cualquiera.
 - **RNF-24** Navegadores soportados: las dos últimas versiones de Chrome, Edge, Firefox y Safari (también en iOS).
 

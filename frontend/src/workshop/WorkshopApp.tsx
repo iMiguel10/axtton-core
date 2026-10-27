@@ -17,6 +17,7 @@ import { ClientsPage } from "./features/clients/ClientsPage";
 import { EmployeesPage } from "./features/employees/EmployeesPage";
 import { HomePage } from "./features/home/HomePage";
 import { AppLayout } from "./features/layout/AppLayout";
+import { ConnectionNotice } from "./features/layout/ConnectionNotice";
 import { OrderDetailPage } from "./features/orders/OrderDetailPage";
 import { OrderNewPage } from "./features/orders/OrderNewPage";
 import { OrdersPage } from "./features/orders/OrdersPage";
@@ -96,7 +97,7 @@ function StaffRoutes() {
     { to: "/account", label: t("nav.account") },
   ];
   return (
-    <AppLayout nav={nav} workshopSwitcher>
+    <AppLayout nav={nav} workshopSwitcher notice={<ConnectionNotice />}>
       <Routes>
         <Route path="/" element={<HomePage />} />
         <Route path="/orders" element={<OrdersPage />} />

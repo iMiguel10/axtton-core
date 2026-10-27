@@ -4,6 +4,8 @@ import Session from "supertokens-web-js/recipe/session";
 
 import { queryClient } from "@/shared/lib/queryClient";
 
+import { keepOnlyUser } from "./drafts";
+
 /** Rutas a las que se entra sin sesión: no se redirige al login desde ellas. */
 export function isPublicPath(pathname: string): boolean {
   return (
@@ -39,6 +41,13 @@ SuperTokens.init({
           event.action === "UNAUTHORISED"
         ) {
           queryClient.clear();
+        }
+        // Los borradores de quien usó antes este dispositivo, fuera. Si su sesión
+        // caducó y vuelve a entrar la misma persona, los suyos siguen (RNF-22).
+        if (event.action === "SESSION_CREATED") {
+          void Session.getUserId()
+            .then(keepOnlyUser)
+            .catch(() => undefined);
         }
         if (event.action === "UNAUTHORISED" && !isPublicPath(window.location.pathname)) {
           window.location.assign("/login");

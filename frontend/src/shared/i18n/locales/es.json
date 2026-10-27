@@ -178,6 +178,17 @@
     "newNote": "Escribe una nota…",
     "addNote": "Añadir nota"
   },
+  "drafts": {
+    "offline": "Sin conexión. Lo que escribas se guarda en este dispositivo y se enviará al volver.",
+    "pending": "Sin enviar: se enviará en cuanto vuelva la conexión.",
+    "restored": "Borrador recuperado de este dispositivo.",
+    "pendingList": "Pendiente de enviar:",
+    "kinds": {
+      "diagnosis": "diagnóstico de {{code}}",
+      "note": "nota de {{code}}",
+      "work": "trabajo de {{code}}"
+    }
+  },
   "orders": {
     "title": "Órdenes de trabajo",
     "new": "Abrir orden",
@@ -394,6 +405,9 @@
   },
   "errors": {
     "unknown": "Algo ha fallado. Inténtalo de nuevo.",
+    "network": "No se ha podido conectar con el servidor. Comprueba la conexión e inténtalo de nuevo.",
+    "already_saved": "Ya estaba guardado.",
+    "id_in_use": "No se ha podido guardar: vuelve a escribirlo.",
     "rate_limited": "Demasiados intentos seguidos. Espera unos minutos y vuelve a probar.",
     "invalid_input":"Algún dato no es válido. Revísalo, sobre todo el email.",
     "wrong_actor": "Esta cuenta no puede usar esta parte de la aplicación.",

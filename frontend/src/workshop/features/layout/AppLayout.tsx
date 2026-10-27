@@ -15,11 +15,14 @@ type NavItem = { to: string; label: string };
 export function AppLayout({
   nav,
   workshopSwitcher = false,
+  notice,
   children,
 }: {
   nav: NavItem[];
   /** Solo para el personal: el superadministrador no tiene taller activo. */
   workshopSwitcher?: boolean;
+  /** Bajo la cabecera, en todas las pantallas (la conexión, para el personal). */
+  notice?: ReactNode;
   children: ReactNode;
 }) {
   const { t } = useTranslation();
@@ -56,6 +59,7 @@ export function AppLayout({
           </div>
         </div>
       </header>
+      {notice}
       <main className="mx-auto max-w-6xl p-4 md:p-6">{children}</main>
     </div>
   );

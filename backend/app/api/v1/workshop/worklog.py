@@ -93,6 +93,7 @@ async def add_note(order_id: UUID, body: NoteCreate, workshop: Writer) -> None:
         workshop.workshop_id,
         workshop.employee_id,
         order_id,
+        note_id=body.id,
         body=body.body,
     )
 
@@ -106,6 +107,7 @@ async def add_work_entry(
         workshop.workshop_id,
         workshop.employee_id,
         order_id,
+        entry_id=body.id,
         employee_id=body.employee_id,
         description=body.description,
         worked_on=body.worked_on,

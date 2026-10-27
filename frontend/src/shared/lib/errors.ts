@@ -9,6 +9,10 @@ export function errorMessage(t: TFunction, error: unknown): string {
   if (error instanceof Response && error.status === 429) {
     return t("errors.rate_limited");
   }
+  // `fetch` falla así cuando la petición no llega: sin conexión, o el servidor caído.
+  if (error instanceof TypeError) {
+    return t("errors.network");
+  }
   if (error instanceof ApiError && error.code) {
     return t(`errors.${error.code}`, { defaultValue: t("errors.unknown") });
   }

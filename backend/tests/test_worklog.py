@@ -6,6 +6,7 @@ test_worklog_db.py; los cruces con otras escrituras, en test_concurrency.py.
 
 from collections.abc import AsyncIterator
 from typing import Any
+from uuid import uuid4
 
 import pytest
 import pytest_asyncio
@@ -271,6 +272,78 @@ async def test_an_inactive_or_foreign_card_cannot_have_done_the_work(
         404,
         {"code": "employee_not_found"},
     )
+
+
+# --- Reenvío de un borrador (RNF-22) -----------------------------------------
+
+
+@pytest.mark.asyncio
+async def test_resending_a_note_with_its_draft_id_does_not_repeat_it(
+    client: AsyncClient, shop: Shop, order: dict[str, Any]
+) -> None:
+    """La respuesta se perdió con la conexión y el navegador lo reenvía: con
+    el mismo id, la nota ya está y no se anota otra vez."""
+    body = {"id": str(uuid4()), "body": "Ruido solo en frío"}
+    for _ in range(2):
+        response = await client.post(
+            f"{URL}/{order['id']}/notes", json=body, headers=shop.headers
+        )
+        assert response.status_code == 201, response.text
+    notes = (await worklog(client, shop.headers, order["id"]))["notes"]
+    assert [n["body"] for n in notes] == ["Ruido solo en frío"]
+
+
+@pytest.mark.asyncio
+async def test_resending_a_work_entry_counts_once_even_after_closing(
+    client: AsyncClient, shop: Shop, order: dict[str, Any], juan: str
+) -> None:
+    """El reenvío de lo ya guardado vale aunque la orden se cerrara después:
+    no es un trabajo nuevo, y rechazarlo dejaría el borrador pendiente para
+    siempre."""
+    draft = str(uuid4())
+    first = await add_work(client, shop.headers, order["id"], juan, id=draft)
+    assert (first.status_code, first.json()) == (201, {"id": draft})
+    await force_status(order["id"], "delivered")
+    again = await add_work(client, shop.headers, order["id"], juan, id=draft)
+    assert (again.status_code, again.json()) == (201, {"id": draft})
+    entries = (await worklog(client, shop.headers, order["id"]))["work_entries"]
+    assert [e["id"] for e in entries] == [draft]
+
+
+@pytest.mark.asyncio
+async def test_an_id_already_used_elsewhere_is_a_409(
+    client: AsyncClient,
+    shop: Shop,
+    order: dict[str, Any],
+    juan: str,
+    outbox: InMemoryEmailSender,
+) -> None:
+    """Un id existente solo vale para reenviar lo mismo: en otra orden, o
+    desde otra persona, no se toma por un reenvío."""
+    draft = str(uuid4())
+    await add_work(client, shop.headers, order["id"], juan, id=draft)
+    await client.post(
+        f"{URL}/{order['id']}/notes",
+        json={"id": draft, "body": "Ojo"},
+        headers=shop.headers,
+    )
+    other = await open_order(client, shop.headers, shop.car["id"])
+    mechanic = await invite_and_accept(client, shop.admin, outbox, juan)
+    for response in (
+        await add_work(client, shop.headers, other["id"], juan, id=draft),
+        await add_work(client, mechanic, order["id"], juan, id=draft),
+        await client.post(
+            f"{URL}/{other['id']}/notes",
+            json={"id": draft, "body": "Ojo"},
+            headers=shop.headers,
+        ),
+        await client.post(
+            f"{URL}/{order['id']}/notes",
+            json={"id": draft, "body": "Ojo"},
+            headers=mechanic,
+        ),
+    ):
+        assert (response.status_code, response.json()) == (409, {"code": "id_in_use"})
 
 
 # --- El mecánico (especificación §3) -----------------------------------------

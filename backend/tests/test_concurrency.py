@@ -802,6 +802,42 @@ async def test_two_work_entries_at_once_are_both_saved(
 
 
 @pytest.mark.asyncio
+async def test_the_same_draft_sent_twice_at_once_is_saved_once(
+    engines: Engines, two_workshops: TwoWorkshops, make_account: MakeAccount
+) -> None:
+    """RNF-22. Al volver la conexión, el navegador reenvía la nota mientras la
+    primera petición, que sí llegó, aún no ha confirmado. Ninguna ve la otra al
+    buscar el id; la clave primaria para a la segunda con un 409
+    `already_saved`, que el navegador toma por guardada, y no un 500."""
+    from app.services import worklog as worklog_service
+
+    a = two_workshops.a
+    ana, order_id = await order_in(engines, make_account, a, [])
+    note_id = uuid4()
+
+    async def send(session: AsyncSession) -> None:
+        await worklog_service.add_note(
+            session, a, ana.employee_id, order_id, note_id=note_id, body="Ojo"
+        )
+
+    async with open_transaction(a) as first, open_transaction(a) as second:
+        await send(first)
+        work = asyncio.create_task(send(second))
+        await asyncio.sleep(GRACE)
+        assert not work.done(), "la segunda debería esperar a la clave primaria"
+        await first.commit()
+        outcome = await finish(second, work)
+
+    assert isinstance(outcome, ConflictError), outcome
+    assert outcome.code == "already_saved"
+    async with engines.platform.connect() as conn:
+        count = await conn.scalar(
+            text("SELECT count(*) FROM internal_notes WHERE id = :n"), {"n": note_id}
+        )
+    assert count == 1
+
+
+@pytest.mark.asyncio
 @pytest.mark.parametrize("first_one", ["cancel", "work"])
 async def test_a_work_entry_and_a_cancellation_at_once_never_both_apply(
     engines: Engines,

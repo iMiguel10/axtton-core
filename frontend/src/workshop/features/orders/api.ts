@@ -170,6 +170,8 @@ export type Worklog = {
 };
 
 export type WorkEntryInput = {
+  /** El del borrador: reenviarlo no anota dos veces el mismo trabajo (RNF-22). */
+  id: string;
   employee_id: string;
   description: string;
   worked_on: string;
@@ -184,7 +186,8 @@ export function worklogApi(workshopId: string, orderId: string) {
     /** `base` es la versión desde la que se editó (0 si no había): RNF-15. */
     saveDiagnosis: (base: number, text: string) =>
       request<{ version_no: number }>("/diagnosis", "POST", { base_version_no: base, text }),
-    addNote: (body: string) => request<void>("/notes", "POST", { body }),
+    /** `id` es el del borrador, como en `addWork`. */
+    addNote: (id: string, body: string) => request<void>("/notes", "POST", { id, body }),
     addWork: (input: WorkEntryInput) =>
       request<{ id: string }>("/work-entries", "POST", input),
     voidWork: (entryId: string) => request<void>(`/work-entries/${entryId}/void`, "POST"),

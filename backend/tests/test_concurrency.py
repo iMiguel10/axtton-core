@@ -447,6 +447,41 @@ async def test_two_clients_with_one_email_at_once_give_a_409_not_a_500(
 
 
 @pytest.mark.asyncio
+async def test_two_clients_at_once_with_one_free_slot_leave_one_out(
+    engines: Engines, two_workshops: TwoWorkshops
+) -> None:
+    """§10: con un solo hueco, dos altas a la vez contarían cada una sin ver la
+    otra (READ COMMITTED) y entrarían las dos. El bloqueo consultivo por taller y
+    recurso (repositories/limits.py::lock) pone a la segunda en fila: cuenta
+    después de la primera y no cabe."""
+    from app.services import clients as client_service
+
+    a = two_workshops.a
+    async with engines.platform.begin() as conn:
+        await conn.execute(
+            text("UPDATE workshops SET max_clients = 1 WHERE id = :w"), {"w": a}
+        )
+
+    async with open_transaction(a) as first, open_transaction(a) as second:
+        await client_service.create_client(first, a, {"name": "Ana", "phone": "6"})
+        work = asyncio.create_task(
+            client_service.create_client(second, a, {"name": "Luis", "phone": "7"})
+        )
+        await asyncio.sleep(GRACE)
+        assert not work.done(), "la segunda debería esperar al recuento"
+        await first.commit()
+        outcome = await finish(second, work)
+
+    assert isinstance(outcome, ConflictError), outcome
+    assert outcome.code == "client_limit_reached"
+    async with engines.platform.connect() as conn:
+        count = await conn.scalar(
+            text("SELECT count(*) FROM clients WHERE workshop_id = :w"), {"w": a}
+        )
+    assert count == 1
+
+
+@pytest.mark.asyncio
 async def test_two_owner_changes_at_once_leave_one_owner_and_a_409(
     engines: Engines, two_workshops: TwoWorkshops, make_account: MakeAccount
 ) -> None:

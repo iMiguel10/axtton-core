@@ -10,7 +10,15 @@ import { Field } from "@/shared/components/form/Field";
 import { Badge } from "@/shared/components/ui/badge";
 import { Button } from "@/shared/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/shared/components/ui/card";
-import { Input } from "@/shared/components/ui/input";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/shared/components/ui/dialog";
 import {
   Table,
   TableBody,
@@ -21,6 +29,7 @@ import {
 } from "@/shared/components/ui/table";
 import { errorMessage } from "@/shared/lib/errors";
 
+import { LimitBars, type LimitResource } from "../limits/LimitBars";
 import { adminApi, type WorkshopSummary } from "./api";
 
 const queryKey = ["admin", "workshops"];
@@ -67,7 +76,7 @@ export function AdminWorkshopsPage() {
               <TableHead>{t("admin.status")}</TableHead>
               <TableHead>{t("admin.access")}</TableHead>
               <TableHead>{t("admin.pendingInvitations")}</TableHead>
-              <TableHead>{t("admin.limit")}</TableHead>
+              <TableHead>{t("admin.usage")}</TableHead>
               <TableHead>
                 <span className="sr-only">{t("common.actions")}</span>
               </TableHead>
@@ -101,13 +110,9 @@ function WorkshopRow({
   onUpdate: (changes: Parameters<typeof adminApi.update>[1]) => void;
 }) {
   const { t } = useTranslation();
-  const [limit, setLimit] = useState(String(workshop.max_employees_with_access));
   const active = workshop.status === "active";
-  const parsedLimit = Number(limit);
-  const limitChanged =
-    Number.isInteger(parsedLimit) &&
-    parsedLimit >= 1 &&
-    parsedLimit !== workshop.max_employees_with_access;
+  // El que va más justo, para verlo sin abrir el detalle.
+  const tightest = [...workshop.limits].sort((a, b) => b.used / b.limit - a.used / a.limit)[0];
 
   return (
     <TableRow>
@@ -116,43 +121,105 @@ function WorkshopRow({
       <TableCell>
         <Badge variant={active ? "success" : "secondary"}>{t(`admin.statuses.${workshop.status}`)}</Badge>
       </TableCell>
-      <TableCell>
+      <TableCell className="tabular-nums">
         {workshop.employees_with_access} / {workshop.max_employees_with_access}
       </TableCell>
       <TableCell>{workshop.pending_invitations}</TableCell>
-      <TableCell>
-        <form
-          className="flex gap-1"
-          onSubmit={(event) => {
-            event.preventDefault();
-            if (limitChanged) onUpdate({ max_employees_with_access: parsedLimit });
-          }}
-        >
-          <Input
-            type="number"
-            min={1}
-            max={1000}
-            className="w-20"
-            aria-label={t("admin.limitOf", { name: workshop.name })}
-            value={limit}
-            onChange={(event) => setLimit(event.target.value)}
-          />
-          <Button type="submit" size="sm" variant="outline" disabled={busy || !limitChanged}>
-            {t("common.save")}
-          </Button>
-        </form>
+      <TableCell className="text-muted-foreground text-sm">
+        {tightest &&
+          t("admin.tightest", {
+            resource: t(`limits.resources.${tightest.resource}`),
+            percent: Math.round((tightest.used / tightest.limit) * 100),
+          })}
       </TableCell>
-      <TableCell className="text-right">
-        <Button
-          variant="outline"
-          size="sm"
-          disabled={busy}
-          onClick={() => onUpdate({ status: active ? "inactive" : "active" })}
-        >
-          {t(active ? "admin.deactivate" : "admin.activate")}
-        </Button>
+      <TableCell>
+        <div className="flex justify-end gap-2">
+          <LimitsDialog workshop={workshop} busy={busy} onSave={(limits) => onUpdate({ limits })} />
+          <Button
+            variant="outline"
+            size="sm"
+            disabled={busy}
+            onClick={() => onUpdate({ status: active ? "inactive" : "active" })}
+          >
+            {t(active ? "admin.deactivate" : "admin.activate")}
+          </Button>
+        </div>
       </TableCell>
     </TableRow>
+  );
+}
+
+/**
+ * Los límites de un taller (RF-114, §10): lo gastado de cada uno y su tope, que
+ * el superadministrador puede cambiar. Se manda solo lo que cambia. Bajar uno por
+ * debajo de lo gastado se admite: no borra nada, solo impide crear más.
+ */
+function LimitsDialog({
+  workshop,
+  busy,
+  onSave,
+}: {
+  workshop: WorkshopSummary;
+  busy: boolean;
+  onSave: (limits: Partial<Record<LimitResource, number>>) => void;
+}) {
+  const { t } = useTranslation();
+  const [open, setOpen] = useState(false);
+  const [values, setValues] = useState<Record<string, string>>({});
+  const changed = Object.fromEntries(
+    workshop.limits.flatMap(({ resource, limit }) => {
+      const value = Number(values[resource] ?? limit);
+      return Number.isInteger(value) && value >= 1 && value !== limit ? [[resource, value]] : [];
+    }),
+  ) as Partial<Record<LimitResource, number>>;
+  const invalid = workshop.limits.some(({ resource }) => {
+    const raw = values[resource];
+    return raw !== undefined && !(Number.isInteger(Number(raw)) && Number(raw) >= 1 && Number(raw) <= 1_000_000);
+  });
+
+  return (
+    <Dialog
+      open={open}
+      onOpenChange={(next) => {
+        setOpen(next);
+        if (next) setValues({});
+      }}
+    >
+      <DialogTrigger render={<Button variant="outline" size="sm" />}>{t("admin.limits")}</DialogTrigger>
+      <DialogContent className="sm:max-w-lg">
+        <DialogHeader>
+          <DialogTitle>{t("admin.limitsOf", { name: workshop.name })}</DialogTitle>
+          <DialogDescription>{t("admin.limitsHint")}</DialogDescription>
+        </DialogHeader>
+        <LimitBars limits={workshop.limits} />
+        <form
+          className="grid gap-3 sm:grid-cols-2"
+          onSubmit={(event) => {
+            event.preventDefault();
+            onSave(changed);
+            setOpen(false);
+          }}
+        >
+          {workshop.limits.map(({ resource, limit }) => (
+            <Field
+              key={resource}
+              id={`limit-${workshop.id}-${resource}`}
+              type="number"
+              min={1}
+              max={1_000_000}
+              label={t(`limits.resources.${resource}`)}
+              value={values[resource] ?? String(limit)}
+              onChange={(event) => setValues({ ...values, [resource]: event.target.value })}
+            />
+          ))}
+          <DialogFooter className="sm:col-span-2">
+            <Button type="submit" disabled={busy || invalid || Object.keys(changed).length === 0}>
+              {t("common.save")}
+            </Button>
+          </DialogFooter>
+        </form>
+      </DialogContent>
+    </Dialog>
   );
 }
 

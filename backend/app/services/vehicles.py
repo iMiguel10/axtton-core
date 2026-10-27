@@ -16,6 +16,7 @@ from uuid import UUID
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.errors import ConflictError, NotFoundError, ValidationFailedError
+from app.domain.limits import Resource
 from app.domain.vehicles import (
     is_valid_plate,
     is_valid_vin,
@@ -25,6 +26,7 @@ from app.domain.vehicles import (
 from app.models import AuditEntry, Client, Vehicle, VehicleOwnership
 from app.repositories import clients as client_repo
 from app.repositories import vehicles as vehicle_repo
+from app.services import limits as limit_service
 from app.services.integrity import flush_or_conflict
 
 EDITABLE = (
@@ -175,6 +177,9 @@ async def create_vehicle(
 ) -> UUID:
     """Un vehículo nace con su titular: el primer periodo empieza al darlo de
     alta, en la misma transacción."""
+    # Primero el límite (§10), antes que el bloqueo del titular: todas las altas
+    # se ponen en fila en el mismo orden.
+    await limit_service.ensure_room(session, workshop_id, Resource.VEHICLES)
     await _new_owner(session, owner_id)
     values = _normalized(fields)
     await _check_unique(session, values)

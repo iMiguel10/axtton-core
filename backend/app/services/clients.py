@@ -14,10 +14,12 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.errors import ConflictError, NotFoundError
 from app.domain.clients import normalize_email, normalize_tax_id
+from app.domain.limits import Resource
 from app.models import AuditEntry, Client
 from app.repositories import clients as client_repo
 from app.repositories import vehicles as vehicle_repo
 from app.repositories import work_orders as order_repo
+from app.services import limits as limit_service
 from app.services.integrity import flush_or_conflict
 
 # Campos que se pueden cambiar con PATCH. Archivar tiene sus propias operaciones.
@@ -89,6 +91,8 @@ async def get_client(session: AsyncSession, client_id: UUID) -> Client:
 async def create_client(
     session: AsyncSession, workshop_id: UUID, fields: dict[str, Any]
 ) -> UUID:
+    # Primero el límite (§10): es el primer bloqueo de toda alta.
+    await limit_service.ensure_room(session, workshop_id, Resource.CLIENTS)
     values = _normalized(fields)
     if values.get("email") and await client_repo.email_taken(session, values["email"]):
         raise ConflictError("client_email_taken")

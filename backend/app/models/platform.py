@@ -15,6 +15,7 @@ from sqlalchemy import (
     ForeignKey,
     ForeignKeyConstraint,
     Identity,
+    Integer,
     LargeBinary,
     SmallInteger,
     String,
@@ -53,6 +54,10 @@ class Workshop(IdMixin, CreatedAtMixin, UpdatedAtMixin, Base):
         CheckConstraint(
             "max_employees_with_access > 0", name="max_employees_with_access"
         ),
+        CheckConstraint("max_employees > 0", name="max_employees"),
+        CheckConstraint("max_clients > 0", name="max_clients"),
+        CheckConstraint("max_vehicles > 0", name="max_vehicles"),
+        CheckConstraint("max_orders_per_month > 0", name="max_orders_per_month"),
     )
 
     name: Mapped[str] = mapped_column(String(200))
@@ -75,10 +80,16 @@ class Workshop(IdMixin, CreatedAtMixin, UpdatedAtMixin, Base):
     signature_retention_months: Mapped[int] = mapped_column(
         SmallInteger, server_default="6"
     )
-    # Límite de cuenta que el superadministrador puede ajustar (§10, RF-114).
+    # Límites de recursos (§10, RF-114): nacen con los del plan básico
+    # (domain/limits.py, que los fija también en la migración) y el
+    # superadministrador los ajusta por taller. Solo los escribe la plataforma.
     max_employees_with_access: Mapped[int] = mapped_column(
-        SmallInteger, server_default="20"
+        SmallInteger, server_default="5"
     )
+    max_employees: Mapped[int] = mapped_column(SmallInteger, server_default="10")
+    max_clients: Mapped[int] = mapped_column(Integer, server_default="1000")
+    max_vehicles: Mapped[int] = mapped_column(Integer, server_default="1500")
+    max_orders_per_month: Mapped[int] = mapped_column(Integer, server_default="200")
     version: Mapped[int] = mapped_column(server_default="1")
 
     __mapper_args__ = {"version_id_col": version}  # noqa: RUF012

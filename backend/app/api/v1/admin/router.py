@@ -7,6 +7,7 @@ from app.api.deps import get_email_sender
 from app.api.v1 import account
 from app.api.v1.deps import Superadmin, require_superadmin
 from app.core.config import get_settings
+from app.domain.limits import Resource
 from app.infra.email import EmailSender
 from app.platform import audit as platform_audit
 from app.platform import superadmins as platform_superadmins
@@ -23,6 +24,7 @@ from app.schemas.admin import (
     WorkshopUpdate,
 )
 from app.schemas.audit import AuditEntryRead, AuditPageRead
+from app.schemas.limits import LimitUsage
 from app.schemas.session import AdminMe
 
 # Toda ruta de este router exige una sesión de superadministrador (A5). Sus
@@ -115,7 +117,13 @@ async def list_audit(
 @router.get("/workshops")
 async def list_workshops() -> list[WorkshopRead]:
     return [
-        WorkshopRead(**summary.__dict__)
+        WorkshopRead(
+            **{k: v for k, v in summary.__dict__.items() if k != "limits"},
+            limits=[
+                LimitUsage(resource=resource, used=used, limit=limit)
+                for resource, (used, limit) in summary.limits.items()
+            ],
+        )
         for summary in await platform_workshops.list_workshops()
     ]
 
@@ -124,10 +132,13 @@ async def list_workshops() -> list[WorkshopRead]:
 async def update_workshop(
     workshop_id: UUID, body: WorkshopUpdate, user: Superadmin
 ) -> None:
-    """Desactivar o reactivar un taller y ajustar su límite de acceso."""
+    """Desactivar o reactivar un taller y ajustar sus límites (RF-114, §10)."""
+    limits = dict(body.limits)
+    if body.max_employees_with_access is not None:
+        limits[Resource.EMPLOYEES_WITH_ACCESS] = body.max_employees_with_access
     await platform_workshops.update_workshop(
         workshop_id,
         status=body.status,
-        max_employees_with_access=body.max_employees_with_access,
+        limits=limits,
         updated_by=user.supertokens_user_id,
     )

@@ -124,7 +124,12 @@ async def test_listing_shows_account_data_and_counts_only(
         "max_employees_with_access",
         "employees_with_access",
         "pending_invitations",
+        "limits",
         "admins",
+    }
+    # De los límites, solo números: qué recurso, cuánto lleva y su tope.
+    assert {frozenset(item) for item in workshop["limits"]} == {
+        frozenset({"resource", "used", "limit"})
     }
     assert workshop["employees_with_access"] == 0
     assert workshop["pending_invitations"] == 1
@@ -201,7 +206,7 @@ async def test_deactivating_and_changing_limits_is_audited(
     workshop_id = created.json()["workshop_id"]
     response = await client.patch(
         f"/api/v1/admin/workshops/{workshop_id}",
-        json={"status": "inactive", "max_employees_with_access": 5},
+        json={"status": "inactive", "max_employees_with_access": 3},
         headers=superadmin,
     )
     assert response.status_code == 204
@@ -210,7 +215,7 @@ async def test_deactivating_and_changing_limits_is_audited(
     ).json()
     assert (workshop["status"], workshop["max_employees_with_access"]) == (
         "inactive",
-        5,
+        3,
     )
     async with engines.platform.connect() as conn:
         details = await conn.scalar(
@@ -218,7 +223,7 @@ async def test_deactivating_and_changing_limits_is_audited(
         )
     assert details == {
         "status": ["active", "inactive"],
-        "max_employees_with_access": [20, 5],
+        "max_employees_with_access": [5, 3],
     }
 
 

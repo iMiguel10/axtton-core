@@ -488,9 +488,18 @@ Medido en el servidor con un taller de **50.000 órdenes, 20.000 vehículos y 5.
 
 Existen desde el primer día, aunque no se cobre por ellos. Los de cuenta los puede ajustar el superadministrador por taller (RF-114).
 
-| Límite | Valor inicial | Motivo |
+*Precisión antes del primer despliegue (F2):* los límites de cuenta de un taller nacen con los del **plan básico**, pensado para un taller pequeño (de 1 a 5 mecánicos y unas 5 a 8 órdenes al día), y el superadministrador los ajusta taller a taller; su administrador ve lo gastado de cada uno en su cuenta. Al llegar a uno, el alta se rechaza con un mensaje que dice cuál; bajarlo por debajo de lo gastado no borra nada. Los **planes con nombre** (básico, profesional…) quedan para cuando haya facturación (`[C]`): estos valores serán entonces los del básico. La demo pública usa unos más bajos (200 clientes, 300 vehículos, 100 órdenes al mes).
+
+| Límite de cuenta (plan básico) | Valor inicial | Motivo |
 |---|---|---|
-| Empleados con acceso por taller | 20 | Límite de cuenta; las fichas sin acceso no cuentan |
+| Empleados con acceso por taller | 5 | Las fichas sin acceso no cuentan. *Era 20 hasta fijar el plan básico* |
+| Fichas de empleado activas, con o sin acceso | 10 | Un mecánico que no entra también cuenta |
+| Clientes | 1.000 | Acumulados: un archivado o anonimizado ocupa su fila. Si archivar liberase hueco, serviría para saltarse el límite |
+| Vehículos | 1.500 | Algo más que clientes: hay quien tiene varios |
+| Órdenes al mes (del taller) | 200 | Las órdenes se acumulan sin fin; 200 da margen a un taller que hace unas 150 |
+
+| Otros límites | Valor inicial | Motivo |
+|---|---|---|
 | Piezas en el catálogo | 10.000 | Un catálogo básico; más indica una importación masiva que no está soportada |
 | Líneas por versión de presupuesto | 200 | Un presupuesto de taller no tiene más; protege el PDF y el cálculo de totales |
 | Versiones de presupuesto por orden | 20 | Más indica un uso anómalo |

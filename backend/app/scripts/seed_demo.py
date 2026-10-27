@@ -58,6 +58,7 @@ from supertokens_python.types.base import AccountInfoInput
 from app.core import db
 from app.core.config import get_settings
 from app.core.supertokens import init_supertokens
+from app.domain.limits import DEMO_PLAN, limit_column
 from app.platform.db import platform_engine
 from app.repositories import work_orders as order_repo
 from app.scripts.reset_data import truncate_all
@@ -181,6 +182,16 @@ async def _platform_rows(
                     " VALUES (:n, :ln, :t, :a, :p) RETURNING id"
                 ),
                 {"n": name, **legal},
+            )
+            # Los límites de la demo (domain/limits.py::DEMO_PLAN): bastan para
+            # probarlo todo y no dejan llenar la base de datos en un día.
+            await conn.execute(
+                text(
+                    "UPDATE workshops SET "
+                    + ", ".join(f"{limit_column(r)} = :{r.value}" for r in DEMO_PLAN)
+                    + " WHERE id = :w"
+                ),
+                {"w": workshop_id, **{r.value: v for r, v in DEMO_PLAN.items()}},
             )
             await conn.execute(
                 text(

@@ -21,6 +21,7 @@ from app.core.errors import (
     NotFoundError,
     ValidationFailedError,
 )
+from app.domain.limits import Resource
 from app.domain.permissions import Action, can
 from app.domain.work_orders import (
     CLOSED,
@@ -44,6 +45,7 @@ from app.repositories import vehicles as vehicle_repo
 from app.repositories import work_orders as order_repo
 from app.repositories import worklog as worklog_repo
 from app.repositories.work_orders import OrderRow
+from app.services import limits as limit_service
 
 # Lo que se puede cambiar con PATCH: los datos de recepción y el responsable.
 # El tipo, el vehículo y el cliente quedan fijados al abrir.
@@ -131,6 +133,8 @@ async def open_order(
     `received`, con su primer cambio en el historial, para que el estado sea
     siempre el del último cambio (invariante 5).
     """
+    # Primero el límite de órdenes del mes (§10), antes que ningún otro bloqueo.
+    await limit_service.ensure_room(session, workshop_id, Resource.ORDERS_PER_MONTH)
     vehicle = await vehicle_repo.get_for_share(session, vehicle_id)
     if vehicle is None:
         raise NotFoundError("vehicle_not_found")

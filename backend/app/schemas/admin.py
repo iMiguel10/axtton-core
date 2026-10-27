@@ -1,8 +1,11 @@
 from datetime import datetime
-from typing import Literal
+from typing import Annotated, Literal
 from uuid import UUID
 
 from pydantic import BaseModel, EmailStr, Field
+
+from app.domain.limits import MAX_LIMIT, Resource
+from app.schemas.limits import LimitUsage
 
 
 class WorkshopCreate(BaseModel):
@@ -27,13 +30,21 @@ class WorkshopRead(BaseModel):
     max_employees_with_access: int
     employees_with_access: int
     pending_invitations: int
+    # Cada límite (§10) con lo gastado, en el orden de domain.limits.Resource.
+    limits: list[LimitUsage]
     # Nombres de los administradores activos (RF-114), sin email.
     admins: list[str]
 
 
+LimitValue = Annotated[int, Field(ge=1, le=MAX_LIMIT)]
+
+
 class WorkshopUpdate(BaseModel):
     status: Literal["active", "inactive"] | None = None
-    max_employees_with_access: int | None = Field(default=None, ge=1, le=1000)
+    # Solo los que cambian. El de acceso también se puede mandar suelto, como
+    # en F1.
+    limits: dict[Resource, LimitValue] = Field(default_factory=dict)
+    max_employees_with_access: LimitValue | None = None
 
 
 class SuperadminInvitationCreate(BaseModel):

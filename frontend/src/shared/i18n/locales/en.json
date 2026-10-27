@@ -64,7 +64,11 @@
       "payment_status": "Payment",
       "payment_method": "Payment method",
       "paid_amount_cents": "Amount",
-      "paid_on": "Payment date"
+      "paid_on": "Payment date",
+      "max_employees": "Staff record limit",
+      "max_clients": "Client limit",
+      "max_vehicles": "Vehicle limit",
+      "max_orders_per_month": "Monthly order limit"
     }
   },
   "nav": {
@@ -480,7 +484,12 @@
     "limit": "Access limit",
     "limitOf": "Limit of employees with access for {{name}}",
     "activate": "Reactivate",
-    "deactivate": "Deactivate"
+    "deactivate": "Deactivate",
+    "usage": "Usage",
+    "tightest": "{{resource}}: {{percent}}%",
+    "limits": "Limits",
+    "limitsOf": "Limits of {{name}}",
+    "limitsHint": "Every workshop starts with the basic plan. Lowering one below what it already has deletes nothing: it only stops new ones."
   },
   "superadmins": {
     "title": "Superadmins",
@@ -552,7 +561,11 @@
     "waiver_requires_signed_reception": "The client's waiver needs the signed reception sheet.",
     "work_order_has_work": "The work order has recorded work: it cannot be cancelled. Void the entries if they were recorded by mistake.",
     "work_entry_not_found": "That work entry does not exist in this work order.",
-    "work_entry_already_voided": "That work entry was already voided."
+    "work_entry_already_voided": "That work entry was already voided.",
+    "employee_record_limit_reached": "The workshop has reached its limit of staff records. To raise it, contact whoever runs the platform.",
+    "client_limit_reached": "The workshop has reached its client limit. To raise it, contact whoever runs the platform.",
+    "vehicle_limit_reached": "The workshop has reached its vehicle limit. To raise it, contact whoever runs the platform.",
+    "order_limit_reached": "The workshop has reached this month's order limit. To raise it, contact whoever runs the platform."
   },
   "palette": {
     "open": "Search the workshop",
@@ -561,5 +574,17 @@
     "goTo": "Go to",
     "actions": "Actions",
     "results": "Results"
+  },
+  "limits": {
+    "title": "Plan usage",
+    "hint": "How much of each limit your workshop is using. If you need more, ask whoever runs the platform.",
+    "usedOf": "{{used}} of {{limit}}",
+    "resources": {
+      "employees_with_access": "Staff with access",
+      "employees": "Staff records",
+      "clients": "Clients",
+      "vehicles": "Vehicles",
+      "orders_per_month": "Orders per month"
+    }
   }
 }

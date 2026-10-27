@@ -64,7 +64,11 @@
       "payment_status": "Cobro",
       "payment_method": "Forma de pago",
       "paid_amount_cents": "Importe",
-      "paid_on": "Fecha de cobro"
+      "paid_on": "Fecha de cobro",
+      "max_employees": "Límite de fichas",
+      "max_clients": "Límite de clientes",
+      "max_vehicles": "Límite de vehículos",
+      "max_orders_per_month": "Límite de órdenes al mes"
     }
   },
   "nav": {
@@ -480,7 +484,12 @@
     "limit": "Límite de acceso",
     "limitOf": "Límite de empleados con acceso de {{name}}",
     "activate": "Reactivar",
-    "deactivate": "Desactivar"
+    "deactivate": "Desactivar",
+    "usage": "Uso",
+    "tightest": "{{resource}}: {{percent}} %",
+    "limits": "Límites",
+    "limitsOf": "Límites de {{name}}",
+    "limitsHint": "Cada taller nace con los del plan básico. Bajar uno por debajo de lo que ya tiene no borra nada: solo impide crear más."
   },
   "superadmins": {
     "title": "Superadministradores",
@@ -552,7 +561,11 @@
     "waiver_requires_signed_reception": "La renuncia del cliente necesita la hoja de recepción firmada.",
     "work_order_has_work": "La orden tiene trabajos registrados: no se cancela. Anúlalos si se anotaron por error.",
     "work_entry_not_found": "Ese trabajo no existe en esta orden.",
-    "work_entry_already_voided": "Ese trabajo ya estaba anulado."
+    "work_entry_already_voided": "Ese trabajo ya estaba anulado.",
+    "employee_record_limit_reached": "El taller ha llegado a su límite de fichas de empleado. Para ampliarlo, habla con quien administra la plataforma.",
+    "client_limit_reached": "El taller ha llegado a su límite de clientes. Para ampliarlo, habla con quien administra la plataforma.",
+    "vehicle_limit_reached": "El taller ha llegado a su límite de vehículos. Para ampliarlo, habla con quien administra la plataforma.",
+    "order_limit_reached": "El taller ha llegado a su límite de órdenes de este mes. Para ampliarlo, habla con quien administra la plataforma."
   },
   "palette": {
     "open": "Buscar en el taller",
@@ -561,5 +574,17 @@
     "goTo": "Ir a",
     "actions": "Acciones",
     "results": "Resultados"
+  },
+  "limits": {
+    "title": "Uso del plan",
+    "hint": "Lo que lleva tu taller de cada límite. Si necesitas más, pídeselo a quien administra la plataforma.",
+    "usedOf": "{{used}} de {{limit}}",
+    "resources": {
+      "employees_with_access": "Empleados con acceso",
+      "employees": "Fichas de empleado",
+      "clients": "Clientes",
+      "vehicles": "Vehículos",
+      "orders_per_month": "Órdenes al mes"
+    }
   }
 }

@@ -46,6 +46,9 @@ class Action(StrEnum):
     # Anonimizar a un cliente que lo pide (RF-15): irreversible, solo el
     # administrador. Fila propia: no es "editar un cliente".
     ANONYMIZE_CLIENT = "anonymize_client"
+    # Ver los límites del taller y lo gastado (§10): solo el administrador. Los
+    # cambia el superadministrador, que no es de ningún taller.
+    VIEW_LIMITS = "view_limits"
 
 
 ROLE_PERMISSIONS: dict[Role, frozenset[Action]] = {

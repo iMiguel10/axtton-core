@@ -35,6 +35,8 @@ Todas con la misma contraseña, `demo-axtton-2026` (o la de `DEMO_PASSWORD`, si 
 
 Pedro Ortega, aprendiz, tiene ficha pero no acceso: otros anotan su trabajo (RF-23).
 
+Los talleres de la demo tienen **límites más bajos** que el plan básico (`DEMO_PLAN` en `domain/limits.py`): 200 clientes, 300 vehículos y 100 órdenes al mes. Bastan para probarlo todo y no dejan llenar la base de datos en el día que pasa entre reinicio y reinicio.
+
 ## Qué hay
 
 **Talleres Martínez** (Albacete) tiene doce clientes, particulares y empresas, y doce vehículos con años de historial. Sus órdenes cubren todo lo que se puede hacer sin presupuestos (llegan en F3):

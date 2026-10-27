@@ -1,5 +1,7 @@
 import { apiRequest } from "@/shared/lib/apiClient";
 
+import type { LimitResource, LimitUsage } from "../limits/LimitBars";
+
 /** Solo datos de cuenta y recuentos: nada operativo del taller (RNF-08). */
 export type WorkshopSummary = {
   id: string;
@@ -9,6 +11,8 @@ export type WorkshopSummary = {
   max_employees_with_access: number;
   employees_with_access: number;
   pending_invitations: number;
+  /** Cada límite (§10) con lo gastado: solo números. */
+  limits: LimitUsage[];
   /** Nombres de los administradores activos (RF-114), sin email. */
   admins: string[];
 };
@@ -27,7 +31,11 @@ export const adminApi = {
     }),
   update: (
     id: string,
-    changes: { status?: "active" | "inactive"; max_employees_with_access?: number },
+    changes: {
+      status?: "active" | "inactive";
+      /** Solo los que cambian. */
+      limits?: Partial<Record<LimitResource, number>>;
+    },
   ) => apiRequest<void>(`/admin/workshops/${id}`, { method: "PATCH", body: changes }),
 };
 

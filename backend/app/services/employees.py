@@ -15,8 +15,10 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.errors import ConflictError, NotFoundError
 from app.core.tokens import hash_token, new_token
 from app.domain.invitations import INVITATION_VALIDITY
+from app.domain.limits import Resource
 from app.models import AuditEntry, Employee, Invitation, Workshop
 from app.repositories import employees as employee_repo
+from app.services import limits as limit_service
 
 # Campos que se pueden cambiar con PATCH (la cuenta ligada, no: eso es dar o
 # quitar acceso, que tienen sus propias operaciones).
@@ -108,7 +110,9 @@ async def create_employee(
     role: str,
     hourly_cost_cents: int | None,
 ) -> UUID:
-    """Una ficha sin acceso (RF-03): existe aunque nunca entre en la aplicación."""
+    """Una ficha sin acceso (RF-03): existe aunque nunca entre en la aplicación.
+    Cuenta para el límite de fichas del taller (§10)."""
+    await limit_service.ensure_room(session, workshop_id, Resource.EMPLOYEES)
     employee = Employee(
         workshop_id=workshop_id,
         name=name,
@@ -138,6 +142,15 @@ async def update_employee(
     await employee_repo.lock_staff(session, workshop_id)
     employee = await _get(session, employee_id)
     _check_version(employee, expected_version)
+    if changes.get("active") is True and not employee.active:
+        # Reactivar ocupa hueco como un alta: sin esto, desactivar a alguien,
+        # dar de alta a otro y reactivar al primero dejaba el taller por encima
+        # del límite. También el de acceso, si la ficha lo tiene (RF-114).
+        await limit_service.ensure_room(session, workshop_id, Resource.EMPLOYEES)
+        if employee.user_id is not None:
+            await limit_service.ensure_room(
+                session, workshop_id, Resource.EMPLOYEES_WITH_ACCESS
+            )
     audited: dict[str, list[Any]] = {}
     for field in EDITABLE:
         if field in changes and changes[field] != getattr(employee, field):

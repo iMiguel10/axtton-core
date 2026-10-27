@@ -3,10 +3,12 @@ import { Building2, ChevronRight, IdCard, ScrollText, Settings2, type LucideIcon
 import { useTranslation } from "react-i18next";
 import { Link } from "react-router-dom";
 
+import { LinesSkeleton } from "@/shared/components/Loading";
 import { Badge } from "@/shared/components/ui/badge";
 import { Button } from "@/shared/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/shared/components/ui/card";
 
+import { fetchWorkshopLimits, LimitBars } from "../limits/LimitBars";
 import { fetchStaff } from "../orders/api";
 import { useActiveWorkshop } from "../session/ActiveWorkshop";
 
@@ -18,6 +20,7 @@ export function ActiveWorkshopCards() {
   return (
     <>
       <WorkshopCard />
+      <LimitsCard />
       <SettingsCard />
     </>
   );
@@ -118,6 +121,34 @@ function SettingsCard() {
           </span>
           <Badge variant="outline">{t("account.settings.soon")}</Badge>
         </div>
+      </CardContent>
+    </Card>
+  );
+}
+
+/**
+ * Lo gastado de cada límite del taller (§10), para su administrador: así ve que
+ * se acerca al tope antes de encontrarse un "límite alcanzado". Los amplía el
+ * superadministrador; aquí solo se miran.
+ */
+function LimitsCard() {
+  const { t } = useTranslation();
+  const { workshopId, canViewAudit } = useActiveWorkshop();
+  const limits = useQuery({
+    queryKey: ["limits", workshopId],
+    queryFn: () => fetchWorkshopLimits(workshopId),
+    enabled: canViewAudit,
+  });
+  // Solo el administrador (VIEW_LIMITS en el backend, el mismo rol que la auditoría).
+  if (!canViewAudit) return null;
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle>{t("limits.title")}</CardTitle>
+        <CardDescription>{t("limits.hint")}</CardDescription>
+      </CardHeader>
+      <CardContent>
+        {limits.data ? <LimitBars limits={limits.data} /> : <LinesSkeleton lines={5} />}
       </CardContent>
     </Card>
   );

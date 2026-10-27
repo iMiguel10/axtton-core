@@ -157,7 +157,7 @@ async def test_the_superadmin_sees_the_platform_log_and_nothing_operational(
     workshop_id = created.json()["workshop_id"]
     await client.patch(
         f"/api/v1/admin/workshops/{workshop_id}",
-        json={"max_employees_with_access": 5},
+        json={"max_employees_with_access": 3},
         headers=headers,
     )
     # Algo operativo dentro de un taller, que el superadministrador no debe ver.
@@ -176,7 +176,7 @@ async def test_the_superadmin_sees_the_platform_log_and_nothing_operational(
     update = norte[0]
     assert update["actor"] == account.email
     assert update["target_name"] == "Taller Norte"
-    assert update["details"] == {"max_employees_with_access": [20, 5]}
+    assert update["details"] == {"max_employees_with_access": [5, 3]}
 
 
 @pytest.mark.asyncio

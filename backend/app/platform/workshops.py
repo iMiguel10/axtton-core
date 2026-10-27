@@ -7,6 +7,7 @@ solo datos de cuenta y recuentos (RNF-08).
 
 from dataclasses import dataclass
 from datetime import UTC, datetime
+from typing import Any
 from uuid import UUID
 
 from sqlalchemy import func, select, text
@@ -17,8 +18,18 @@ from app.core.errors import ConflictError, NotFoundError
 from app.core.tokens import hash_token, new_token
 from app.domain.emails import invitation_email
 from app.domain.invitations import INVITATION_VALIDITY, invitation_path
+from app.domain.limits import Resource, limit_column
 from app.infra.email import EmailSender, compose
-from app.models import AuditEntry, Employee, Invitation, User, Workshop
+from app.models import (
+    AuditEntry,
+    Client,
+    Employee,
+    Invitation,
+    User,
+    Vehicle,
+    WorkOrder,
+    Workshop,
+)
 from app.platform.db import platform_transaction
 
 
@@ -114,6 +125,8 @@ class WorkshopSummary:
     max_employees_with_access: int
     employees_with_access: int
     pending_invitations: int
+    # Cada límite (§10) con lo gastado: solo números, nada operativo.
+    limits: dict[Resource, tuple[int, int]]
     # Nombres de los administradores activos, con acceso o con la invitación
     # pendiente (RF-114). Solo el nombre: ni email ni nada de su trabajo.
     admins: list[str]
@@ -152,6 +165,14 @@ async def list_workshops() -> list[WorkshopSummary]:
                     Workshop.max_employees_with_access,
                     with_access.label("with_access"),
                     pending.label("pending"),
+                    *(
+                        getattr(Workshop, limit_column(r)).label(f"limit_{r.value}")
+                        for r in Resource
+                    ),
+                    *(
+                        used.label(f"used_{r.value}")
+                        for r, used in _usage_columns().items()
+                    ),
                 ).order_by(Workshop.created_at)
             )
         ).all()
@@ -171,6 +192,13 @@ async def list_workshops() -> list[WorkshopSummary]:
                 max_employees_with_access=row.max_employees_with_access,
                 employees_with_access=row.with_access,
                 pending_invitations=row.pending,
+                limits={
+                    r: (
+                        getattr(row, f"used_{r.value}"),
+                        getattr(row, f"limit_{r.value}"),
+                    )
+                    for r in Resource
+                },
                 admins=admins.get(row.id, []),
             )
             for row in rows
@@ -181,10 +209,13 @@ async def update_workshop(
     workshop_id: UUID,
     *,
     status: str | None,
-    max_employees_with_access: int | None,
+    limits: dict[Resource, int],
     updated_by: str,
 ) -> None:
-    """Desactivar o reactivar (RF-113) y ajustar el límite de acceso (RF-114).
+    """Desactivar o reactivar (RF-113) y ajustar los límites (RF-114, §10).
+
+    Bajar un límite por debajo de lo ya gastado se admite: no borra nada, solo
+    impide crear más hasta volver a tener hueco.
 
     Desactivar no borra nada: corta el acceso, y reactivar lo devuelve todo como
     estaba. El efecto sobre las sesiones del taller se comprueba en cada petición
@@ -198,15 +229,12 @@ async def update_workshop(
         if status is not None and status != workshop.status:
             changes["status"] = [workshop.status, status]
             workshop.status = status
-        if (
-            max_employees_with_access is not None
-            and max_employees_with_access != workshop.max_employees_with_access
-        ):
-            changes["max_employees_with_access"] = [
-                workshop.max_employees_with_access,
-                max_employees_with_access,
-            ]
-            workshop.max_employees_with_access = max_employees_with_access
+        for resource, value in limits.items():
+            column = limit_column(resource)
+            if value != getattr(workshop, column):
+                # La clave es la columna: max_clients, max_orders_per_month…
+                changes[column] = [getattr(workshop, column), value]
+                setattr(workshop, column, value)
         if changes:
             session.add(
                 AuditEntry(
@@ -217,3 +245,33 @@ async def update_workshop(
                     details=changes,
                 )
             )
+
+
+def _usage_columns() -> dict[Resource, Any]:
+    """Lo gastado de cada límite, una subconsulta por taller (RF-114). Las mismas
+    reglas que repositories/limits.py::usage, pero cruzando talleres: aquí no hay
+    RLS (rol de plataforma), así que cada una filtra su taller a mano."""
+
+    def count(model: Any, *where: Any) -> Any:
+        return (
+            select(func.count())
+            .select_from(model)
+            .where(model.workshop_id == Workshop.id, *where)
+            .scalar_subquery()
+        )
+
+    month_start = func.timezone(
+        Workshop.timezone,
+        func.date_trunc("month", func.timezone(Workshop.timezone, func.now())),
+    )
+    return {
+        Resource.EMPLOYEES_WITH_ACCESS: count(
+            Employee, Employee.user_id.is_not(None), Employee.active
+        ),
+        Resource.EMPLOYEES: count(Employee, Employee.active),
+        Resource.CLIENTS: count(Client),
+        Resource.VEHICLES: count(Vehicle),
+        Resource.ORDERS_PER_MONTH: count(
+            WorkOrder, WorkOrder.created_at >= month_start
+        ),
+    }

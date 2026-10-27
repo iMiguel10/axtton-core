@@ -174,7 +174,7 @@ erDiagram
 | Tabla | Para qué | Notas |
 |---|---|---|
 | `users` | Cuentas del personal y del superadministrador, enlazadas con SuperTokens | **Fuera de los talleres** (sin `workshop_id`). `kind`: `staff` o `superadmin`. No guarda email ni contraseña: eso vive en SuperTokens |
-| `workshops` | El taller: datos legales, registro industrial, zona horaria, ajustes (IVA por defecto, validez del presupuesto ≥ 12 días hábiles, plazo de conservación de firmas, si el mecánico ve importes, aforo por franja), estado y límites ajustados | Raíz del aislamiento |
+| `workshops` | El taller: datos legales, registro industrial, zona horaria, ajustes (IVA por defecto, validez del presupuesto ≥ 12 días hábiles, plazo de conservación de firmas, si el mecánico ve importes, aforo por franja), estado y límites ajustados. *Límites (F2, migración `0010limits`):* una columna `max_*` por recurso con su CHECK y el valor del plan básico por defecto (`domain/limits.py`); solo los escribe la plataforma. Cada alta llama antes que a nada a `services/limits.py::ensure_room`, que pone en fila el recuento con un bloqueo consultivo por taller y recurso: sin él, dos altas a la vez cabrían en el último hueco (`test_concurrency.py`) | Raíz del aislamiento |
 | `employees` | Ficha del personal con su rol | `user_id` opcional; `UNIQUE (workshop_id, user_id)` |
 | `invitations` | Invitaciones de acceso (RF-04, RF-112) | Token guardado como hash, caducidad, un solo uso |
 | `superadmin_invitations` | Invitaciones para ser superadministrador (RF-110) | Igual que `invitations`, pero de plataforma: sin taller ni RLS, y `axtton_app` no tiene ningún permiso sobre ella. Una invitación nueva anula las pendientes del mismo email; aceptar con el email de una cuenta de personal se rechaza (§2) |

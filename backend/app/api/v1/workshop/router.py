@@ -6,6 +6,7 @@ from app.api.v1.workshop import (
     audit,
     clients,
     employees,
+    limits,
     search,
     staff,
     vehicles,
@@ -28,6 +29,7 @@ router = APIRouter(
 # Los subrouters heredan la dependencia de actor del router padre.
 router.include_router(employees.router)
 router.include_router(staff.router)
+router.include_router(limits.router)
 router.include_router(clients.router)
 router.include_router(search.router)
 router.include_router(vehicles.router)

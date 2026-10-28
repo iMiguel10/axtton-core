@@ -4,15 +4,21 @@ La demo desplegada lo ejecuta cada noche: tiene que poder repetirse, dejar
 datos que cumplan las reglas y negarse a correr donde no debe.
 """
 
+from collections.abc import Awaitable, Callable
 from typing import Any
+from uuid import uuid4
 
 import pytest
 from httpx import AsyncClient
 from sqlalchemy import text
+from supertokens_python.recipe.emailpassword.asyncio import sign_up
+from supertokens_python.recipe.emailpassword.interfaces import SignUpOkResult
 
 from app.core.config import get_settings
 from app.scripts import seed_demo
-from tests.conftest import Engines
+from tests.conftest import Account, Engines
+
+MakeAccount = Callable[[str], Awaitable[Account]]
 from tests.test_invitations import bearer
 
 # La de la demo, no otra: el core de SuperTokens es el mismo en desarrollo y en
@@ -41,6 +47,47 @@ def test_it_refuses_to_run_without_being_enabled(
             seed_demo.main([])
     finally:
         get_settings.cache_clear()
+
+
+@pytest.mark.asyncio
+async def test_the_demo_has_no_superadmin_but_keeps_the_real_ones(
+    client: AsyncClient, engines: Engines, make_account: MakeAccount
+) -> None:
+    """La demo es pública: un superadministrador suyo podría subir los límites o
+    dar de alta talleres. El de verdad (create_superadmin) sobrevive a la recarga;
+    uno del dominio de la demo (la demo lo tuvo hasta la v0.3.0), no."""
+    real = await make_account("superadmin")
+    old_demo = await sign_up(
+        "public", f"old-{uuid4().hex[:8]}@demo.example.com", "x" * 12
+    )
+    assert isinstance(old_demo, SignUpOkResult)
+    async with engines.platform.begin() as conn:
+        await conn.execute(
+            text(
+                "INSERT INTO users (supertokens_user_id, kind) VALUES (:s, 'superadmin')"
+            ),
+            {"s": old_demo.user.id},
+        )
+
+    await seed_demo.seed_demo(password=PASSWORD)
+
+    async with engines.platform.connect() as conn:
+        superadmins = set(
+            (
+                await conn.scalars(
+                    text(
+                        "SELECT supertokens_user_id FROM users WHERE kind = 'superadmin'"
+                    )
+                )
+            ).all()
+        )
+    assert real.supertokens_user_id in superadmins
+    assert old_demo.user.id not in superadmins
+    # Y el de verdad sigue entrando en /admin con su contraseña.
+    headers = await bearer(client, real.email, real.password)
+    assert (
+        await client.get("/api/v1/admin/workshops", headers=headers)
+    ).status_code == 200
 
 
 @pytest.mark.asyncio

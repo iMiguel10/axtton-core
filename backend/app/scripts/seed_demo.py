@@ -15,6 +15,14 @@ la demo y se cierran sus sesiones. Con `--purge-other-accounts` (la demo
 desplegada) se borran además las demás cuentas de SuperTokens: las que crean
 los visitantes al aceptar invitaciones.
 
+**La demo no tiene superadministrador**: es pública, y quien entrara como tal
+podría subir los límites, dar de alta talleres o invitar a otros
+superadministradores. Los superadministradores de verdad (creados con
+create_superadmin, con su propia contraseña) sobreviven a cada recarga: se
+apartan antes del vaciado y se vuelven a dar de alta después. Una cuenta del
+dominio de la demo nunca lo es, aunque lo fuera antes (la demo lo tuvo hasta
+la v0.3.0).
+
 Los datos del taller se crean con los services de verdad, en transacciones
 del taller con RLS: cumplen todas las reglas (historial, numeración,
 permisos, auditoría). Después, como todo se ha creado "ahora", se mueven las
@@ -40,6 +48,7 @@ from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
 from supertokens_python.asyncio import (
     delete_user,
+    get_user,
     get_users_newest_first,
     list_users_by_account_info,
 )
@@ -71,19 +80,14 @@ from app.services import worklog as worklog_service
 DEFAULT_PASSWORD = "demo-axtton-2026"
 
 
-@dataclass(frozen=True)
-class DemoAccount:
-    email: str
-    kind: str  # "staff" o "superadmin"
-
-
+# Solo personal de los talleres: ninguna cuenta pública es de la plataforma.
 DEMO_ACCOUNTS = (
-    DemoAccount("superadmin@demo.example.com", "superadmin"),
-    DemoAccount("laura@demo.example.com", "staff"),
-    DemoAccount("javier@demo.example.com", "staff"),
-    DemoAccount("sergio@demo.example.com", "staff"),
-    DemoAccount("marta@demo.example.com", "staff"),
+    "laura@demo.example.com",
+    "javier@demo.example.com",
+    "sergio@demo.example.com",
+    "marta@demo.example.com",
 )
+DEMO_DOMAIN = "@demo.example.com"
 
 
 # --- Cuentas -----------------------------------------------------------------
@@ -107,6 +111,25 @@ async def _account(email: str, password: str) -> str:
     if not isinstance(created, SignUpOkResult):
         raise SystemExit(f"No se pudo crear {email}: {created.__class__.__name__}")
     return created.user.id
+
+
+async def _real_superadmins() -> list[str]:
+    """Los usuarios de SuperTokens de los superadministradores de verdad, antes
+    de vaciar: los que creó create_superadmin, no los del dominio de la demo."""
+    async with platform_engine.connect() as conn:
+        ids = (
+            await conn.scalars(
+                text("SELECT supertokens_user_id FROM users WHERE kind = 'superadmin'")
+            )
+        ).all()
+    kept: list[str] = []
+    for user_id in ids:
+        user = await get_user(user_id)
+        if user is not None and not any(
+            email.endswith(DEMO_DOMAIN) for email in user.emails
+        ):
+            kept.append(user_id)
+    return kept
 
 
 async def _purge_other_accounts(keep: set[str]) -> int:
@@ -152,28 +175,30 @@ class Shop:
 
 
 async def _platform_rows(
-    accounts: dict[str, str],
+    accounts: dict[str, str], superadmins: list[str]
 ) -> tuple[Shop, Shop]:
     """Usuarios, talleres y fichas del personal: lo que es de la plataforma, con
     su rol. El resto se crea dentro de cada taller, con RLS."""
     async with platform_engine.begin() as conn:
         users: dict[str, UUID] = {}
-        for account in DEMO_ACCOUNTS:
-            users[account.email] = await conn.scalar(
+        for email in DEMO_ACCOUNTS:
+            users[email] = await conn.scalar(
                 text(
-                    "INSERT INTO users (supertokens_user_id, kind) VALUES (:s, :k)"
-                    " RETURNING id"
+                    "INSERT INTO users (supertokens_user_id, kind)"
+                    " VALUES (:s, 'staff') RETURNING id"
                 ),
-                {"s": accounts[account.email], "k": account.kind},
+                {"s": accounts[email]},
             )
-        superadmin = users["superadmin@demo.example.com"]
-        await conn.execute(
-            text(
-                "INSERT INTO audit_log (actor_user_id, action, target_type)"
-                " VALUES (:u, 'superadmin_created', 'user')"
-            ),
-            {"u": superadmin},
-        )
+        # Los de verdad vuelven, con su cuenta de siempre. Su alta ya no está en
+        # la auditoría (se vació con todo lo demás): no se inventa una.
+        for user_id in superadmins:
+            await conn.execute(
+                text(
+                    "INSERT INTO users (supertokens_user_id, kind)"
+                    " VALUES (:s, 'superadmin')"
+                ),
+                {"s": user_id},
+            )
 
         async def workshop(name: str, **legal: str) -> Shop:
             workshop_id = await conn.scalar(
@@ -197,10 +222,11 @@ async def _platform_rows(
                 text(
                     "INSERT INTO audit_log (actor_user_id, action, target_type,"
                     " target_id, details)"
-                    " VALUES (:u, 'workshop_created', 'workshop', :w,"
+                    " VALUES (NULL, 'workshop_created', 'workshop', :w,"
                     " jsonb_build_object('name', CAST(:n AS text)))"
                 ),
-                {"u": superadmin, "w": workshop_id, "n": name},
+                # Sin actor: lo dio de alta el script, no una persona.
+                {"w": workshop_id, "n": name},
             )
             return Shop(workshop_id)
 
@@ -1191,12 +1217,14 @@ async def _backdate_ownerships(conn: Any, shop: Shop) -> None:
 
 async def seed_demo(*, password: str, purge_other_accounts: bool = False) -> None:
     init_supertokens()
+    superadmins = await _real_superadmins()
     await truncate_all()
-    accounts = {a.email: await _account(a.email, password) for a in DEMO_ACCOUNTS}
+    accounts = {email: await _account(email, password) for email in DEMO_ACCOUNTS}
     if purge_other_accounts:
-        purged = await _purge_other_accounts(set(accounts.values()))
+        keep = set(accounts.values()) | set(superadmins)
+        purged = await _purge_other_accounts(keep)
         print(f"Cuentas ajenas a la demo borradas: {purged}")
-    main, small = await _platform_rows(accounts)
+    main, small = await _platform_rows(accounts, superadmins)
     await _fill(main, _main_workshop)
     await _fill(small, _small_workshop)
     await _backdate((main, small))

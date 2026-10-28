@@ -38,7 +38,8 @@ Si el job falla, el log de Coolify dice por qué. Mientras el despliegue nuevo n
 4. **Desactiva el *Auto Deploy*** (*Advanced*): el despliegue lo pide la CI.
 5. **El primer despliegue**, a mano desde el panel (*Deploy*).
 6. **Carga la demo** la primera vez: en el contenedor `api` (*Terminal*), `python -m app.scripts.seed_demo`.
-7. **La tarea programada** (*Scheduled Tasks*), en el contenedor `api`, cada noche (`0 4 * * *`):
+7. **Tu superadministrador**, en el mismo terminal: `python -m app.scripts.create_superadmin <tu-email>`, que pide la contraseña. La demo no trae ninguno (sería público), y este sobrevive a las recargas.
+8. **La tarea programada** (*Scheduled Tasks*), en el contenedor `api`, cada noche (`0 4 * * *`):
 
     ```bash
     python -m app.scripts.seed_demo --purge-other-accounts

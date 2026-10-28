@@ -25,6 +25,14 @@
     "lightTheme": "Light theme",
     "skipToContent": "Skip to content"
   },
+  "version": {
+    "title": "Version",
+    "label": "AXTTON CORE {{version}}",
+    "app": "Application",
+    "server": "Server",
+    "newAvailable": "A new version of AXTTON CORE is available.",
+    "reload": "Reload"
+  },
   "audit": {
     "title": "Audit log",
     "when": "When",

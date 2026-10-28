@@ -21,6 +21,12 @@ jobs:
     timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
+        with:
+          # Toda la historia y las etiquetas: la versión sale de la última.
+          fetch-depth: 0
+
+      - name: Versión
+        run: .github/scripts/version.sh >> "$GITHUB_ENV"
 
       - name: Entorno
         # Las contraseñas de .env.example son de desarrollo: valen para la CI.
@@ -50,6 +56,12 @@ jobs:
         # Incluye las adversas (aislamiento, actores, RLS, capas) y alembic check.
         run: docker compose exec -T api pytest -q
 
+      - name: La API responde con la versión de la etiqueta
+        run: |
+          curl -fsS http://localhost:8000/api/v1/meta | tee meta.json
+          grep -q "\"version\":\"$APP_VERSION\"" meta.json
+          grep -q "\"commit\":\"$APP_COMMIT\"" meta.json
+
       - name: Registros si algo falla
         if: failure()
         run: docker compose logs api supertokens db
@@ -63,6 +75,13 @@ jobs:
         working-directory: frontend
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      # Vite pasa al código las variables VITE_* del entorno al compilar.
+      - name: Versión
+        working-directory: .
+        run: |
+          .github/scripts/version.sh | sed 's/^/VITE_/' >> "$GITHUB_ENV"
       - uses: actions/setup-node@v4
         with:
           node-version: 24
@@ -73,6 +92,8 @@ jobs:
       # Incluye la regla que impide importar entre src/workshop y src/portal.
       - run: npm run lint
       - run: npm run build
+      - name: El paquete lleva la versión de la etiqueta
+        run: grep -rqF "$VITE_APP_COMMIT" dist/assets
 
   docs:
     name: Documentación (MkDocs estricto)

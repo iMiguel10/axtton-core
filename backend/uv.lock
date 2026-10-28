@@ -383,7 +383,7 @@ wheels = [
 
 [[package]]
 name = "axtton-core-api"
-version = "0.1.0"
+version = "0.0.0"
 source = { virtual = "." }
 dependencies = [
     { name = "aiosmtplib" },

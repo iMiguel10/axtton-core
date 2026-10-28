@@ -13,6 +13,7 @@ from app.api.v1.invitations.router import router as invitations_router
 from app.api.v1.invitations.superadmin import (
     router as superadmin_invitations_router,
 )
+from app.api.v1.meta import router as meta_router
 from app.api.v1.portal.router import router as portal_router
 from app.api.v1.workshop.router import router as workshop_router
 from app.core.config import get_settings
@@ -25,7 +26,7 @@ from app.infra.rate_limit import build_rate_limiter, set_rate_limiter
 # Antes de crear la app: el middleware necesita el SDK ya inicializado.
 init_supertokens()
 
-app = FastAPI(title="AXTTON CORE API", version="0.1.0")
+app = FastAPI(title="AXTTON CORE API", version=get_settings().app_version)
 # La implementación del correo se elige una vez, al arrancar; los endpoints la
 # reciben por dependencia (app/api/deps.py) y las pruebas la sustituyen.
 set_email_sender(build_email_sender(get_settings()))
@@ -43,6 +44,7 @@ app.include_router(portal_router)
 app.include_router(admin_router)
 app.include_router(invitations_router)
 app.include_router(superadmin_invitations_router)
+app.include_router(meta_router)
 
 
 @app.exception_handler(AppError)

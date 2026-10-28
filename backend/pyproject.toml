@@ -1,6 +1,6 @@
 [project]
 name = "axtton-core-api"
-version = "0.1.0"
+version = "0.0.0"  # la de verdad es la etiqueta de git (APP_VERSION); esta no se toca
 description = "API de AXTTON CORE: gestión para talleres mecánicos"
 requires-python = ">=3.12"
 dependencies = [

@@ -12,6 +12,7 @@ Ficheros con el formato `NNNN-titulo-corto.md`, añadidos también a la navegaci
 |---|---|---|
 | [0001](0001-roles-solo-en-el-script-de-inicio.md) | Los roles de base de datos se crean solo en el script de inicio | F0 |
 | [0002](0002-historial-de-migraciones-desde-f1.md) | El historial de migraciones empieza de cero en F1 | Cierre de F0 |
+| [0003](0003-versionado-por-etiquetas-y-release-please.md) | Versiones por etiqueta de git, con release-please y commits convencionales | F2 |
 
 ## Plantilla
 

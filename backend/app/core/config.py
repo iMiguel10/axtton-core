@@ -51,6 +51,12 @@ class Settings(BaseSettings):
     # La contraseña de todas las cuentas de la demo; sin ella, la del script.
     demo_password: str | None = None
 
+    # Versión desplegada: la etiqueta de git (vX.Y.Z) sin la "v" y el commit. No
+    # se escriben a mano: la CI los pasa al construir la imagen (APP_VERSION y
+    # APP_COMMIT, argumentos del Dockerfile). En desarrollo no hay ninguna.
+    app_version: str = "dev"
+    app_commit: str | None = None
+
 
 @lru_cache
 def get_settings() -> Settings:

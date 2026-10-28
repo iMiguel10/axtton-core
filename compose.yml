@@ -57,6 +57,11 @@ services:
   api:
     build:
       context: ./backend
+      # La versión (GET /api/v1/meta): en desarrollo, "dev"; la CI la exporta
+      # desde la etiqueta de git y el commit.
+      args:
+        APP_VERSION: ${APP_VERSION:-dev}
+        APP_COMMIT: ${APP_COMMIT:-}
     # El entrypoint aplica las migraciones pendientes (con axtton_owner) antes de
     # arrancar uvicorn (con axtton_app).
     entrypoint: ["/app/entrypoint.sh"]

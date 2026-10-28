@@ -10,6 +10,7 @@ import pytest
 from httpx import AsyncClient
 from sqlalchemy import text
 
+from app.core.config import get_settings
 from app.scripts import seed_demo
 from tests.conftest import Engines
 from tests.test_invitations import bearer
@@ -27,10 +28,19 @@ async def as_laura(client: AsyncClient, workshop: str) -> dict[str, str]:
     return {**headers, "X-Workshop-Id": chosen["workshop_id"]}
 
 
-def test_it_refuses_to_run_without_being_enabled() -> None:
+def test_it_refuses_to_run_without_being_enabled(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     """Borra todo: sin DEMO_SEED_ENABLED, ni lo intenta."""
-    with pytest.raises(SystemExit, match="DEMO_SEED_ENABLED"):
-        seed_demo.main([])
+    # El .env de desarrollo la trae activada: sin quitarla, la prueba ejecutaba
+    # el script de verdad.
+    monkeypatch.setenv("DEMO_SEED_ENABLED", "false")
+    get_settings.cache_clear()
+    try:
+        with pytest.raises(SystemExit, match="DEMO_SEED_ENABLED"):
+            seed_demo.main([])
+    finally:
+        get_settings.cache_clear()
 
 
 @pytest.mark.asyncio

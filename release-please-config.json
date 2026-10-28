@@ -1,0 +1,23 @@
+{
+  "$schema": "https://raw.githubusercontent.com/googleapis/release-please/main/schemas/config.json",
+  "release-type": "simple",
+  "include-component-in-tag": false,
+  "bump-minor-pre-major": true,
+  "changelog-sections": [
+    { "type": "feat", "section": "Novedades" },
+    { "type": "fix", "section": "Correcciones" },
+    { "type": "perf", "section": "Rendimiento" },
+    { "type": "revert", "section": "Reversiones" },
+    { "type": "docs", "section": "Documentación", "hidden": true },
+    { "type": "test", "section": "Pruebas", "hidden": true },
+    { "type": "refactor", "section": "Reorganización", "hidden": true },
+    { "type": "ci", "section": "CI", "hidden": true },
+    { "type": "chore", "section": "Mantenimiento", "hidden": true }
+  ],
+  "packages": {
+    ".": {
+      "package-name": "axtton-core",
+      "changelog-path": "CHANGELOG.md"
+    }
+  }
+}

@@ -25,6 +25,14 @@
     "lightTheme": "Tema claro",
     "skipToContent": "Saltar al contenido"
   },
+  "version": {
+    "title": "Versión",
+    "label": "AXTTON CORE {{version}}",
+    "app": "Aplicación",
+    "server": "Servidor",
+    "newAvailable": "Hay una versión nueva de AXTTON CORE.",
+    "reload": "Recargar"
+  },
   "audit": {
     "title": "Registro de auditoría",
     "when": "Cuándo",

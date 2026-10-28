@@ -13,6 +13,7 @@ import { errorMessage } from "@/shared/lib/errors";
 
 import { newPasswordSchema } from "../auth/passwordSchema";
 import { accountApi, type AccountPrefix } from "./api";
+import { VersionCard } from "./VersionCard";
 
 const changeSchema = z
   .object({ current: z.string().min(1, "validation.required") })
@@ -30,6 +31,7 @@ export function AccountPage({ prefix, aside }: { prefix: AccountPrefix; aside?: 
     <>
       <ChangePassword api={api} />
       <Sessions api={api} prefix={prefix} />
+      <VersionCard />
     </>
   );
   return (

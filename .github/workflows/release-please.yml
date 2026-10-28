@@ -1,0 +1,27 @@
+# Versiones (docs/guias/versionado.md): en cada push a main, release-please lee
+# los commits convencionales desde la última etiqueta y mantiene abierto un PR
+# de versión con el CHANGELOG.md y el número propuesto. Fusionar ese PR publica
+# la versión: la etiqueta vX.Y.Z y la release de GitHub. Hasta entonces, nada.
+name: Release
+
+on:
+  push:
+    branches: [main]
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  release-please:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: googleapis/release-please-action@v4
+        with:
+          # Con el token por defecto, GitHub no lanza la CI sobre el PR de
+          # versión ni sobre la etiqueta: los eventos de GITHUB_TOKEN no disparan
+          # otros workflows. Con un token personal (secreto RELEASE_PLEASE_TOKEN)
+          # sí. Sin él, release-please funciona igual, pero sin CI en su PR.
+          token: ${{ secrets.RELEASE_PLEASE_TOKEN || github.token }}
+          config-file: release-please-config.json
+          manifest-file: .release-please-manifest.json

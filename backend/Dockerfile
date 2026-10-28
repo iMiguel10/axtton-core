@@ -44,5 +44,13 @@ COPY --chown=appuser:appuser . .
 
 RUN chmod +x /app/entrypoint.sh
 
+# La versión (GET /api/v1/meta): la pasa la CI desde la etiqueta de git y el
+# commit (--build-arg). Al final, para que cambiarla no invalide la caché de
+# las capas de arriba. La etapa de producción repetirá estas tres líneas.
+ARG APP_VERSION=dev
+ARG APP_COMMIT=
+ENV APP_VERSION=$APP_VERSION \
+    APP_COMMIT=$APP_COMMIT
+
 ENTRYPOINT ["/app/entrypoint.sh"]
 CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000", "--reload"]

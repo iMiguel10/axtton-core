@@ -25,6 +25,7 @@ import {
   DropdownMenuTrigger,
 } from "@/shared/components/ui/dropdown-menu";
 import { Separator } from "@/shared/components/ui/separator";
+import { APP_COMMIT, APP_VERSION, versionLabel } from "@/shared/lib/version";
 import {
   Sidebar,
   SidebarContent,
@@ -43,6 +44,7 @@ import {
 } from "@/shared/components/ui/sidebar";
 
 import { signOut } from "../../lib/session";
+import { NewVersionNotice } from "./NewVersionNotice";
 import { PageCrumbProvider, useCurrentCrumb } from "./PageCrumb";
 import { useActiveWorkshop } from "../session/ActiveWorkshop";
 
@@ -129,6 +131,7 @@ export function AppLayout({
             )}
           </div>
         </header>
+        <NewVersionNotice />
         {notice}
         {/* Marca de agua: el símbolo, grande y casi transparente, detrás de las
             tarjetas (que son opacas: solo se ve en los huecos). Decoración pura:
@@ -295,6 +298,13 @@ function UserMenu({
               <LogOut />
               {t("nav.signOut")}
             </DropdownMenuItem>
+            <DropdownMenuSeparator />
+            {/* Discreta: para decirla al avisar de un fallo. La de la API, en Mi cuenta. */}
+            <DropdownMenuGroup>
+              <DropdownMenuLabel className="text-muted-foreground px-2 py-1 text-xs font-normal tabular-nums">
+                {t("version.label", { version: versionLabel(APP_VERSION, APP_COMMIT) })}
+              </DropdownMenuLabel>
+            </DropdownMenuGroup>
           </DropdownMenuContent>
         </DropdownMenu>
       </SidebarMenuItem>

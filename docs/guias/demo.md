@@ -27,11 +27,12 @@ Todas con la misma contraseña, `demo-axtton-2026` (o la de `DEMO_PASSWORD`, si 
 
 | Email | Quién es | Qué ve |
 |---|---|---|
-| `superadmin@demo.example.com` | Superadministrador | `/admin`: los dos talleres, sus límites, la auditoría de plataforma |
 | `laura@demo.example.com` | Laura Martínez, administradora de **los dos talleres** | Todo, y el selector de talleres |
 | `javier@demo.example.com` | Javier Ruiz, mecánico (Talleres Martínez) | Lo del mecánico: sus órdenes, diagnóstico, trabajos, notas |
 | `sergio@demo.example.com` | Sergio Gómez, mecánico (Talleres Martínez) | Igual que Javier |
 | `marta@demo.example.com` | Marta Soler, mecánica (Taller Rápido Levante) | El taller pequeño |
+
+**No hay superadministrador de la demo.** La demo es pública, y desde `/admin` cualquiera podría subir los límites, dar de alta talleres o invitar a otros superadministradores. El de la instalación se crea aparte, con su propia contraseña (`create_superadmin`, [despliegue](despliegue.md)), y sobrevive a cada recarga: el script lo aparta antes de vaciar y lo vuelve a dar de alta. Una cuenta del dominio `@demo.example.com` nunca se conserva como superadministrador (la demo tuvo una hasta la v0.3.0).
 
 Pedro Ortega, aprendiz, tiene ficha pero no acceso: otros anotan su trabajo (RF-23).
 

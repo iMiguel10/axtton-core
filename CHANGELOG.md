@@ -4,6 +4,31 @@ Lo mantiene [release-please](https://github.com/googleapis/release-please) a par
 
 Las dos primeras versiones se escribieron a mano, resumidas por fase, al empezar a versionar.
 
+## [0.3.0](https://github.com/iMiguel10/axtton-core/compare/v0.2.0...v0.3.0) (2026-10-28)
+
+
+### Novedades
+
+* **clients:** anonimizar a un cliente a petición suya (F2 paso 8, RF-15) ([7297325](https://github.com/iMiguel10/axtton-core/commit/72973253540e391fd7a7ef8f0ebce46a347291e6))
+* **clients:** clientes con email único por taller, edición y archivo (F2 paso 1, RF-10) ([7297325](https://github.com/iMiguel10/axtton-core/commit/72973253540e391fd7a7ef8f0ebce46a347291e6))
+* **demo:** datos de demostración que se recargan cada noche ([7297325](https://github.com/iMiguel10/axtton-core/commit/72973253540e391fd7a7ef8f0ebce46a347291e6))
+* **deploy:** primer despliegue en Coolify (F2 paso 10) ([#3](https://github.com/iMiguel10/axtton-core/issues/3)) ([8a20a32](https://github.com/iMiguel10/axtton-core/commit/8a20a326c12646344f1b403004874223af6e3f66))
+* **drafts:** borradores sin conexión que se reenvían al volver (F2 paso 7, RNF-22) ([7297325](https://github.com/iMiguel10/axtton-core/commit/72973253540e391fd7a7ef8f0ebce46a347291e6))
+* **limits:** límites de recursos por taller (F2 paso 9b, RF-114) ([7297325](https://github.com/iMiguel10/axtton-core/commit/72973253540e391fd7a7ef8f0ebce46a347291e6))
+* **orders:** ciclo de vida, reparación sin presupuesto y deshacer (F2 paso 4, RF-26, RF-27) ([7297325](https://github.com/iMiguel10/axtton-core/commit/72973253540e391fd7a7ef8f0ebce46a347291e6))
+* **orders:** cobro de órdenes cerradas y pendientes de cobro (F2 paso 8, RF-28, RF-29) ([7297325](https://github.com/iMiguel10/axtton-core/commit/72973253540e391fd7a7ef8f0ebce46a347291e6))
+* **orders:** diagnóstico versionado, notas internas y trabajos (F2 paso 5, RF-22 a RF-26) ([7297325](https://github.com/iMiguel10/axtton-core/commit/72973253540e391fd7a7ef8f0ebce46a347291e6))
+* **orders:** órdenes de trabajo con numeración por taller y año (F2 paso 3, RF-20, RF-21) ([7297325](https://github.com/iMiguel10/axtton-core/commit/72973253540e391fd7a7ef8f0ebce46a347291e6))
+* **search:** búsqueda única por matrícula, nombre y teléfono (F2 paso 6, RF-14) ([7297325](https://github.com/iMiguel10/axtton-core/commit/72973253540e391fd7a7ef8f0ebce46a347291e6))
+* **ui:** rediseño de la interfaz y correos con la marca (F2 paso 9) ([7297325](https://github.com/iMiguel10/axtton-core/commit/72973253540e391fd7a7ef8f0ebce46a347291e6))
+* **vehicles:** vehículos y cambio de titular auditado (F2 paso 2, RF-11, RF-12, RF-13) ([7297325](https://github.com/iMiguel10/axtton-core/commit/72973253540e391fd7a7ef8f0ebce46a347291e6))
+* versión de la aplicación y registro de cambios (F2 paso 9c) ([7297325](https://github.com/iMiguel10/axtton-core/commit/72973253540e391fd7a7ef8f0ebce46a347291e6))
+
+
+### Correcciones
+
+* cierre de F2, con el invariante 7 en la base de datos ([#4](https://github.com/iMiguel10/axtton-core/issues/4)) ([8f807ac](https://github.com/iMiguel10/axtton-core/commit/8f807ac9b5eb4c4ce7fc25a30f6612648b83888f))
+
 ## [0.2.0](https://github.com/iMiguel10/axtton-core/compare/v0.1.0...v0.2.0) (2026-10-26)
 
 F1: la base sobre la que se construye todo lo demás.

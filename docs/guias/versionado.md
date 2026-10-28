@@ -37,6 +37,8 @@ fix(drafts): el reenvío no duplica la nota
 docs: guía de versionado
 ```
 
+`main` está protegida: todo entra por un PR fusionado con *squash*, y **el título del PR es el commit que queda en `main`**. Es lo que lee release-please, así que el que cuenta es el título, no los commits de la rama. El check "Título del PR" (`.github/workflows/pr-title.yml`) bloquea la fusión si no es un commit convencional; se arregla editando el título.
+
 ## Publicar una versión
 
 1. Cada push a `main` pone al día el PR de versión que mantiene release-please (`chore(main): release 0.3.0`), con el `CHANGELOG.md` y el número propuesto. Es un acumulador: no publica nada.

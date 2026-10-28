@@ -19,11 +19,19 @@ psql -v ON_ERROR_STOP=1 --username "$POSTGRES_USER" --dbname "$POSTGRES_DB" <<-E
     CREATE ROLE axtton_platform LOGIN PASSWORD '${AXTTON_PLATFORM_PASSWORD}' NOSUPERUSER BYPASSRLS;
 
     ALTER DATABASE "${POSTGRES_DB}" OWNER TO axtton_owner;
-    CREATE DATABASE "${POSTGRES_TEST_DB}" OWNER axtton_owner;
 EOSQL
 
-# Lo mismo en la base de desarrollo y en la de pruebas.
-for db in "$POSTGRES_DB" "$POSTGRES_TEST_DB"; do
+# La base de pruebas, solo en desarrollo y en la CI: en producción
+# (compose.prod.yml) POSTGRES_TEST_DB no existe.
+databases="$POSTGRES_DB"
+if [ -n "${POSTGRES_TEST_DB:-}" ]; then
+    psql -v ON_ERROR_STOP=1 --username "$POSTGRES_USER" --dbname "$POSTGRES_DB" \
+        -c"CREATE DATABASE \"${POSTGRES_TEST_DB}\" OWNER axtton_owner;"
+    databases="$databases $POSTGRES_TEST_DB"
+fi
+
+# Lo mismo en la base de la aplicación y en la de pruebas.
+for db in $databases; do
     psql -v ON_ERROR_STOP=1 --username "$POSTGRES_USER" --dbname "$db" <<-EOSQL
         ALTER SCHEMA public OWNER TO axtton_owner;
         -- Nadie más que el dueño crea objetos en el esquema.

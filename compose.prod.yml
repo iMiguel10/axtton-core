@@ -1,0 +1,148 @@
+# Producción (arquitectura §9, decisión 0004). Pensado para Coolify, que construye
+# las imágenes en el servidor, pone el HTTPS con su proxy y le pasa el tráfico del
+# dominio a `web`. Funciona igual en cualquier servidor con Docker y un proxy
+# delante (docs/guias/despliegue.md).
+#
+# NINGÚN servicio publica puertos en el host: el proxy llega a `web` por la red de
+# Docker, y `web` a `api`. TRUSTED_PROXIES se fía de las redes privadas porque a la
+# API solo se llega desde contenedores: si algún día se publicara su puerto,
+# habría que cambiarlo.
+#
+# Las variables, en el panel de Coolify o en un .env junto a este fichero
+# (plantilla: .env.prod.example). Las obligatorias usan ${VAR:?}: si falta una, el
+# despliegue falla con su nombre en lugar de arrancar a medias.
+
+x-api-env: &api-env
+  # Los tres roles (arquitectura §4): la API con axtton_app, siempre bajo RLS;
+  # app/platform/ con axtton_platform; las migraciones con axtton_owner.
+  DATABASE_URL: postgresql+asyncpg://axtton_app:${AXTTON_APP_PASSWORD:?Falta AXTTON_APP_PASSWORD}@db:5432/axtton
+  PLATFORM_DATABASE_URL: postgresql+asyncpg://axtton_platform:${AXTTON_PLATFORM_PASSWORD:?Falta AXTTON_PLATFORM_PASSWORD}@db:5432/axtton
+  MIGRATIONS_DATABASE_URL: postgresql+asyncpg://axtton_owner:${AXTTON_OWNER_PASSWORD:?Falta AXTTON_OWNER_PASSWORD}@db:5432/axtton
+  # Un solo dominio (arquitectura §5): la API y la web comparten origen.
+  APP_URL: ${APP_URL:?Falta APP_URL (https://tu-dominio, sin barra final)}
+  SUPERTOKENS_CONNECTION_URI: http://supertokens:3567
+  SUPERTOKENS_API_KEY: ${SUPERTOKENS_API_KEY:?Falta SUPERTOKENS_API_KEY}
+  INSTALLATION_MODE: ${INSTALLATION_MODE:-multi}
+  VALKEY_URL: redis://valkey:6379/0
+  RATE_LIMIT_ENABLED: "true"
+  TRUSTED_PROXIES: 10.0.0.0/8,172.16.0.0/12,192.168.0.0/16,fc00::/7
+  # Correo (RNF-32): sin SMTP_HOST no se envía nada y la aplicación funciona igual.
+  SMTP_HOST: ${SMTP_HOST:-}
+  SMTP_PORT: ${SMTP_PORT:-587}
+  SMTP_USERNAME: ${SMTP_USERNAME:-}
+  SMTP_PASSWORD: ${SMTP_PASSWORD:-}
+  EMAIL_FROM: ${EMAIL_FROM:-AXTTON CORE <no-reply@localhost>}
+  # La demo (docs/guias/demo.md): solo en su instalación. En una real, false, y el
+  # script que la carga se niega a correr.
+  DEMO_SEED_ENABLED: ${DEMO_SEED_ENABLED:-false}
+  DEMO_PASSWORD: ${DEMO_PASSWORD:-}
+
+services:
+  # Las dos aplicaciones compiladas y el reenvío de /api (deploy/web). En Coolify,
+  # el dominio se asigna a este servicio, en el puerto 80.
+  web:
+    build:
+      context: .
+      dockerfile: deploy/web/Dockerfile
+      args:
+        # La versión (decisión 0003): la pone el job de despliegue de la CI.
+        APP_VERSION: ${APP_VERSION:-dev}
+        APP_COMMIT: ${APP_COMMIT:-}
+    expose:
+      - "80"
+    restart: unless-stopped
+    depends_on:
+      api:
+        condition: service_healthy
+
+  api:
+    build:
+      context: ./backend
+      target: prod
+      args:
+        APP_VERSION: ${APP_VERSION:-dev}
+        APP_COMMIT: ${APP_COMMIT:-}
+    # La imagen aplica las migraciones y arranca uvicorn; su healthcheck es
+    # /api/health, que solo responde si llega a la base de datos.
+    environment: *api-env
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+      supertokens:
+        condition: service_healthy
+      valkey:
+        condition: service_healthy
+
+  # Los roles se crean al arrancar con el volumen vacío (deploy/postgres).
+  db:
+    build:
+      context: ./deploy/postgres
+    environment:
+      POSTGRES_DB: axtton
+      POSTGRES_USER: postgres
+      # El superusuario: solo para crear los roles y para pasos manuales.
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Falta POSTGRES_PASSWORD}
+      AXTTON_OWNER_PASSWORD: ${AXTTON_OWNER_PASSWORD}
+      AXTTON_APP_PASSWORD: ${AXTTON_APP_PASSWORD}
+      AXTTON_PLATFORM_PASSWORD: ${AXTTON_PLATFORM_PASSWORD}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  # Base de datos exclusiva del core de SuperTokens (arquitectura A4).
+  supertokens-db:
+    image: postgres:17
+    environment:
+      POSTGRES_DB: supertokens
+      POSTGRES_USER: supertokens
+      POSTGRES_PASSWORD: ${SUPERTOKENS_DB_PASSWORD:?Falta SUPERTOKENS_DB_PASSWORD}
+    volumes:
+      - supertokens_data:/var/lib/postgresql/data
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  # Core de autenticación, con la misma versión que en desarrollo.
+  supertokens:
+    image: supertokens/supertokens-postgresql:12.2.0
+    environment:
+      POSTGRESQL_CONNECTION_URI: postgresql://supertokens:${SUPERTOKENS_DB_PASSWORD}@supertokens-db:5432/supertokens
+      API_KEYS: ${SUPERTOKENS_API_KEY}
+      # Access token de 5 minutos, como en desarrollo (compose.yml).
+      ACCESS_TOKEN_VALIDITY: 300
+    restart: unless-stopped
+    depends_on:
+      supertokens-db:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "bash -c 'exec 3<>/dev/tcp/127.0.0.1/3567 && echo -e \"GET /hello HTTP/1.1\r\nhost: 127.0.0.1\r\nConnection: close\r\n\r\n\" >&3 && cat <&3 | grep Hello'"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  # Contadores del límite de peticiones (RNF-06); la cola de SAQ llega en F5.
+  valkey:
+    image: valkey/valkey:9.1-alpine
+    command: ["valkey-server", "--appendonly", "yes"]
+    volumes:
+      - valkey_data:/data
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "valkey-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
+volumes:
+  postgres_data:
+  supertokens_data:
+  valkey_data:

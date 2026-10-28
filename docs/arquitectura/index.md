@@ -689,17 +689,17 @@ Se crean con un script de inicio de Postgres (`docker-entrypoint-initdb.d`), y l
 
 ### Producción (desde F2)
 
-Como en Applications Tracker (su decisión 0023):
+Como en Applications Tracker (su decisión 0023). Construido en F2 ([decisión 0004](../decisiones/0004-produccion-en-coolify.md), [guía](../guias/despliegue.md)): `compose.prod.yml`, `deploy/web/` (Nginx), `deploy/postgres/` (los roles dentro de la imagen) y el job `deploy` de la CI.
 
 - **Coolify con un solo dominio:**
   - un servicio `web` (el proxy) sirve las dos aplicaciones ya compiladas y reenvía `/api` a la API. Cada aplicación necesita su propio *fallback*: las rutas `/portal/*` que no son ficheros sirven `portal/index.html`, y el resto, `index.html` (lo aprendido en F0; en desarrollo lo hace el plugin `portalFallback` de Vite);
   - solo `web` tiene dominio público;
   - el resto de servicios no publica puertos.
-- **Despliegue continuo:** cada push a la rama principal, con la CI en verde, despliega.
+- **Despliegue continuo:** cada push a la rama principal, con la CI en verde, despliega. Lo pide el job `deploy` de la CI a la API de Coolify; el *Auto Deploy* de Coolify está desactivado, porque desplegaría aunque la CI fallara.
 - **Versión** (*decidido antes del primer despliegue, F2*; [decisión 0003](../decisiones/0003-versionado-por-etiquetas-y-release-please.md)): la imagen se construye con la última etiqueta `vX.Y.Z` y el commit (`APP_VERSION`, `APP_COMMIT`; `VITE_APP_*` para el frontend), y `GET /api/v1/meta` los responde. El despliegue comprueba ahí que arrancó lo que acaba de construir. Una versión se publica aparte, al fusionar el PR de release-please, y no cambia el contrato `/api/v1` ([guía](../guias/versionado.md)).
 - **`APP_URL`**: la dirección pública del frontend. La API la usa para construir los enlaces que recibe el cliente, que apuntan a páginas del portal y no a la API (lo aprendido en F0).
 - **Copias de seguridad:** un servicio de copias diarias fuera del servidor desde F9 (RNF-33), y la restauración se prueba antes de cerrar la fase.
-- **La demo** (*decidido antes del primer despliegue, F2*): una instalación aparte, con `DEMO_SEED_ENABLED=true`, que cada noche ejecuta `python -m app.scripts.seed_demo --purge-other-accounts` (una tarea programada de Coolify). Vacía los datos, borra las cuentas que hayan creado los visitantes y vuelve a cargar los dos talleres de ejemplo con fechas relativas a ese día ([guía](../guias/demo.md)). Una instalación real no tiene la variable, y el script se niega a correr.
+- **La demo** (*decidido antes del primer despliegue, F2*; hoy es la única instalación, en `axtton.imigueldev.duckdns.org`, y sin correo): una instalación aparte, con `DEMO_SEED_ENABLED=true`, que cada noche ejecuta `python -m app.scripts.seed_demo --purge-other-accounts` (una tarea programada de Coolify). Vacía los datos, borra las cuentas que hayan creado los visitantes y vuelve a cargar los dos talleres de ejemplo con fechas relativas a ese día ([guía](../guias/demo.md)). Una instalación real no tiene la variable, y el script se niega a correr.
 
 ## 10. Pruebas
 

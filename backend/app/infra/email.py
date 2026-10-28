@@ -116,8 +116,9 @@ class SmtpEmailSender:
             build_message(email, self._settings.email_from),
             hostname=self._settings.smtp_host,
             port=self._settings.smtp_port,
-            username=self._settings.smtp_username,
-            password=self._settings.smtp_password,
+            # compose.prod.yml pasa las opcionales vacías: "" no es un usuario.
+            username=self._settings.smtp_username or None,
+            password=self._settings.smtp_password or None,
         )
 
 

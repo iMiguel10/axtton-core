@@ -2,7 +2,9 @@
 
 **Gestión para talleres mecánicos, con un portal para que el cliente siga su reparación sin llamar.**
 
-> **Estado: F1 hecha y cerrada ([lo aprendido](docs/arquitectura/f1-cierre.md)).** Están hechos el acceso del personal y del superadministrador (SuperTokens, sin registro público), el alta de talleres, las invitaciones, el taller activo, los roles, el registro de auditoría, el límite de peticiones y el aislamiento entre talleres en la base de datos con sus pruebas adversas, más la CI y las pantallas correspondientes. Todavía no hay clientes, vehículos, órdenes ni portal: empiezan en F2.
+> **Estado: F2 terminada y desplegada ([lo aprendido](docs/arquitectura/f2-cierre.md)).** Hoy existe el núcleo operativo del taller: acceso del personal y del superadministrador, alta de talleres, roles, auditoría y aislamiento entre talleres (F1), y ahora clientes, vehículos con titularidad, órdenes con ciclo de vida e historial (con deshacer), diagnóstico, notas y trabajos, búsqueda única en el mostrador, borradores sin conexión, cobro, anonimización, límites por taller y la versión visible. **Todavía no hay** presupuestos (F3), portal del cliente (F4) ni avisos (F5).
+>
+> **Demo pública:** <https://axtton.imigueldev.duckdns.org>, que se recarga cada noche. Entra con `laura@demo.example.com` (administradora) o `javier@demo.example.com` (mecánico), contraseña pública `demo-axtton-2026`; el resto de cuentas, en la [guía de la demo](docs/guias/demo.md).
 
 ## Qué resuelve
 
@@ -19,9 +21,10 @@ No es un programa de facturación, ni de compras, ni de reservas online: la espe
 
 - **Multi-taller con el aislamiento en la base de datos.** Cada fila lleva su taller. Las claves foráneas compuestas impiden mezclar datos de dos talleres, y **Row-Level Security** de PostgreSQL impide leerlos aunque una consulta olvide filtrar. Si nadie fija el taller, la consulta no ve nada; nunca ve todo.
 - **Tres actores que no se cruzan.** Personal, clientes y superadministrador entran por SuperTokens con recetas distintas, y la API se parte en `/workshop`, `/portal` y `/admin`, cada prefijo cerrado a los otros dos desde el router. Una prueba recorre el OpenAPI para que ningún endpoint nuevo se quede fuera.
-- **Lo que tiene valor de prueba no se edita.** Un presupuesto enviado, la decisión del cliente y la hoja de recepción firmada se congelan. Lo garantizan los permisos y los triggers de la base de datos, no la disciplina del código.
-- **Ajustado a la normativa española de talleres** (RD 1457/1986): validez mínima del presupuesto, renuncia firmada en el resguardo de depósito y garantía de 3 meses o 2.000 km.
-- **Avisos que nunca salen dos veces**: se escriben en la misma transacción que el cambio que los provoca, y el envío distingue un fallo seguro (se reintenta) de uno ambiguo (no).
+- **Quién era el titular, para siempre.** La titularidad de un vehículo son periodos que la base de datos impide solapar (`EXCLUDE` con `btree_gist`) y congela al cerrarse. El cliente de una orden es el titular al abrirla, y no cambia.
+- **El historial manda.** El estado de una orden es una copia del último cambio de su historial, y un trigger diferido lo comprueba al confirmar cada transacción.
+- **Lo escrito sin conexión no se pierde ni se duplica.** Los borradores viven en el navegador y se reenvían con un id propio, así que un reenvío tras perder la respuesta no repite la nota.
+- **Despliegue desde la CI, con la versión comprobada.** Tras un push a `main` con todo en verde, la CI pide el despliegue a Coolify y comprueba que `/api/v1/meta` responde la versión recién construida.
 
 ## Stack
 
@@ -33,6 +36,7 @@ FastAPI · SQLAlchemy async · PostgreSQL 17 (RLS) · SuperTokens · Valkey + SA
 cp .env.example .env
 docker compose up -d --build
 docker compose exec api python -m app.scripts.create_superadmin <email>
+docker compose exec api python -m app.scripts.seed_demo   # opcional: borra todo y carga la demo
 ```
 
 Frontend en http://localhost:5173, API en http://localhost:8000/docs y correo capturado en http://localhost:8025. Siempre `localhost`, nunca `127.0.0.1`.
@@ -47,3 +51,5 @@ Y en http://localhost:8001:
 
 - [Especificación de producto](docs/producto/especificacion.md): requisitos numerados, permisos, ciclos de vida y lo que el sistema **no** sabe responder.
 - [Arquitectura](docs/arquitectura/index.md): cada decisión con la alternativa descartada, el modelo de datos, las políticas de RLS, los flujos y sus fallos, las pruebas y el orden de construcción.
+- Guías: [datos de demostración](docs/guias/demo.md), [versionado](docs/guias/versionado.md) y [despliegue](docs/guias/despliegue.md).
+- [Bitácora de decisiones](docs/decisiones/index.md): los cambios de rumbo durante el desarrollo.

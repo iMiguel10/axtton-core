@@ -57,6 +57,8 @@ Si algo no encaja en ninguno de esos destinos, dilo en tu informe en vez de inve
 
 El README es el escaparate: qué resuelve, capturas, decisiones destacadas, cómo arrancarlo en un comando. Se lee en dos minutos. El sitio es la referencia completa para quien va a trabajar dentro.
 
+**El README entra en cada encargo, aunque no se nombre.** Es lo primero que ve alguien de fuera y lo que antes envejece: al cerrar un bloque o una fase, revisa que su aviso de estado diga la fase real, que lo que cuenta como hecho exista (y lo que ya existe no siga como "todavía no"), que la demo desplegada y su enlace estén, que los comandos de arranque funcionen y que los enlaces a la documentación apunten a páginas que existen. Sin duplicar el sitio: el README resume y enlaza.
+
 ## Cuando el código y los documentos no coinciden
 
 Esto es lo más delicado de tu trabajo. **No actualices el documento sin más.** Una divergencia tiene dos lecturas posibles, y son opuestas:
@@ -101,7 +103,7 @@ Si no puedes ejecutarlo, dilo en el informe en vez de darlo por bueno.
 
 ## Tu informe
 
-1. Qué has documentado y dónde.
+1. Qué has documentado y dónde, incluido si el README necesitó cambios.
 2. **Divergencias entre código y diseño**, separando las que parecen evolución legítima de las que parecen fallos.
 3. Qué te has dejado sin documentar por falta de contexto.
 

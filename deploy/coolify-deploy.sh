@@ -108,6 +108,19 @@ while [ "$i" -lt 180 ]; do
 done
 [ "$status" = "finished" ] || { echo "El despliegue no terminó en 30 minutos" >&2; exit 1; }
 
+# Lo que Coolify clonó de verdad. /api/v1/meta no basta: su commit es el de
+# APP_COMMIT, que pone este script, no el del código construido. Si alguien
+# empujó a main entre la comprobación de arriba y el clonado, Coolify construyó
+# un commit que esta CI no ha probado, con la versión del anterior. Lo encontró
+# qa-verifier al cerrar F2.
+deployed=$(jq -r '.commit // empty' "$BODY")
+if [ -z "$deployed" ]; then
+    echo "::warning::Coolify no indica qué commit desplegó: no se ha podido comprobar que sea $EXPECTED_SHA"
+elif [ "$deployed" != "$EXPECTED_SHA" ]; then
+    echo "Coolify desplegó $deployed y no $EXPECTED_SHA (main avanzó a la vez): lo corrige la CI de ese commit" >&2
+    exit 1
+fi
+
 # Lo que de verdad responde: la API recién arrancada puede tardar unos segundos
 # (migraciones). Si /meta dice otro commit, Coolify construyó otra cosa.
 meta=""

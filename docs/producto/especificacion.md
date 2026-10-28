@@ -1,6 +1,6 @@
 # Especificación de producto
 
-> Estado: **v0.3, revisada completa con el usuario** (2026-10-22) · sin código todavía · siguiente paso: arquitectura
+> Estado: **v0.3, revisada completa con el usuario** (2026-10-22) · F0 a F2 construidas; lo que resultó distinto al construirlo lleva su precisión marcada con "*F1*" o "*F2*"
 
 !!! info "Cómo leer este documento"
     Los requisitos están numerados (RF-xx funcionales, RNF-xx no funcionales) con huecos entre grupos para poder insertar sin renumerar. Lo marcado con **`[C]`** está considerado y pospuesto por ser propio de un producto comercial, no olvidado. Lo marcado con **`[?]`** es una decisión abierta que está en la sección 13.
@@ -109,6 +109,7 @@ Hay **dos roles en el taller, a propósito**: en el taller pequeño al que se di
 | Ver notas internas | ✔ | ✔ | ✘ (nunca) |
 | Ver el resumen de cifras de sus talleres (RF-09) | ✔ | ✘ | ✘ |
 | Consultar el registro de auditoría del taller (RNF-16) | ✔ | ✘ | ✘ |
+| Ver los límites del taller y lo gastado de cada uno (§10; *fila añadida en F2*) | ✔ | ✘ | ✘ |
 | Ver cualquier dato de un taller en el que no es empleado | ✘ | ✘ | ✘ |
 
 Los permisos se evalúan **en el taller activo**: quien es administrador en un taller y mecánico en otro tiene, en cada uno, los permisos de su rol allí.
@@ -205,7 +206,7 @@ Taller (organización, el "tenant")
 - **RF-13** La ficha del vehículo muestra al taller su historial completo de órdenes, de todos sus titulares, y sus periodos de titularidad.
 - **RF-14** La búsqueda principal admite matrícula, nombre o teléfono desde una única caja, porque es lo que se pregunta en el mostrador con el cliente delante.
 - **RF-15** Borrar un cliente que lo pide **anonimiza** sus datos: se eliminan nombre, NIF, contacto, dirección, notas y acceso al portal, y sus órdenes, presupuestos y movimientos de stock se conservan ligados a un "cliente eliminado". Es irreversible y queda registrado quién lo hizo y cuándo. *Precisión al construirlo (F2):* no se puede con una orden abierta (aún necesita a quién avisar); también se borra quién trajo el coche en sus órdenes; sus vehículos siguen a su nombre en el historial y, para abrirles una orden, se cambia antes el titular. Lo hace solo el administrador, escribiendo el nombre del cliente para confirmar.
-- **RF-16** Registrar en el vehículo la fecha de la próxima ITV y la próxima revisión, por fecha y/o kilómetros. Al entregar una orden de tipo mantenimiento, el sistema propone la siguiente revisión a partir de los intervalos que configure el taller.
+- **RF-16** Registrar en el vehículo la fecha de la próxima ITV y la próxima revisión, por fecha y/o kilómetros. Al entregar una orden de tipo mantenimiento, el sistema propone la siguiente revisión a partir de los intervalos que configure el taller. *F2:* los tres datos (`next_itv_date`, `next_service_date`, `next_service_km`) se registran y editan en la ficha del vehículo; la propuesta al entregar no existe aún (necesita los intervalos del taller, que no se configuran todavía), y la pantalla de vencimientos (RF-17) y sus avisos llegan en F8.
 - **RF-17** Una pantalla de próximos vencimientos lista los vehículos con ITV o revisión en los próximos N días, para que el taller pueda llamar o dar cita.
 - **RF-18** El taller genera en PDF un **informe de actuaciones** del vehículo con todas sus órdenes, de cualquier titular: fecha, kilómetros, texto de diagnóstico para el cliente, trabajos realizados y piezas montadas. Por defecto no incluye los nombres de titulares anteriores ni los importes, porque el informe suele acabar en manos del comprador del coche; el administrador puede incluirlos de forma explícita al generarlo.
 

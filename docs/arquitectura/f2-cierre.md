@@ -59,7 +59,7 @@ Y el cierre: qa-verifier y docs-writer contra todo lo anterior, con lo que encon
 
 | Tema | Estado |
 |---|---|
-| **RF-24**: filtrar el listado de órdenes por estado, mecánico responsable y fecha prevista | La API filtra por estado y responsable, pero la interfaz no lo ofrece; por fecha prevista no filtra nada. Encontrado por docs-writer; pendiente de decidir si entra antes de F3 |
+| **RF-24**: filtrar el listado de órdenes por estado, mecánico responsable y fecha prevista | La API filtra por estado y responsable, pero la interfaz no lo ofrece; por fecha prevista no filtra nada. Encontrado por docs-writer. **Decidido: va en F3** |
 | **RF-16**: proponer la siguiente revisión al entregar una orden de mantenimiento | Necesita los intervalos del taller, que no se configuran todavía: con los datos del taller (F3) o con los vencimientos (F8) |
 | `/docs` y `/openapi.json` públicos en producción | Intencionado mientras sea una demo de portfolio; a revisar con una instalación real |
 | Las copias de seguridad (RNF-33) | F9. Mientras la única instalación sea la demo, que se recarga cada noche, no hay nada que perder |

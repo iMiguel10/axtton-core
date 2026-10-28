@@ -46,11 +46,17 @@ async def deliver(order_id: str, days_ago: int = 0) -> None:
                 ),
                 {"o": order_id},
             )
+            # Hace `days_ago` días del calendario del taller, a mediodía: restar
+            # días de 24 h en UTC cruza un cambio de hora y puede caer en otro
+            # día local (a finales de octubre, 9×24 h atrás son 8 días en Madrid).
             await conn.execute(
                 text(
                     "UPDATE work_orders SET status = 'delivered',"
-                    " delivered_at = clock_timestamp() - make_interval(days => :d)"
-                    " WHERE id = :o"
+                    " delivered_at = CASE WHEN :d = 0 THEN clock_timestamp() ELSE"
+                    " (((clock_timestamp() AT TIME ZONE w.timezone)::date - :d)"
+                    " + time '12:00') AT TIME ZONE w.timezone END"
+                    " FROM workshops w"
+                    " WHERE work_orders.id = :o AND w.id = work_orders.workshop_id"
                 ),
                 {"o": order_id, "d": days_ago},
             )

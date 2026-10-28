@@ -1,0 +1,7 @@
+# Solo para probar compose.prod.yml en local (docs/guias/despliegue.md): publica
+# la web en http://localhost:8080. En Coolify no se usa: allí ningún servicio
+# publica puertos.
+services:
+  web:
+    ports:
+      - "8080:80"

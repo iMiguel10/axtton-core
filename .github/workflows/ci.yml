@@ -108,3 +108,60 @@ jobs:
       # sin .env fallaría por los env_file de db y api.
       - run: cp .env.example .env
       - run: docker compose run --rm docs build --strict
+
+  # Las imágenes de producción (decisión 0004): que construyen, que Nginx acepta
+  # su configuración y que compose.prod.yml está bien formado. No despliega nada.
+  prod-images:
+    name: Producción (imágenes y Nginx)
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - run: docker build --target prod -t axtton-api:prod backend
+      - run: docker build -f deploy/web/Dockerfile -t axtton-web:prod .
+      - run: docker build -t axtton-db:prod deploy/postgres
+      # El upstream de nginx.conf es una variable: nginx -t no necesita la API.
+      - run: docker run --rm axtton-web:prod nginx -t
+      - run: sh -n deploy/coolify-deploy.sh
+      # Con todas las obligatorias (valores de mentira), y sin el .env de
+      # desarrollo, que compose leería solo.
+      - run: docker compose -f compose.prod.yml --env-file /dev/null config --quiet
+        env:
+          APP_URL: https://ci.example.com
+          POSTGRES_PASSWORD: ci
+          AXTTON_OWNER_PASSWORD: ci
+          AXTTON_APP_PASSWORD: ci
+          AXTTON_PLATFORM_PASSWORD: ci
+          SUPERTOKENS_DB_PASSWORD: ci
+          SUPERTOKENS_API_KEY: ci-supertokens-api-key
+
+  # Despliegue continuo (decisión 0004): solo un push a main que haya pasado todo
+  # lo anterior. Coolify construye en el servidor; este job le pasa la versión, lo
+  # pide por la API, espera y comprueba /api/v1/meta (deploy/coolify-deploy.sh).
+  # Sin la variable PRODUCTION_URL (un fork, otra instalación) no despliega nada.
+  deploy:
+    name: Producción (despliegue)
+    needs: [backend, frontend, docs, prod-images]
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main' && vars.PRODUCTION_URL != ''
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    # Dos despliegues a la vez se pisarían en Coolify: el segundo espera.
+    concurrency:
+      group: deploy-production
+      cancel-in-progress: false
+    environment:
+      name: production
+      url: ${{ vars.PRODUCTION_URL }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Versión
+        run: .github/scripts/version.sh >> "$GITHUB_ENV"
+      - run: sh deploy/coolify-deploy.sh
+        env:
+          COOLIFY_URL: ${{ secrets.COOLIFY_URL }}
+          COOLIFY_TOKEN: ${{ secrets.COOLIFY_TOKEN }}
+          COOLIFY_APP_UUID: ${{ secrets.COOLIFY_APP_UUID }}
+          PRODUCTION_URL: ${{ vars.PRODUCTION_URL }}
+          EXPECTED_SHA: ${{ github.sha }}

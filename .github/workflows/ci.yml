@@ -1,4 +1,4 @@
-# CI (arquitectura A13, RNF-31): en cada push y en cada pull request.
+# CI (arquitectura A13, RNF-31): en cada pull request y en cada push a main.
 #
 # Usa el mismo compose.yml que el desarrollo: Postgres con los roles reales y
 # RLS, y el core real de SuperTokens. Así "pasa en mi máquina" y "pasa en la CI"
@@ -6,7 +6,10 @@
 name: CI
 
 on:
+  # Una rama se prueba por su PR; con "push" a secas corría dos veces en cada
+  # PR, y también al subir una etiqueta.
   push:
+    branches: [main]
   pull_request:
 
 # Un push nuevo a la misma rama cancela la ejecución anterior, que ya no importa.

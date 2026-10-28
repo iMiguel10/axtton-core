@@ -1,0 +1,34 @@
+# El título de un PR es el commit que entra en main (squash), y de ese commit
+# salen la versión y el CHANGELOG.md (docs/guias/versionado.md). Un título que
+# no sea un commit convencional no rompe nada: release-please lo ignora sin
+# avisar y el cambio no sale en el registro. Este check lo para antes de
+# fusionar; se corrige editando el título, sin tocar los commits.
+name: Título del PR
+
+on:
+  pull_request:
+    types: [opened, edited, synchronize, reopened]
+
+permissions:
+  pull-requests: read
+
+jobs:
+  title:
+    name: Título del PR (commit convencional)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: amannn/action-semantic-pull-request@v5
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          # Los de release-please-config.json: los que suben versión y los que no.
+          types: |
+            feat
+            fix
+            perf
+            revert
+            docs
+            test
+            refactor
+            ci
+            chore

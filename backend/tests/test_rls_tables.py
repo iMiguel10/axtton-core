@@ -58,6 +58,7 @@ UPDATABLE_COLUMN = {
     "vehicle_ownerships": "ended_at",
     "work_order_counters": "last_number",
     "work_entries": "voided_at",
+    "work_orders": "version",
 }
 
 

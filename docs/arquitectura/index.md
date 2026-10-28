@@ -1,6 +1,6 @@
 # Arquitectura
 
-> Estado: **v0.1** (2026-10-24) · F0 y F1 hechas y cerradas ([lo aprendido en F0](f0-cierre.md), [en F1](f1-cierre.md)). Donde F1 resultó distinto del diseño, el texto lo dice ("al construirlo en F1").
+> Estado: **v0.1** (2026-10-24, puesto al día el 2026-10-28) · F0 y F1 hechas y cerradas ([lo aprendido en F0](f0-cierre.md), [en F1](f1-cierre.md)); F2 construida y desplegada. Donde F1 o F2 resultaron distintas del diseño, el texto lo dice ("al construirlo en F1", "al construirlo en F2").
 
 Este documento recoge **qué se ha decidido y contra qué alternativa**. La especificación de producto está en [producto/especificacion.md](../producto/especificacion.md); los requisitos se citan por su número (RF-xx, RNF-xx).
 
@@ -139,7 +139,7 @@ Heredadas de Applications Tracker, salvo donde se dice:
 **La regla del multi-taller, nueva respecto a Applications Tracker:** **toda tabla de un taller lleva su propia columna `workshop_id NOT NULL`, también las tablas hijas**, aunque se pudiera deducir del padre. Cada tabla tiene además `UNIQUE (id, workshop_id)`, y sus claves foráneas son compuestas: `(parent_id, workshop_id) → parent(id, workshop_id)`.
 
 - **Qué consigue:** que la base de datos impida enlazar una línea de presupuesto del taller A con un presupuesto del taller B, y que la política de RLS (§4) sea una comparación de una columna, sin joins.
-- **Una excepción, `audit_log`:** su `workshop_id` puede ser nulo (las acciones de plataforma) y ninguna tabla la referencia, así que no lleva `UNIQUE (id, workshop_id)`: no hay ninguna FK compuesta que lo necesite. Sí lleva la política de RLS, y la fila nula no la ve ningún taller.
+- **Dos excepciones a `UNIQUE (id, workshop_id)`:** `audit_log` (su `workshop_id` puede ser nulo, las acciones de plataforma, y ninguna tabla la referencia) y `work_order_counters` (*al construirlo en F2*: su clave primaria es `(workshop_id, year)`, no tiene `id` y nadie la referencia). Ninguna tiene una FK compuesta que lo pida. Las dos llevan la política de RLS, y la fila nula de `audit_log` no la ve ningún taller.
 - **Qué cuesta:** una columna repetida por tabla.
 
 ### Mapa
@@ -342,7 +342,7 @@ El acceso del cliente en el portal **no** sale de esta tabla, sino de `work_orde
 | Rol | Lo usa | Qué puede |
 |---|---|---|
 | `axtton_owner` | Las migraciones (Alembic) | Dueño de las tablas. Nunca lo usa la aplicación |
-| `axtton_app` | La API y el `worker`, en su camino normal | `NOBYPASSRLS`. Sobre las tablas append-only (`work_order_status_changes`, `quote_decisions`, `stock_movements`, `diagnosis_versions`, `internal_notes`, `audit_log`) solo tiene `SELECT` e `INSERT`: **RNF-12 lo garantiza la base de datos**, no la disciplina del código. Tampoco tiene `DELETE` sobre `clients` (se archivan o se anonimizan, RF-15), `vehicles` ni `vehicle_ownerships` (de esta última solo puede actualizar `ended_at`), ni sobre `work_orders` y `work_order_counters` |
+| `axtton_app` | La API y el `worker`, en su camino normal | `NOBYPASSRLS`. Sobre las tablas append-only (`work_order_status_changes`, `quote_decisions`, `stock_movements`, `diagnosis_versions`, `internal_notes`, `audit_log`) solo tiene `SELECT` e `INSERT`: **RNF-12 lo garantiza la base de datos**, no la disciplina del código. Tampoco tiene `DELETE` sobre `clients` (se archivan o se anonimizan, RF-15), `vehicles` ni `vehicle_ownerships` (de esta última solo puede actualizar `ended_at`), ni sobre `work_orders` y `work_order_counters`. De `work_orders` solo puede actualizar lo que cambia con la vida de la orden: el cliente, el vehículo, el número, el año, el tipo y la garantía de origen se fijan al abrirla (*cierre de F2*, migración `0011ordercols`; invariante 7). De `work_entries` solo puede insertar y escribir la anulación (`voided_at`, `voided_by_employee_id`) |
 | `axtton_platform` | Solo el código de plataforma (ver "Las vías que cruzan talleres") | `BYPASSRLS`, con una conexión y un pool propios |
 
 Todas las tablas de taller tienen `ENABLE ROW LEVEL SECURITY` y `FORCE ROW LEVEL SECURITY`.
@@ -455,7 +455,8 @@ axtton-core/
 │       │       └── deps.py          las tres dependencias de actor, y nada más decide permisos aquí
 │       ├── core/                configuración, SuperTokens, la sesión (sessions.py), BD con el taller fijado, errores
 │       ├── domain/              reglas puras: matriz de permisos (can), actores, límite de peticiones, invitaciones;
-│       │                        con F2 y F3 llegan transiciones, totales, días hábiles y estados que ve el cliente
+│       │                        F2 añadió work_orders (transiciones, deshacer), limits, clients, vehicles, search y emails;
+│       │                        con F3 llegan totales, días hábiles y estados que ve el cliente (quotes.py y money.py son de F0)
 │       ├── models/              SQLAlchemy
 │       ├── repositories/        consultas con axtton_app; siempre bajo RLS
 │       ├── schemas/             Pydantic, separados por actor cuando lo que se expone difiere
@@ -464,8 +465,9 @@ axtton-core/
 │       │                        y, con el worker, el planificador (§4)
 │       ├── infra/               módulos detrás de interfaces: email.py, identity.py (SuperTokens), pdf.py,
 │       │                        rate_limit.py; la cola llega con el worker
-│       ├── scripts/             comandos de servidor (crear superadministrador, reset_data…)
-│       ├── jobs/ · templates/   llegan con el worker (F5) y los PDF (F3)
+│       ├── scripts/             comandos de servidor (crear superadministrador, reset_data, seed_demo)
+│       ├── templates/           hoy solo email/ (la plantilla de la marca); los PDF llegan en F3
+│       ├── jobs/                llega con el worker (F5)
 │       └── main.py              (worker.py llega en F5)
 │   ├── migrations/              Alembic, con el rol axtton_owner
 │   └── tests/                   incluidas las adversas T* y R*
@@ -475,11 +477,12 @@ axtton-core/
 │       ├── portal/              la aplicación del cliente (marcador hasta F4)
 │       └── shared/              components/ (shadcn y formularios), lib/ (apiClient, errores, queryClient),
 │                                i18n/, styles/
-├── .github/workflows/           la CI (A13)
+├── .github/workflows/           la CI con el despliegue, el título del PR y release-please (A13)
 ├── docs/                        MkDocs (este sitio)
 ├── manual/                      Docusaurus, en F9
-├── deploy/                      hoy, el script de roles de Postgres; el proxy y la producción llegan en F2
-└── compose.yml                  (no hay compose.test.yml ni compose.prod.yml: las pruebas usan la base axtton_test del mismo compose)
+├── deploy/                      web/ (Nginx), postgres/ (imagen con los roles) y coolify-deploy.sh (§9)
+├── compose.yml                  desarrollo (no hay compose.test.yml: las pruebas usan la base axtton_test del mismo compose)
+└── compose.prod.yml             producción en Coolify; compose.prod.local.yml la prueba en local
 ```
 
 ### Reglas de capas
@@ -675,6 +678,7 @@ Todas son `CronJob` de SAQ. La búsqueda la hace el planificador por `platform/`
 | `valkey` | — | Límites de peticiones (RNF-06, F1); la cola de SAQ llega con el `worker` (F5) | F1 |
 | `worker` | — | La misma imagen que `api` con otro comando | F5 (antes, sin trabajos) |
 | `mailpit` | 8025 | Solo desarrollo: captura todo el correo | F1 |
+| `web` | — (8080 solo al probar producción en local) | Solo en `compose.prod.yml`: Nginx con las dos aplicaciones compiladas y el reenvío de `/api` | F2 |
 | `docs` | 8001 | MkDocs | F0 |
 | `manual` | 3001 | Docusaurus | F9 |
 
@@ -721,7 +725,7 @@ Como en Applications Tracker (su decisión 0023). Construido en F2 ([decisión 0
 | Fase | Qué se construye, en concreto |
 |---|---|
 | **F0** ✔ | **Hecha** ([cierre y lo aprendido](f0-cierre.md)). Esqueleto vertical desechable: `workshops`, `clients`, `vehicles`, `work_orders`, `quotes` y `quote_lines` mínimos; un taller fijo; enviar un presupuesto de una línea, aprobarlo desde un enlace secreto y ver el cambio de estado. **Incluye un primer RLS de verdad** (dos roles y una política) y un PDF de una página, porque son lo que más puede sorprender. Se tira al terminar |
-| **F1** | Roles de BD y política generada por migración; R1–R5, R7 y R8 (R6 espera a los triggers de presupuesto, F3). SuperTokens con `emailpassword`, los tres routers y sus dependencias; T1–T3. `users`, `employees`, `invitations`, superadministrador por comando, alta de talleres, modo de instalación, taller activo. `audit_log`. Mailpit. **CI**. *Añadido al construirlo:* límite de peticiones con Valkey (RNF-06), cuenta del personal (cambio de contraseña y sesiones), consulta del registro de auditoría e invitación de otros superadministradores (RF-110) |
+| **F1** ✔ | Roles de BD y política generada por migración; R1–R5, R7 y R8 (R6 espera a los triggers de presupuesto, F3). SuperTokens con `emailpassword`, los tres routers y sus dependencias; T1–T3. `users`, `employees`, `invitations`, superadministrador por comando, alta de talleres, modo de instalación, taller activo. `audit_log`. Mailpit. **CI**. *Añadido al construirlo:* límite de peticiones con Valkey (RNF-06), cuenta del personal (cambio de contraseña y sesiones), consulta del registro de auditoría e invitación de otros superadministradores (RF-110) |
 | **F2** | Clientes, vehículos, `vehicle_ownerships`, órdenes con su historial, número correlativo, deshacer, búsqueda, bloqueo optimista, borradores en IndexedDB. *Añadido al planificarla:* diagnóstico, notas internas y trabajos (RF-22, RF-23: lo que guardan los borradores), cobro (RF-28, RF-29) y anonimización (RF-15), y una revisión del diseño de la interfaz validada **antes** del despliegue. **Primer despliegue en Coolify** |
 | **F3** | Datos del taller y `labor_rates` editables por su administrador (RF-02; `axtton_app` recibe `UPDATE` solo sobre esas columnas de `workshops`, migración `0003grants`), presupuestos versionados con sus triggers, totales y descuentos, decisión registrada por el taller, PDF del presupuesto con los datos legales |
 | **F4** | Receta `passwordless`, petición y consumo del enlace por taller (§7.2), routers del portal, estados para el cliente, aprobación desde el portal; T4–T7 |

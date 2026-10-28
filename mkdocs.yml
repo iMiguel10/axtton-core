@@ -49,6 +49,7 @@ nav:
       - arquitectura/index.md
       - "Cierre de F0": arquitectura/f0-cierre.md
       - "Cierre de F1": arquitectura/f1-cierre.md
+      - "Cierre de F2": arquitectura/f2-cierre.md
   - Guías:
       - "Datos de demostración": guias/demo.md
       - "Versionado": guias/versionado.md

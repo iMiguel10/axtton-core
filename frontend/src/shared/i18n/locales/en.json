@@ -55,7 +55,14 @@
       "status_change_undone": "Status change undone",
       "no_quote_marked": "No quote",
       "payment_recorded": "Payment",
-      "client_anonymized": "Client anonymized"
+      "client_anonymized": "Client anonymized",
+      "workshop_settings_updated": "Workshop details changed",
+      "workshop_logo_updated": "Logo changed",
+      "workshop_logo_removed": "Logo removed",
+      "labor_rate_created": "Rate added",
+      "labor_rate_updated": "Rate changed",
+      "labor_rate_archived": "Rate archived",
+      "labor_rate_unarchived": "Rate restored"
     },
     "fields": {
       "email": "Email",
@@ -76,7 +83,19 @@
       "max_employees": "Staff record limit",
       "max_clients": "Client limit",
       "max_vehicles": "Vehicle limit",
-      "max_orders_per_month": "Monthly order limit"
+      "max_orders_per_month": "Monthly order limit",
+      "legal_name": "Legal name",
+      "tax_id": "Tax ID",
+      "address": "Address",
+      "phone": "Phone",
+      "reply_to_email": "Reply-to email",
+      "industrial_registry_number": "Industrial registry",
+      "default_vat_bp": "Default VAT",
+      "quote_validity_business_days": "Quote validity",
+      "mechanics_see_sale_prices": "Mechanics see prices",
+      "labor_rate": "Rate",
+      "hourly_price_cents": "Hourly price",
+      "is_default": "Default"
     }
   },
   "nav": {
@@ -91,7 +110,8 @@
     "account": "My account",
     "workshops": "Workshops",
     "signOut": "Sign out",
-    "unpaid": "Awaiting payment"
+    "unpaid": "Awaiting payment",
+    "settings": "Workshop"
   },
   "auth": {
     "tagline": "Run the workshop and follow every repair, in one place.",
@@ -121,7 +141,9 @@
     "passwordLength": "At least 10 characters.",
     "passwordsDiffer": "The passwords do not match.",
     "amount": "Enter an amount, for example 25.50.",
-    "number": "Enter a whole number within a sensible range."
+    "number": "Enter a whole number within a sensible range.",
+    "percent": "Enter a percentage between 0 and 100, for example 21.",
+    "validity": "Between 12 and 120 business days."
   },
   "invitation": {
     "title": "Invitation",
@@ -573,7 +595,16 @@
     "employee_record_limit_reached": "The workshop has reached its limit of staff records. To raise it, contact whoever runs the platform.",
     "client_limit_reached": "The workshop has reached its client limit. To raise it, contact whoever runs the platform.",
     "vehicle_limit_reached": "The workshop has reached its vehicle limit. To raise it, contact whoever runs the platform.",
-    "order_limit_reached": "The workshop has reached this month's order limit. To raise it, contact whoever runs the platform."
+    "order_limit_reached": "The workshop has reached this month's order limit. To raise it, contact whoever runs the platform.",
+    "invalid_logo": "The logo must be a PNG or JPEG image.",
+    "logo_too_large": "The logo is too large: 300 KB at most.",
+    "logo_not_found": "The workshop has no logo.",
+    "labor_rate_not_found": "That rate does not exist.",
+    "labor_rate_name_taken": "There is already a rate with that name.",
+    "labor_rate_default_conflict": "Someone else changed the default rate at the same time. Try again.",
+    "labor_rate_default_required": "There is always a default rate: mark another one first.",
+    "labor_rate_archived": "That rate is archived: restore it to edit it.",
+    "labor_rate_limit_reached": "20 current rates at most. Archive one you no longer use."
   },
   "palette": {
     "open": "Search the workshop",
@@ -594,5 +625,56 @@
       "vehicles": "Vehicles",
       "orders_per_month": "Orders per month"
     }
+  },
+  "settings": {
+    "legalTitle": "Workshop details",
+    "legalHint": "They appear on quotes and on the documents the client receives. The law requires the tax ID, the address and the industrial registry number.",
+    "name": "Trading name",
+    "legalName": "Legal name",
+    "taxId": "Tax ID",
+    "registry": "Industrial registry number",
+    "address": "Address",
+    "phone": "Phone",
+    "replyTo": "Reply-to email for clients",
+    "quotesTitle": "Quotes",
+    "defaultVat": "Default VAT (%)",
+    "validity": "Quote validity (business days)",
+    "validityHint": "At least 12, the legal minimum. Counted Monday to Friday without national holidays: if your region or town has its own holidays, extend it.",
+    "mechanicsSeePrices": "Mechanics see prices",
+    "mechanicsSeePricesHint": "Sale prices on quotes and parts. Turn it off if you prefer only the office to see them.",
+    "timezone": "Time zone: {{timezone}}. Set by the platform administrator.",
+    "saved": "Workshop details saved",
+    "logoTitle": "Logo",
+    "logoHint": "Shown in the header of quotes. PNG or JPEG up to 300 KB; it is stored scaled down.",
+    "logoAlt": "Workshop logo",
+    "noLogo": "No logo",
+    "uploadLogo": "Upload logo",
+    "replaceLogo": "Change logo",
+    "removeLogo": "Remove logo",
+    "confirmRemoveLogo": "Quotes generated from now on will have no logo.",
+    "logoSaved": "Logo saved",
+    "logoRemoved": "Logo removed"
+  },
+  "rates": {
+    "title": "Labour rates",
+    "hint": "Price per hour, before VAT. A quote copies it when used: changing it later does not change quotes already made.",
+    "add": "Add",
+    "added": "Rate added",
+    "saved": "Rate saved",
+    "archived": "Rate archived",
+    "unarchived": "Rate restored",
+    "name": "Name",
+    "namePlaceholder": "Mechanics",
+    "price": "Price per hour (€)",
+    "perHour": "{{price}} / hour",
+    "default": "Default",
+    "makeDefault": "Make default",
+    "edit": "Edit",
+    "archive": "Archive",
+    "unarchive": "Restore",
+    "showArchived": "Show archived",
+    "none": "No rates yet",
+    "noneHint": "Add at least one to quote labour.",
+    "noneArchived": "No archived rates"
   }
 }

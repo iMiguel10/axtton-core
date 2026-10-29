@@ -14,6 +14,7 @@ Ficheros con el formato `NNNN-titulo-corto.md`, añadidos también a la navegaci
 | [0002](0002-historial-de-migraciones-desde-f1.md) | El historial de migraciones empieza de cero en F1 | Cierre de F0 |
 | [0003](0003-versionado-por-etiquetas-y-release-please.md) | Versiones por etiqueta de git, con release-please y commits convencionales | F2 |
 | [0004](0004-produccion-en-coolify.md) | Producción en Coolify, con un Nginx propio y la demo como primera instalación | F2 |
+| [0005](0005-logotipo-del-taller-como-unica-imagen-subida.md) | El logotipo del taller, la única imagen que se sube | F3 |
 
 ## Plantilla
 

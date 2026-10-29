@@ -60,3 +60,4 @@ nav:
       - "0002 — Migraciones desde cero en F1": decisiones/0002-historial-de-migraciones-desde-f1.md
       - "0003 — Versiones por etiqueta, con release-please": decisiones/0003-versionado-por-etiquetas-y-release-please.md
       - "0004 — Producción en Coolify": decisiones/0004-produccion-en-coolify.md
+      - "0005 — El logotipo, la única imagen subida": decisiones/0005-logotipo-del-taller-como-unica-imagen-subida.md

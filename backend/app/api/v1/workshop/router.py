@@ -8,6 +8,7 @@ from app.api.v1.workshop import (
     employees,
     limits,
     search,
+    settings,
     staff,
     vehicles,
     work_orders,
@@ -30,6 +31,7 @@ router = APIRouter(
 router.include_router(employees.router)
 router.include_router(staff.router)
 router.include_router(limits.router)
+router.include_router(settings.router)
 router.include_router(clients.router)
 router.include_router(search.router)
 router.include_router(vehicles.router)

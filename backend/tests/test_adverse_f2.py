@@ -235,6 +235,17 @@ ADMIN_ONLY = {
     ("POST", "/orders/{order_id}/undo"),
     ("POST", "/orders/{order_id}/no-quote"),
     ("PUT", "/orders/{order_id}/payment"),
+    # Configuración del taller (F3 paso 1, RF-02).
+    ("GET", "/settings"),
+    ("PATCH", "/settings"),
+    ("PUT", "/settings/logo"),
+    ("GET", "/settings/logo"),
+    ("DELETE", "/settings/logo"),
+    ("GET", "/labor-rates"),
+    ("POST", "/labor-rates"),
+    ("PATCH", "/labor-rates/{rate_id}"),
+    ("POST", "/labor-rates/{rate_id}/archive"),
+    ("POST", "/labor-rates/{rate_id}/unarchive"),
 }
 
 

@@ -14,7 +14,7 @@ import {
   TableRow,
 } from "@/shared/components/ui/table";
 import { errorMessage } from "@/shared/lib/errors";
-import { formatEur } from "@/shared/money";
+import { formatEur, formatPercentBp } from "@/shared/money";
 
 import { clientName } from "../clients/clientName";
 import { fetchAuditPage, type AuditEntry, type AuditScope } from "./api";
@@ -126,6 +126,8 @@ function show(t: TFunction, field: string, value: unknown): string {
   if (field === "no_quote_reason") return t(`orders.noQuoteReasons.${String(value)}`);
   if (field === "hourly_cost_cents" && typeof value === "number") return formatEur(value);
   if (field === "paid_amount_cents" && typeof value === "number") return formatEur(value);
+  if (field === "hourly_price_cents" && typeof value === "number") return formatEur(value);
+  if (field === "default_vat_bp" && typeof value === "number") return formatPercentBp(value);
   if (field === "payment_status") return t(`payment.statuses.${String(value)}`);
   if (field === "payment_method") return t(`payment.methods.${String(value)}`);
   if (field === "paid_on") return new Intl.DateTimeFormat(i18n.language, { timeZone: "UTC", dateStyle: "medium" }).format(new Date(`${String(value)}T00:00:00Z`));

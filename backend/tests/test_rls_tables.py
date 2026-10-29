@@ -35,6 +35,8 @@ WORKSHOP_TABLES = {
     "diagnosis_versions": "workshop_id",
     "internal_notes": "workshop_id",
     "work_entries": "workshop_id",
+    "labor_rates": "workshop_id",
+    "workshop_logos": "workshop_id",
 }
 
 # Tablas sobre las que axtton_app no tiene DELETE: no se borran nunca, ni por un
@@ -52,6 +54,7 @@ NO_DELETE = {
     "diagnosis_versions",
     "internal_notes",
     "work_entries",
+    "labor_rates",
 }
 # La columna que axtton_app puede actualizar, si no puede todas.
 UPDATABLE_COLUMN = {
@@ -59,6 +62,8 @@ UPDATABLE_COLUMN = {
     "work_order_counters": "last_number",
     "work_entries": "voided_at",
     "work_orders": "version",
+    # Sus datos legales y ajustes, desde 0012settings (RF-02).
+    "workshops": "name",
 }
 
 
@@ -165,6 +170,20 @@ async def seeded(engines: Engines, two_workshops: TwoWorkshops) -> Seeded:
                 ),
                 worklog,
             )
+            await conn.execute(
+                text(
+                    "INSERT INTO labor_rates (workshop_id, name, hourly_price_cents)"
+                    " VALUES (:w, 'Mecánica', 4500)"
+                ),
+                {"w": workshop},
+            )
+            await conn.execute(
+                text(
+                    "INSERT INTO workshop_logos (workshop_id, content, width, height)"
+                    " VALUES (:w, 'png', 1, 1)"
+                ),
+                {"w": workshop},
+            )
         await conn.execute(
             text("INSERT INTO audit_log (action) VALUES ('workshop_created')")
         )
@@ -229,16 +248,16 @@ async def test_r2_with_workshop_a_every_table_returns_only_rows_of_a(
 @pytest.mark.asyncio
 @pytest.mark.parametrize(
     ("table", "column"),
-    # audit_log y workshops no están: axtton_app ni siquiera tiene permiso de
-    # UPDATE sobre ellas (R5 y test_the_app_cannot_change_any_workshop). De las
-    # de NO_DELETE, solo se prueba el UPDATE: el DELETE lo para el permiso.
+    # audit_log no está: axtton_app ni siquiera tiene permiso de UPDATE sobre
+    # ella (R5). workshops sí, desde 0012settings: sus datos (RF-02), solo los
+    # de su taller. De las de NO_DELETE, solo se prueba el UPDATE: el DELETE lo
+    # para el permiso.
     [
         (t, c)
         for t, c in WORKSHOP_TABLES.items()
         if t
         not in {
             "audit_log",
-            "workshops",
             "work_order_status_changes",
             "diagnosis_versions",
             "internal_notes",
@@ -437,6 +456,12 @@ def test_the_database_url_of_the_app_is_not_the_owner() -> None:
     [
         "UPDATE workshops SET status = 'active'",
         "UPDATE workshops SET max_employees_with_access = 1000",
+        # Desde 0012settings cambia sus datos (RF-02), nunca lo de la
+        # plataforma: ni el estado, ni los límites, ni la zona horaria.
+        "UPDATE workshops SET max_clients = 1000000",
+        "UPDATE workshops SET max_orders_per_month = 1000000",
+        "UPDATE workshops SET timezone = 'UTC'",
+        "UPDATE workshops SET signature_retention_months = 60",
         "DELETE FROM workshops",
         "INSERT INTO workshops (name) VALUES ('Otro')",
         "UPDATE users SET kind = 'superadmin'",

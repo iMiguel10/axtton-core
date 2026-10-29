@@ -27,6 +27,7 @@ dev = [
     "ruff",
     "mypy",
     "pypdf>=6.21.2",
+    "hypothesis>=6.170.13",
 ]
 
 [tool.pytest.ini_options]

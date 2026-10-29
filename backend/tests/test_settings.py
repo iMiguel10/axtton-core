@@ -16,9 +16,16 @@ from app.domain.settings import LOGO_MAX_UPLOAD_BYTES
 from app.scripts.reset_data import truncate_all
 from tests.conftest import Engines, TwoWorkshops
 from tests.test_clients import open_workshop
+
+# La prueba de la carrera usa los engines globales sin pasar por el fixture
+# `client`, que es quien los cierra. Sin este fixture (autouse en su módulo, aquí
+# importado), sus conexiones quedaban ligadas a su event loop y la prueba
+# siguiente que los usara fallaba con "attached to a different loop" (CLAUDE.md
+# §8); en la CI, test_superadmins.
 from tests.test_concurrency import (
     GRACE,
     MakeAccount,
+    dispose_global_engines,  # noqa: F401
     employee_with_access,
     finish,
     open_transaction,

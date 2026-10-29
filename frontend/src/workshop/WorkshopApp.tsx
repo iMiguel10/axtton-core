@@ -7,6 +7,7 @@ import {
   LayoutDashboard,
   ScrollText,
   ShieldCheck,
+  Store,
   Users,
   Wallet,
 } from "lucide-react";
@@ -47,6 +48,7 @@ const OrderNewPage = lazy(() => import("./features/orders/OrderNewPage").then((m
 const OrdersPage = lazy(() => import("./features/orders/OrdersPage").then((m) => ({ default: m.OrdersPage })));
 const VehicleDetailPage = lazy(() => import("./features/vehicles/VehicleDetailPage").then((m) => ({ default: m.VehicleDetailPage })));
 const VehicleNewPage = lazy(() => import("./features/vehicles/VehicleNewPage").then((m) => ({ default: m.VehicleNewPage })));
+const SettingsPage = lazy(() => import("./features/settings/SettingsPage").then((m) => ({ default: m.SettingsPage })));
 const VehiclesPage = lazy(() => import("./features/vehicles/VehiclesPage").then((m) => ({ default: m.VehiclesPage })));
 
 export function WorkshopApp() {
@@ -126,6 +128,7 @@ function StaffRoutes() {
     canViewAudit,
     canManageClients,
     canManageOrders,
+    canManageSettings,
   } = useActiveWorkshop();
   const groups: NavGroup[] = [
     {
@@ -138,11 +141,12 @@ function StaffRoutes() {
         { to: "/vehicles", label: t("nav.vehicles"), icon: Car },
       ],
     },
-    ...(canManageEmployees || canViewAudit
+    ...(canManageEmployees || canViewAudit || canManageSettings
       ? [
           {
             label: t("layout.management"),
             items: [
+              ...(canManageSettings ? [{ to: "/settings", label: t("nav.settings"), icon: Store }] : []),
               ...(canManageEmployees
                 ? [{ to: "/employees", label: t("nav.employees"), icon: IdCard }]
                 : []),
@@ -197,6 +201,7 @@ function StaffRoutes() {
         <Route path="/vehicles" element={<VehiclesPage />} />
         {canManageClients && <Route path="/vehicles/new" element={<VehicleNewPage />} />}
         <Route path="/vehicles/:vehicleId" element={<VehicleDetailPage />} />
+        {canManageSettings && <Route path="/settings" element={<SettingsPage />} />}
         {canManageEmployees && <Route path="/employees" element={<EmployeesPage />} />}
         {canViewAudit && (
           <Route

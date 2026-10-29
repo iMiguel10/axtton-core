@@ -19,6 +19,7 @@ from app.models.platform import (
     User,
     Workshop,
 )
+from app.models.settings import LaborRate, WorkshopLogo
 
 __all__ = [
     "AuditEntry",
@@ -27,6 +28,7 @@ __all__ = [
     "Employee",
     "InternalNote",
     "Invitation",
+    "LaborRate",
     "SuperadminInvitation",
     "User",
     "Vehicle",
@@ -36,4 +38,5 @@ __all__ = [
     "WorkOrderCounter",
     "WorkOrderStatusChange",
     "Workshop",
+    "WorkshopLogo",
 ]

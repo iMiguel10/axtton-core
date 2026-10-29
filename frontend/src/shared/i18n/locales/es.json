@@ -55,7 +55,14 @@
       "status_change_undone": "Cambio de estado deshecho",
       "no_quote_marked": "Sin presupuesto",
       "payment_recorded": "Cobro",
-      "client_anonymized": "Cliente anonimizado"
+      "client_anonymized": "Cliente anonimizado",
+      "workshop_settings_updated": "Cambio en los datos del taller",
+      "workshop_logo_updated": "Logotipo cambiado",
+      "workshop_logo_removed": "Logotipo quitado",
+      "labor_rate_created": "Alta de tarifa",
+      "labor_rate_updated": "Cambio en una tarifa",
+      "labor_rate_archived": "Tarifa archivada",
+      "labor_rate_unarchived": "Tarifa recuperada"
     },
     "fields": {
       "email": "Email",
@@ -76,7 +83,19 @@
       "max_employees": "Límite de fichas",
       "max_clients": "Límite de clientes",
       "max_vehicles": "Límite de vehículos",
-      "max_orders_per_month": "Límite de órdenes al mes"
+      "max_orders_per_month": "Límite de órdenes al mes",
+      "legal_name": "Razón social",
+      "tax_id": "NIF",
+      "address": "Dirección",
+      "phone": "Teléfono",
+      "reply_to_email": "Email de respuesta",
+      "industrial_registry_number": "Registro industrial",
+      "default_vat_bp": "IVA por defecto",
+      "quote_validity_business_days": "Validez del presupuesto",
+      "mechanics_see_sale_prices": "Los mecánicos ven importes",
+      "labor_rate": "Tarifa",
+      "hourly_price_cents": "Precio por hora",
+      "is_default": "Por defecto"
     }
   },
   "nav": {
@@ -91,7 +110,8 @@
     "account": "Mi cuenta",
     "workshops": "Talleres",
     "signOut": "Cerrar sesión",
-    "unpaid": "Pendientes de cobro"
+    "unpaid": "Pendientes de cobro",
+    "settings": "Taller"
   },
   "auth": {
     "tagline": "Gestión del taller y seguimiento de cada reparación, en un solo sitio.",
@@ -121,7 +141,9 @@
     "passwordLength": "Al menos 10 caracteres.",
     "passwordsDiffer": "Las contraseñas no coinciden.",
     "amount": "Escribe un importe, por ejemplo 25,50.",
-    "number": "Escribe un número entero dentro de lo razonable."
+    "number": "Escribe un número entero dentro de lo razonable.",
+    "percent": "Escribe un porcentaje entre 0 y 100, por ejemplo 21.",
+    "validity": "Entre 12 y 120 días hábiles."
   },
   "invitation": {
     "title": "Invitación",
@@ -573,7 +595,16 @@
     "employee_record_limit_reached": "El taller ha llegado a su límite de fichas de empleado. Para ampliarlo, habla con quien administra la plataforma.",
     "client_limit_reached": "El taller ha llegado a su límite de clientes. Para ampliarlo, habla con quien administra la plataforma.",
     "vehicle_limit_reached": "El taller ha llegado a su límite de vehículos. Para ampliarlo, habla con quien administra la plataforma.",
-    "order_limit_reached": "El taller ha llegado a su límite de órdenes de este mes. Para ampliarlo, habla con quien administra la plataforma."
+    "order_limit_reached": "El taller ha llegado a su límite de órdenes de este mes. Para ampliarlo, habla con quien administra la plataforma.",
+    "invalid_logo": "El logotipo tiene que ser una imagen PNG o JPEG.",
+    "logo_too_large": "El logotipo ocupa demasiado: como mucho 300 KB.",
+    "logo_not_found": "El taller no tiene logotipo.",
+    "labor_rate_not_found": "Esa tarifa no existe.",
+    "labor_rate_name_taken": "Ya hay una tarifa con ese nombre.",
+    "labor_rate_default_conflict": "Otra persona ha cambiado la tarifa por defecto a la vez. Vuelve a intentarlo.",
+    "labor_rate_default_required": "Siempre hay una tarifa por defecto: marca antes otra como tal.",
+    "labor_rate_archived": "Esa tarifa está archivada: recupérala para editarla.",
+    "labor_rate_limit_reached": "Como mucho 20 tarifas vigentes. Archiva alguna que ya no uses."
   },
   "palette": {
     "open": "Buscar en el taller",
@@ -594,5 +625,56 @@
       "vehicles": "Vehículos",
       "orders_per_month": "Órdenes al mes"
     }
+  },
+  "settings": {
+    "legalTitle": "Datos del taller",
+    "legalHint": "Salen en los presupuestos y en los documentos que recibe el cliente. La normativa exige el NIF, la dirección y el número de registro industrial.",
+    "name": "Nombre comercial",
+    "legalName": "Razón social",
+    "taxId": "NIF",
+    "registry": "Número de registro industrial",
+    "address": "Dirección",
+    "phone": "Teléfono",
+    "replyTo": "Email de respuesta a los clientes",
+    "quotesTitle": "Presupuestos",
+    "defaultVat": "IVA por defecto (%)",
+    "validity": "Validez del presupuesto (días hábiles)",
+    "validityHint": "Como mínimo 12, el mínimo legal. Se cuentan de lunes a viernes sin los festivos nacionales: si en tu comunidad o tu localidad hay festivos propios, amplía el plazo.",
+    "mechanicsSeePrices": "Los mecánicos ven los importes",
+    "mechanicsSeePricesHint": "Precios de venta en los presupuestos y en las piezas. Desactívalo si prefieres que solo los vea la administración.",
+    "timezone": "Zona horaria: {{timezone}}. La fija quien administra la plataforma.",
+    "saved": "Datos del taller guardados",
+    "logoTitle": "Logotipo",
+    "logoHint": "Sale en la cabecera de los presupuestos. PNG o JPEG de hasta 300 KB; se guarda reducido.",
+    "logoAlt": "Logotipo del taller",
+    "noLogo": "Sin logotipo",
+    "uploadLogo": "Subir logotipo",
+    "replaceLogo": "Cambiar logotipo",
+    "removeLogo": "Quitar logotipo",
+    "confirmRemoveLogo": "Los presupuestos que se generen a partir de ahora saldrán sin logotipo.",
+    "logoSaved": "Logotipo guardado",
+    "logoRemoved": "Logotipo quitado"
+  },
+  "rates": {
+    "title": "Tarifas de mano de obra",
+    "hint": "Precio por hora, sin IVA. Al usarla en un presupuesto se copia: cambiarla después no cambia los presupuestos ya hechos.",
+    "add": "Añadir",
+    "added": "Tarifa añadida",
+    "saved": "Tarifa guardada",
+    "archived": "Tarifa archivada",
+    "unarchived": "Tarifa recuperada",
+    "name": "Nombre",
+    "namePlaceholder": "Mecánica",
+    "price": "Precio por hora (€)",
+    "perHour": "{{price}} / hora",
+    "default": "Por defecto",
+    "makeDefault": "Usar por defecto",
+    "edit": "Editar",
+    "archive": "Archivar",
+    "unarchive": "Recuperar",
+    "showArchived": "Ver archivadas",
+    "none": "Aún no hay tarifas",
+    "noneHint": "Añade al menos una para poder presupuestar mano de obra.",
+    "noneArchived": "No hay tarifas archivadas"
   }
 }

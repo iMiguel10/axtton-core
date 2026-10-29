@@ -26,28 +26,42 @@ export class ApiError extends Error {
 
 type RequestOptions = {
   method?: "GET" | "POST" | "PATCH" | "PUT" | "DELETE";
+  /** Se envía como JSON; un `Blob` (una imagen), tal cual y con su tipo. */
   body?: unknown;
   /** El taller activo: va en X-Workshop-Id y el backend lo valida (A6). */
   workshopId?: string;
 };
 
-export async function apiRequest<T>(
+async function send(
   path: string,
-  { method = "GET", body, workshopId }: RequestOptions = {},
-): Promise<T> {
+  { method = "GET", body, workshopId }: RequestOptions,
+): Promise<Response> {
   const headers: Record<string, string> = {};
-  if (body !== undefined) headers["Content-Type"] = "application/json";
+  const raw = body instanceof Blob;
+  if (raw) headers["Content-Type"] = body.type;
+  else if (body !== undefined) headers["Content-Type"] = "application/json";
   if (workshopId) headers["X-Workshop-Id"] = workshopId;
 
   const response = await fetch(`/api/v1${path}`, {
     method,
     headers,
-    body: body === undefined ? undefined : JSON.stringify(body),
+    body: raw ? body : body === undefined ? undefined : JSON.stringify(body),
   });
   if (!response.ok) {
     const data = await response.json().catch(() => null);
     throw new ApiError(response.status, data?.code ?? null, response.statusText);
   }
+  return response;
+}
+
+export async function apiRequest<T>(path: string, options: RequestOptions = {}): Promise<T> {
+  const response = await send(path, options);
   if (response.status === 204) return undefined as T;
   return (await response.json()) as T;
+}
+
+/** Lo que no es JSON (una imagen). Con `fetch`, porque un `<img src>` no puede
+ * llevar la cabecera del taller activo. */
+export async function apiBlob(path: string, options: RequestOptions = {}): Promise<Blob> {
+  return (await send(path, options)).blob();
 }

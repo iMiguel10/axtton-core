@@ -49,6 +49,9 @@ class Action(StrEnum):
     # Ver los límites del taller y lo gastado (§10): solo el administrador. Los
     # cambia el superadministrador, que no es de ningún taller.
     VIEW_LIMITS = "view_limits"
+    # Configurar el taller: datos legales, ajustes, logotipo y tarifas de mano de
+    # obra (RF-02; especificación §3, "fijar precios"): solo el administrador.
+    MANAGE_WORKSHOP_SETTINGS = "manage_workshop_settings"
 
 
 ROLE_PERMISSIONS: dict[Role, frozenset[Action]] = {

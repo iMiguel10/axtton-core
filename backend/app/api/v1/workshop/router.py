@@ -7,6 +7,7 @@ from app.api.v1.workshop import (
     clients,
     employees,
     limits,
+    quotes,
     search,
     settings,
     staff,
@@ -37,6 +38,7 @@ router.include_router(search.router)
 router.include_router(vehicles.router)
 router.include_router(work_orders.router)
 router.include_router(worklog.router)
+router.include_router(quotes.router)
 router.include_router(audit.router)
 router.include_router(account.router)
 

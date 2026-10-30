@@ -111,7 +111,8 @@
     "workshops": "Workshops",
     "signOut": "Sign out",
     "unpaid": "Awaiting payment",
-    "settings": "Workshop"
+    "settings": "Workshop",
+    "quotes": "Quotes"
   },
   "auth": {
     "tagline": "Run the workshop and follow every repair, in one place.",
@@ -604,7 +605,17 @@
     "labor_rate_default_conflict": "Someone else changed the default rate at the same time. Try again.",
     "labor_rate_default_required": "There is always a default rate: mark another one first.",
     "labor_rate_archived": "That rate is archived: restore it to edit it.",
-    "labor_rate_limit_reached": "20 current rates at most. Archive one you no longer use."
+    "labor_rate_limit_reached": "20 current rates at most. Archive one you no longer use.",
+    "quote_not_found": "That quote does not exist.",
+    "quote_draft_exists": "This order already has a draft quote: finish it or discard it.",
+    "quote_version_limit_reached": "This order already has 20 quote versions, the maximum.",
+    "quote_not_draft": "This version was already sent: it cannot change. To correct it, create a new version.",
+    "invalid_quantity": "A quantity must be greater than zero, with three decimals at most.",
+    "invalid_price": "A price cannot be negative.",
+    "invalid_vat": "VAT must be between 0 and 100%.",
+    "invalid_discount": "A discount must be between 0 and 100%.",
+    "global_discount_exceeds_subtotal": "The overall discount cannot exceed the sum of the lines.",
+    "too_many_lines": "A quote has 200 lines at most."
   },
   "palette": {
     "open": "Search the workshop",
@@ -676,5 +687,95 @@
     "none": "No rates yet",
     "noneHint": "Add at least one to quote labour.",
     "noneArchived": "No archived rates"
+  },
+  "quotes": {
+    "tab": "Quote",
+    "new": "Prepare quote",
+    "newVersion": "Correct: new version",
+    "newVersionHint": "Copies the latest version; the sent one does not change.",
+    "none": "No quote yet",
+    "noneHint": "The administrator prepares it here: labour, parts and other items.",
+    "version": "Version {{number}}",
+    "draftHint": "Draft: it can change until it is sent.",
+    "sentOn": "Sent on {{sent}} · valid until {{until}}",
+    "pricesHidden": "The workshop does not show prices to the floor staff.",
+    "noLines": "No lines yet.",
+    "statuses": {
+      "draft": "Draft",
+      "sent": "Sent",
+      "approved": "Approved",
+      "rejected": "Rejected",
+      "expired": "Expired",
+      "superseded": "Superseded",
+      "cancelled": "Cancelled"
+    },
+    "kinds": {
+      "labor": "Labour",
+      "part": "Part",
+      "other": "Other"
+    },
+    "add": {
+      "labor": "Labour",
+      "part": "Part",
+      "other": "Other item"
+    },
+    "conditions": {
+      "new": "New",
+      "used": "Used",
+      "reconditioned": "Reconditioned",
+      "non_specific": "Not model-specific"
+    },
+    "conditionHint": "It will be marked on the quote: approving it is the client's consent (RF-38).",
+    "description": "Item",
+    "reference": "Reference",
+    "condition": "Part condition",
+    "quantity": "Quantity",
+    "hours": "Hours",
+    "unitPrice": "Price (€)",
+    "pricePerHour": "Price/hour (€)",
+    "lineDiscount": "Discount (%)",
+    "vatRate": "VAT (%)",
+    "removeLine": "Remove line {{number}}",
+    "globalDiscount": "Overall discount",
+    "discountKind": "Overall discount type",
+    "discountKinds": {
+      "none": "No discount",
+      "percent": "Percentage (%)",
+      "amount": "Amount (€)"
+    },
+    "subtotal": "Sum of the lines",
+    "base": "Taxable base {{rate}}",
+    "vat": "VAT {{rate}}",
+    "total": "Total",
+    "totalsAfterSave": "There are unsaved changes: totals are recalculated on save.",
+    "fixLines": "Check the marked lines: an item is missing or a number is not valid.",
+    "reload": "Load theirs",
+    "saved": "Quote saved",
+    "discard": "Discard draft",
+    "discarded": "Draft discarded",
+    "confirmDiscard": "Version {{number}} and all its lines will be deleted. It was never sent.",
+    "conflict": "Someone else saved this draft while you were editing it. What you wrote is still here: load theirs or save yours over it.",
+    "overwrite": "Save mine over it",
+    "list": {
+      "view": "Show",
+      "views": {
+        "pending": "Awaiting reply",
+        "expired": "Expired",
+        "drafts": "Drafts",
+        "all": "All"
+      },
+      "none": {
+        "pending": "No quote is awaiting a reply",
+        "expired": "No quote has expired",
+        "drafts": "No drafts",
+        "all": "No quotes yet"
+      },
+      "noneHint": "They are prepared from the \"Quote\" tab of each order.",
+      "version": "Version",
+      "when": "Deadline",
+      "validUntil": "Valid until",
+      "updated": "Changed",
+      "loadMore": "Show more"
+    }
   }
 }

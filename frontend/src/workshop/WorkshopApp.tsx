@@ -3,6 +3,7 @@ import {
   Building2,
   Car,
   ClipboardList,
+  FileText,
   IdCard,
   LayoutDashboard,
   ScrollText,
@@ -48,6 +49,7 @@ const OrderNewPage = lazy(() => import("./features/orders/OrderNewPage").then((m
 const OrdersPage = lazy(() => import("./features/orders/OrdersPage").then((m) => ({ default: m.OrdersPage })));
 const VehicleDetailPage = lazy(() => import("./features/vehicles/VehicleDetailPage").then((m) => ({ default: m.VehicleDetailPage })));
 const VehicleNewPage = lazy(() => import("./features/vehicles/VehicleNewPage").then((m) => ({ default: m.VehicleNewPage })));
+const QuotesPage = lazy(() => import("./features/quotes/QuotesPage").then((m) => ({ default: m.QuotesPage })));
 const SettingsPage = lazy(() => import("./features/settings/SettingsPage").then((m) => ({ default: m.SettingsPage })));
 const VehiclesPage = lazy(() => import("./features/vehicles/VehiclesPage").then((m) => ({ default: m.VehiclesPage })));
 
@@ -136,6 +138,7 @@ function StaffRoutes() {
       items: [
         { to: "/", label: t("nav.home"), icon: LayoutDashboard },
         { to: "/orders", label: t("nav.orders"), icon: ClipboardList },
+        { to: "/quotes", label: t("nav.quotes"), icon: FileText },
         { to: "/orders/unpaid", label: t("nav.unpaid"), icon: Wallet },
         { to: "/clients", label: t("nav.clients"), icon: Users },
         { to: "/vehicles", label: t("nav.vehicles"), icon: Car },
@@ -194,6 +197,7 @@ function StaffRoutes() {
         <Route path="/orders" element={<OrdersPage />} />
         {canManageOrders && <Route path="/orders/new" element={<OrderNewPage />} />}
         <Route path="/orders/unpaid" element={<UnpaidOrdersPage />} />
+        <Route path="/quotes" element={<QuotesPage />} />
         <Route path="/orders/:orderId" element={<OrderDetailPage />} />
         <Route path="/clients" element={<ClientsPage />} />
         {canManageClients && <Route path="/clients/new" element={<ClientNewPage />} />}

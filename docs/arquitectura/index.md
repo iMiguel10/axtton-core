@@ -559,6 +559,17 @@ sequenceDiagram
 
 **El paso que más se salta:** guardar los totales al enviar. Si se recalculan al mostrar, un cambio en la regla de redondeo o en el IVA de una pieza cambiaría lo que el cliente ya aprobó.
 
+*Al construirlo (F3 paso 5, `services/quotes.py::send_quote` y `cancel_quote`):*
+
+- **Desde dónde se envía:** con la orden en `en_diagnostico` (el presupuesto inicial), en `en_reparacion` (un trabajo adicional) o en `pendiente_aprobacion` (para corregir la versión que espera respuesta, que pasa a sustituida y le deja su estado de origen a la nueva). Desde cualquier otro estado, 409 `quote_cannot_be_sent_now`. Un borrador sin líneas no se envía.
+- **El orden de las escrituras** lo imponen los triggers: (1) la versión enviada anterior pasa a sustituida; (2) los importes de las líneas, en su propio `flush`, con la versión aún en borrador; (3) la versión, con sus totales, la validez (`domain/business_days.py`, con los días del taller y en su zona), el estado de origen y la versión vigente del diagnóstico; (4) el estado de la orden, con su cambio `quote_sent` en el historial. Si la orden ya esperaba respuesta, no se escribe un cambio nuevo.
+- **Todo lo que se lee va antes de tocar la versión**: una consulta a mitad provoca un *autoflush* de la versión "enviada" sin sus totales, y el CHECK `ck_quotes_sent_fields` la rechaza. Pasó al construirlo.
+- **Anular** exige un motivo y vale para una versión enviada (también pasado su plazo) o marcada como caducada. Si era la que esperaba respuesta, la orden vuelve a su estado de origen con un cambio `quote_cancelled` que lleva el motivo como nota.
+- **Lo que el presupuesto cambia en la orden:** una orden con alguna versión enviada (aunque ya esté anulada) no se cancela (409 `work_order_has_quotes`): para un cliente que no sigue adelante está "lista · sin reparar". Los cambios del presupuesto no se deshacen (causa automática), y mientras la orden espera respuesta no hay ningún cambio manual. Un borrador nunca enviado no impide cancelar, y deja de salir en el listado.
+- **Renovar** (`renew_quote`): crea la versión siguiente copiando la enviada (o caducada) y la envía en el mismo paso, con la orden bloqueada `FOR UPDATE` durante todo. La renovada pasa a sustituida y le deja su estado de origen a la nueva, que es la que espera respuesta. Es ampliar el plazo sin tocar lo enviado: cambiar el `valid_until` de una versión enviada lo impediría el trigger y rompería RF-55. Con un borrador abierto no se renueva (409 `quote_draft_exists`). La versión que se sustituye, al enviar o al renovar, es la que espera respuesta, enviada o ya marcada como caducada (`awaiting_version`).
+- **Concurrencia** (`test_quote_send.py`, dos transacciones reales): una renovación y una corrección a la vez dan versiones consecutivas; un envío y un guardado del mismo borrador se ponen en fila y el envío recibe un 409; dos envíos del mismo borrador lo envían una sola vez; cancelar la orden mientras se envía su presupuesto se rechaza.
+- **Ni aviso ni caducidad escrita todavía:** el email al cliente llega con el worker (F5), y hasta entonces nadie marca `expired`. La ficha y el listado enseñan caducada una versión enviada fuera de plazo, y el trigger de las decisiones no deja aprobarla.
+
 ### 7.2 Entrar en el portal con un enlace mágico
 
 ```mermaid
@@ -749,7 +760,7 @@ Como en Applications Tracker (su decisión 0023). Construido en F2 ([decisión 0
 | **F5** | `worker`, bandeja de avisos, despachador, presupuesto enviado y vehículo listo; B1–B6 |
 | **F6** | Hoja de recepción con firma (§7.3), resumen de entrega, informe de actuaciones, descarga en el portal; prueba de punta a punta en CI |
 | **F7** | Catálogo, `stock_movements`, `used_parts`, líneas desde el catálogo, unidades comprometidas |
-| **F8** | Citas y su conversión en orden, recordatorios, vencimientos, borrado de firmas con su aviso; B7–B11 |
+| **F8** | Citas y su conversión en orden, recordatorios, vencimientos, borrado de firmas con su aviso; B7–B11. *Añadido en F3:* el calendario del taller (horario, festivos propios y días de cierre). Cada día se marca como *festivo*, que cuenta para la validez del presupuesto (`domain/business_days.py` lo recibirá como parámetro) y para las citas, o como *cierre*, que solo cuenta para las citas y las órdenes paradas: unas vacaciones no hacen inhábil un día a efectos legales |
 | **F9** | Resumen entre talleres, exportaciones, datos de demostración, copias de seguridad con restauración probada, prueba de rendimiento, manual |
 
 ## 12. Riesgos de esta arquitectura

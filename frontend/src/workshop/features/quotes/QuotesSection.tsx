@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { FileText, Plus, Trash2 } from "lucide-react";
+import { FileText, Plus, RefreshCw, Send, Trash2 } from "lucide-react";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 
@@ -8,6 +8,7 @@ import { EmptyState } from "@/shared/components/EmptyState";
 import { LinesSkeleton } from "@/shared/components/Loading";
 import { notify } from "@/shared/components/Toaster";
 import { Select } from "@/shared/components/form/Select";
+import { Textarea } from "@/shared/components/form/Textarea";
 import { Badge } from "@/shared/components/ui/badge";
 import { Button } from "@/shared/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/shared/components/ui/card";
@@ -44,7 +45,16 @@ import {
  * a la más antigua, y el borrador editable para quien los prepara. Los importes
  * los calcula siempre la API: el navegador solo los pinta (RNF-14).
  */
-export function QuotesSection({ orderId, closed }: { orderId: string; closed: boolean }) {
+export function QuotesSection({
+  orderId,
+  closed,
+  onOrderChanged,
+}: {
+  orderId: string;
+  closed: boolean;
+  /** Enviar o anular cambian el estado de la orden: la ficha se recarga. */
+  onOrderChanged: () => unknown;
+}) {
   const { t } = useTranslation();
   const { workshopId, canManageQuotes } = useActiveWorkshop();
   const api = quotesApi(workshopId);
@@ -93,14 +103,34 @@ export function QuotesSection({ orderId, closed }: { orderId: string; closed: bo
           quote.status === "draft" && canManageQuotes && !closed ? (
             // Por id, no por versión: guardar sube la versión y remontar el
             // editor borraría lo que se está escribiendo (RNF-15).
-            <DraftEditor key={quote.id} quote={quote} queryKey={queryKey} />
+            <DraftEditor key={quote.id} quote={quote} queryKey={queryKey} onOrderChanged={onOrderChanged} />
           ) : (
-            <QuoteCard key={quote.id} quote={quote} />
+            <QuoteCard
+              key={quote.id}
+              quote={quote}
+              // Anular es del administrador, con la orden abierta, y de una
+              // versión enviada (también si ya pasó su plazo).
+              canCancel={canManageQuotes && !closed && quote.status === "sent"}
+              // Renovar crea una versión nueva: no con una corrección a medias.
+              canRenew={canManageQuotes && !closed && quote.status === "sent" && !draft}
+              queryKey={queryKey}
+              onOrderChanged={onOrderChanged}
+            />
           ),
         )
       )}
     </div>
   );
+}
+
+/**
+ * El último día en que vale: `valid_until` es la medianoche que lo cierra (el
+ * instante en que deja de valer), así que se enseña el día anterior a ese
+ * instante, en la zona del taller.
+ */
+function lastValidDay(dates: ReturnType<typeof useDates>, validUntil: string | null): string | null {
+  if (!validUntil) return null;
+  return dates.date(new Date(Date.parse(validUntil) - 1).toISOString());
 }
 
 function QuoteHeader({ quote }: { quote: Quote }) {
@@ -110,15 +140,21 @@ function QuoteHeader({ quote }: { quote: Quote }) {
     <CardHeader>
       <CardTitle className="flex flex-wrap items-center gap-2">
         {t("quotes.version", { number: quote.version_no })}
-        <Badge variant={quote.status === "draft" ? "outline" : "secondary"}>
-          {t(`quotes.statuses.${quote.status}`)}
-        </Badge>
+        {/* Fuera de plazo se enseña caducada aunque su estado aún diga
+            "enviada": nadie la marca hasta el worker (F5). */}
+        {quote.expired ? (
+          <Badge variant="destructive">{t("quotes.statuses.expired")}</Badge>
+        ) : (
+          <Badge variant={quote.status === "draft" ? "outline" : "secondary"}>
+            {t(`quotes.statuses.${quote.status}`)}
+          </Badge>
+        )}
       </CardTitle>
       <CardDescription>
         {quote.sent_at
           ? t("quotes.sentOn", {
               sent: dates.dateTime(quote.sent_at),
-              until: dates.dateTime(quote.valid_until),
+              until: lastValidDay(dates, quote.valid_until),
             })
           : t("quotes.draftHint")}
       </CardDescription>
@@ -127,11 +163,65 @@ function QuoteHeader({ quote }: { quote: Quote }) {
 }
 
 /** Una versión que ya no se edita: lo que se envió, tal como se guardó. */
-function QuoteCard({ quote }: { quote: Quote }) {
+function QuoteCard({
+  quote,
+  canCancel,
+  canRenew,
+  queryKey,
+  onOrderChanged,
+}: {
+  quote: Quote;
+  canCancel: boolean;
+  canRenew: boolean;
+  queryKey: unknown[];
+  onOrderChanged: () => unknown;
+}) {
   const { t } = useTranslation();
+  const { workshopId } = useActiveWorkshop();
+  const queryClient = useQueryClient();
+  const [cancelling, setCancelling] = useState(false);
+  const [reason, setReason] = useState("");
+  // La validez del taller, para decir cuánto valdrá la renovada.
+  const settings = useQuery({
+    queryKey: ["settings", workshopId],
+    queryFn: settingsApi(workshopId).get,
+    enabled: canRenew,
+  });
+  const refresh = () =>
+    Promise.all([
+      queryClient.invalidateQueries({ queryKey }),
+      queryClient.invalidateQueries({ queryKey: ["quotes-list", workshopId] }),
+      onOrderChanged(),
+    ]);
+  const cancel = useMutation({
+    mutationFn: () => quotesApi(workshopId).cancel(quote.id, quote.version, reason.trim()),
+    onSuccess: () => {
+      setCancelling(false);
+      setReason("");
+      notify(t("quotes.cancelled"));
+    },
+    onSettled: refresh,
+  });
+  // Ampliar el plazo sin tocar lo enviado: una copia, enviada con validez nueva.
+  const renew = useMutation({
+    mutationFn: () => quotesApi(workshopId).renew(quote.id, quote.version),
+    onSuccess: () => notify(t("quotes.renewed")),
+    onSettled: refresh,
+  });
   return (
     <Card>
       <QuoteHeader quote={quote} />
+      {quote.status === "sent" && !quote.expired && (
+        <p className="text-muted-foreground -mt-2 px-6 text-sm">{t("quotes.waitingHint")}</p>
+      )}
+      {quote.expired && (
+        <p className="text-destructive -mt-2 px-6 text-sm">{t("quotes.expiredHint")}</p>
+      )}
+      {quote.status === "cancelled" && quote.cancel_reason && (
+        <p className="text-muted-foreground -mt-2 px-6 text-sm">
+          {t("quotes.cancelledBecause", { reason: quote.cancel_reason })}
+        </p>
+      )}
       <CardContent className="grid gap-4">
         {quote.prices_hidden && (
           <p className="text-muted-foreground text-sm">{t("quotes.pricesHidden")}</p>
@@ -167,6 +257,60 @@ function QuoteCard({ quote }: { quote: Quote }) {
           </ul>
         )}
         {quote.totals && <Totals totals={quote.totals} />}
+        {canCancel &&
+          (cancelling ? (
+            // Anular exige un motivo (§6), como cancelar una orden.
+            <form
+              className="grid gap-2"
+              onSubmit={(event) => {
+                event.preventDefault();
+                cancel.mutate();
+              }}
+            >
+              <Label htmlFor={`cancel-${quote.id}`}>{t("quotes.cancelReason")}</Label>
+              <Textarea
+                id={`cancel-${quote.id}`}
+                autoFocus
+                value={reason}
+                onChange={(event) => setReason(event.target.value)}
+              />
+              <div className="flex flex-wrap gap-2">
+                <Button type="submit" variant="destructive" size="sm" disabled={!reason.trim() || cancel.isPending}>
+                  {t("quotes.cancel")}
+                </Button>
+                <Button type="button" variant="ghost" size="sm" onClick={() => setCancelling(false)}>
+                  {t("common.cancel")}
+                </Button>
+              </div>
+            </form>
+          ) : (
+            <div className="flex flex-wrap gap-2">
+              {canRenew && (
+                <ConfirmButton
+                  variant={quote.expired ? "default" : "outline"}
+                  size="sm"
+                  disabled={renew.isPending}
+                  title={t("quotes.renewTitle", { number: quote.version_no })}
+                  description={t("quotes.confirmRenew", {
+                    days: settings.data?.quote_validity_business_days ?? 12,
+                  })}
+                  confirmLabel={t("quotes.renew")}
+                  onConfirm={() => renew.mutate()}
+                >
+                  <RefreshCw aria-hidden />
+                  {t("quotes.renew")}
+                </ConfirmButton>
+              )}
+              <Button variant="outline" size="sm" onClick={() => setCancelling(true)}>
+                {t("quotes.cancel")}
+              </Button>
+            </div>
+          ))}
+        {(cancel.isError || renew.isError) && (
+          <p role="alert" className="text-destructive text-sm">
+            {errorMessage(t, cancel.error ?? renew.error)}
+          </p>
+        )}
       </CardContent>
     </Card>
   );
@@ -286,7 +430,15 @@ function toInput(lines: LineDraft[], discount: Discount): DraftInput | { invalid
   return invalid.size ? { invalid } : { lines: parsed, global_discount: globalDiscount };
 }
 
-function DraftEditor({ quote, queryKey }: { quote: Quote; queryKey: unknown[] }) {
+function DraftEditor({
+  quote,
+  queryKey,
+  onOrderChanged,
+}: {
+  quote: Quote;
+  queryKey: unknown[];
+  onOrderChanged: () => unknown;
+}) {
   const { t } = useTranslation();
   const { workshopId } = useActiveWorkshop();
   const api = quotesApi(workshopId);
@@ -323,6 +475,13 @@ function DraftEditor({ quote, queryKey }: { quote: Quote; queryKey: unknown[] })
     mutationFn: () => api.discard(quote.id, baseVersion),
     onSuccess: () => notify(t("quotes.discarded")),
     onSettled: refresh,
+  });
+  // Enviar congela lo guardado: con cambios sin guardar no se ofrece, para que
+  // no se envíe algo distinto de lo que se ve.
+  const send = useMutation({
+    mutationFn: () => api.send(quote.id, baseVersion),
+    onSuccess: () => notify(t("quotes.sent")),
+    onSettled: () => Promise.all([refresh(), onOrderChanged()]),
   });
   // Otra persona guardó el borrador mientras se editaba: lo escrito sigue aquí
   // (no se remonta el editor) y se elige qué hacer, como con el diagnóstico.
@@ -450,9 +609,9 @@ function DraftEditor({ quote, queryKey }: { quote: Quote; queryKey: unknown[] })
             </div>
           </div>
         ) : (
-          (save.isError || discard.isError) && (
+          (save.isError || discard.isError || send.isError) && (
             <p role="alert" className="text-destructive text-sm">
-              {errorMessage(t, save.error ?? discard.error)}
+              {errorMessage(t, save.error ?? discard.error ?? send.error)}
             </p>
           )
         )}
@@ -470,6 +629,18 @@ function DraftEditor({ quote, queryKey }: { quote: Quote; queryKey: unknown[] })
           <Button disabled={save.isPending || !dirty} onClick={() => submit()}>
             {t("common.save")}
           </Button>
+          <ConfirmButton
+            disabled={dirty || lines.length === 0 || send.isPending}
+            title={t("quotes.sendTitle", { number: quote.version_no })}
+            description={t("quotes.confirmSend", {
+              days: workshop.data?.quote_validity_business_days ?? 12,
+            })}
+            confirmLabel={t("quotes.send")}
+            onConfirm={() => send.mutate()}
+          >
+            <Send aria-hidden />
+            {t("quotes.send")}
+          </ConfirmButton>
           <ConfirmButton
             variant="ghost"
             disabled={discard.isPending}

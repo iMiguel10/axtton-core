@@ -126,6 +126,7 @@ function show(t: TFunction, field: string, value: unknown): string {
   if (field === "no_quote_reason") return t(`orders.noQuoteReasons.${String(value)}`);
   if (field === "hourly_cost_cents" && typeof value === "number") return formatEur(value);
   if (field === "paid_amount_cents" && typeof value === "number") return formatEur(value);
+  if (field === "total_cents" && typeof value === "number") return formatEur(value);
   if (field === "hourly_price_cents" && typeof value === "number") return formatEur(value);
   if (field === "default_vat_bp" && typeof value === "number") return formatPercentBp(value);
   if (field === "payment_status") return t(`payment.statuses.${String(value)}`);

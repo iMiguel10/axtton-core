@@ -12,6 +12,7 @@ from app.domain.permissions import Action
 from app.domain.work_orders import order_code
 from app.schemas.clients import VersionOnly
 from app.schemas.quotes import (
+    QuoteCancel,
     QuoteCreated,
     QuoteDraftSave,
     QuoteLineRead,
@@ -112,6 +113,7 @@ def _read(view: QuoteView) -> QuoteRead:
             else None
         ),
         prices_hidden=hidden,
+        expired=view.expired,
         version=quote.version,
     )
 
@@ -157,3 +159,48 @@ async def discard_draft(quote_id: UUID, body: VersionOnly, workshop: Manager) ->
     await quote_service.discard_draft(
         workshop.session, quote_id, expected_version=body.version
     )
+
+
+@router.post("/quotes/{quote_id}/send", status_code=status.HTTP_204_NO_CONTENT)
+async def send_quote(quote_id: UUID, body: VersionOnly, workshop: Manager) -> None:
+    """Envía el borrador: queda congelado con sus totales y la orden pasa a
+    esperar la respuesta del cliente (arquitectura §7.1)."""
+    await quote_service.send_quote(
+        workshop.session,
+        workshop.workshop_id,
+        workshop.user_id,
+        workshop.employee_id,
+        quote_id,
+        expected_version=body.version,
+    )
+
+
+@router.post("/quotes/{quote_id}/cancel", status_code=status.HTTP_204_NO_CONTENT)
+async def cancel_quote(quote_id: UUID, body: QuoteCancel, workshop: Manager) -> None:
+    """Anula una versión enviada, con motivo (especificación §6)."""
+    await quote_service.cancel_quote(
+        workshop.session,
+        workshop.workshop_id,
+        workshop.user_id,
+        workshop.employee_id,
+        quote_id,
+        expected_version=body.version,
+        reason=body.reason,
+    )
+
+
+@router.post("/quotes/{quote_id}/renew", status_code=status.HTTP_201_CREATED)
+async def renew_quote(
+    quote_id: UUID, body: VersionOnly, workshop: Manager
+) -> QuoteCreated:
+    """Renueva una versión enviada (caducada o no): la siguiente, igual y con
+    una validez nueva, enviada en el acto. La renovada no cambia."""
+    renewed = await quote_service.renew_quote(
+        workshop.session,
+        workshop.workshop_id,
+        workshop.user_id,
+        workshop.employee_id,
+        quote_id,
+        expected_version=body.version,
+    )
+    return QuoteCreated(id=renewed)

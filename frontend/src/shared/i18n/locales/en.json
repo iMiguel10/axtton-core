@@ -62,7 +62,10 @@
       "labor_rate_created": "Rate added",
       "labor_rate_updated": "Rate changed",
       "labor_rate_archived": "Rate archived",
-      "labor_rate_unarchived": "Rate restored"
+      "labor_rate_unarchived": "Rate restored",
+      "quote_sent": "Quote sent",
+      "quote_cancelled": "Quote cancelled",
+      "quote_renewed": "Quote renewed"
     },
     "fields": {
       "email": "Email",
@@ -95,7 +98,10 @@
       "mechanics_see_sale_prices": "Mechanics see prices",
       "labor_rate": "Rate",
       "hourly_price_cents": "Hourly price",
-      "is_default": "Default"
+      "is_default": "Default",
+      "quote_version": "Version",
+      "total_cents": "Total",
+      "cancel_reason": "Reason"
     }
   },
   "nav": {
@@ -615,7 +621,12 @@
     "invalid_vat": "VAT must be between 0 and 100%.",
     "invalid_discount": "A discount must be between 0 and 100%.",
     "global_discount_exceeds_subtotal": "The overall discount cannot exceed the sum of the lines.",
-    "too_many_lines": "A quote has 200 lines at most."
+    "too_many_lines": "A quote has 200 lines at most.",
+    "quote_cannot_be_sent_now": "A quote is sent while the order is being diagnosed, during the repair (additional work) or to correct one awaiting a reply.",
+    "quote_empty": "A quote without lines is not sent.",
+    "quote_not_cancellable": "Only a sent version that has not been decided or superseded can be cancelled.",
+    "work_order_has_quotes": "The order has sent quotes: it cannot be cancelled. If the client does not go ahead, deliver it unrepaired.",
+    "quote_not_renewable": "Only a sent version awaiting a reply can be renewed."
   },
   "palette": {
     "open": "Search the workshop",
@@ -776,6 +787,20 @@
       "validUntil": "Valid until",
       "updated": "Changed",
       "loadMore": "Show more"
-    }
+    },
+    "send": "Send",
+    "sendTitle": "Send version {{number}}",
+    "confirmSend": "It is frozen with these amounts and the order waits for the client reply. It will be valid for {{days}} business days. To change anything later, a new version is created.",
+    "sent": "Quote sent",
+    "waitingHint": "Waiting for the client reply. To change it, create a new version: this one will be superseded.",
+    "expiredHint": "Its validity period has passed: it can no longer be approved. Renew it to extend the deadline, correct it with a new version or cancel it.",
+    "cancel": "Cancel",
+    "cancelReason": "Reason for cancelling",
+    "cancelled": "Quote cancelled",
+    "cancelledBecause": "Cancelled: {{reason}}",
+    "renew": "Renew",
+    "renewTitle": "Renew version {{number}}",
+    "confirmRenew": "A copy with the same lines and prices is sent, valid for {{days}} business days from today. This version does not change: it is superseded, with its date and amounts.",
+    "renewed": "Quote renewed"
   }
 }

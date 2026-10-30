@@ -62,7 +62,10 @@
       "labor_rate_created": "Alta de tarifa",
       "labor_rate_updated": "Cambio en una tarifa",
       "labor_rate_archived": "Tarifa archivada",
-      "labor_rate_unarchived": "Tarifa recuperada"
+      "labor_rate_unarchived": "Tarifa recuperada",
+      "quote_sent": "Presupuesto enviado",
+      "quote_cancelled": "Presupuesto anulado",
+      "quote_renewed": "Presupuesto renovado"
     },
     "fields": {
       "email": "Email",
@@ -95,7 +98,10 @@
       "mechanics_see_sale_prices": "Los mecánicos ven importes",
       "labor_rate": "Tarifa",
       "hourly_price_cents": "Precio por hora",
-      "is_default": "Por defecto"
+      "is_default": "Por defecto",
+      "quote_version": "Versión",
+      "total_cents": "Total",
+      "cancel_reason": "Motivo"
     }
   },
   "nav": {
@@ -615,7 +621,12 @@
     "invalid_vat": "El IVA tiene que estar entre 0 y 100 %.",
     "invalid_discount": "Un descuento tiene que estar entre 0 y 100 %.",
     "global_discount_exceeds_subtotal": "El descuento global no puede ser mayor que la suma de las líneas.",
-    "too_many_lines": "Un presupuesto tiene como mucho 200 líneas."
+    "too_many_lines": "Un presupuesto tiene como mucho 200 líneas.",
+    "quote_cannot_be_sent_now": "Un presupuesto se envía con la orden en diagnóstico, durante la reparación (un trabajo adicional) o para corregir uno que espera respuesta.",
+    "quote_empty": "Un presupuesto sin líneas no se envía.",
+    "quote_not_cancellable": "Solo se anula una versión enviada que no se haya decidido ni sustituido.",
+    "work_order_has_quotes": "La orden tiene presupuestos enviados: no se cancela. Si el cliente no sigue adelante, entrégala sin reparar.",
+    "quote_not_renewable": "Solo se renueva una versión enviada que espere respuesta."
   },
   "palette": {
     "open": "Buscar en el taller",
@@ -776,6 +787,20 @@
       "validUntil": "Válido hasta",
       "updated": "Cambiado",
       "loadMore": "Ver más"
-    }
+    },
+    "send": "Enviar",
+    "sendTitle": "Enviar la versión {{number}}",
+    "confirmSend": "Queda congelada con estos importes y la orden pasa a esperar la respuesta del cliente. Será válida {{days}} días hábiles. Para cambiar algo después, se crea una versión nueva.",
+    "sent": "Presupuesto enviado",
+    "waitingHint": "Esperando la respuesta del cliente. Para cambiarlo, crea una versión nueva: esta quedará sustituida.",
+    "expiredHint": "Pasó su plazo de validez: ya no se puede aprobar. Renuévala para ampliar el plazo, corrígela con una versión nueva o anúlala.",
+    "cancel": "Anular",
+    "cancelReason": "Motivo de la anulación",
+    "cancelled": "Presupuesto anulado",
+    "cancelledBecause": "Anulado: {{reason}}",
+    "renew": "Renovar",
+    "renewTitle": "Renovar la versión {{number}}",
+    "confirmRenew": "Se envía una copia, con las mismas líneas y precios, válida {{days}} días hábiles desde hoy. Esta versión no cambia: queda sustituida, con su fecha y sus importes.",
+    "renewed": "Presupuesto renovado"
   }
 }

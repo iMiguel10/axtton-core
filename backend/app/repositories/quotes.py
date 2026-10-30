@@ -10,7 +10,15 @@ from sqlalchemy.dialects.postgresql import distinct_on
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.domain.quotes import QuoteStatus
-from app.models import Client, Quote, QuoteLine, Vehicle, WorkOrder
+from app.domain.work_orders import CLOSED
+from app.models import (
+    Client,
+    DiagnosisVersion,
+    Quote,
+    QuoteLine,
+    Vehicle,
+    WorkOrder,
+)
 
 
 async def list_for_order(session: AsyncSession, order_id: UUID) -> list[Quote]:
@@ -131,9 +139,10 @@ async def list_page(
                 )
             ).order_by(Quote.valid_until.desc(), Quote.id)
         case "drafts":
-            statement = statement.where(Quote.status == QuoteStatus.DRAFT).order_by(
-                Quote.updated_at.desc(), Quote.id
-            )
+            # Un borrador que quedó en una orden cerrada ya no se enviará.
+            statement = statement.where(
+                Quote.status == QuoteStatus.DRAFT, WorkOrder.status.not_in(CLOSED)
+            ).order_by(Quote.updated_at.desc(), Quote.id)
         case "all":
             latest = (
                 select(Quote.id)
@@ -146,3 +155,40 @@ async def list_page(
             )
     rows = await session.execute(statement.limit(limit).offset(offset))
     return [QuoteRow(quote, order, plate, name) for quote, order, plate, name in rows]
+
+
+async def awaiting_version(session: AsyncSession, order_id: UUID) -> Quote | None:
+    """La versión que espera respuesta del cliente: la enviada (como mucho una,
+    por el índice único parcial) o, si ya se marcó como caducada, esa. Es la
+    que una versión nueva sustituye."""
+    query = (
+        select(Quote)
+        .where(
+            Quote.work_order_id == order_id,
+            Quote.status.in_([QuoteStatus.SENT, QuoteStatus.EXPIRED]),
+        )
+        .order_by(Quote.version_no.desc())
+        .limit(1)
+    )
+    return (await session.scalars(query)).one_or_none()
+
+
+async def count_not_draft(session: AsyncSession, order_id: UUID) -> int:
+    """Cuántas versiones se han enviado alguna vez (cualquier estado que no sea
+    borrador): una orden así no se cancela (§6)."""
+    query = select(func.count()).where(
+        Quote.work_order_id == order_id, Quote.status != QuoteStatus.DRAFT
+    )
+    return int(await session.scalar(query) or 0)
+
+
+async def latest_diagnosis_id(session: AsyncSession, order_id: UUID) -> UUID | None:
+    """La versión vigente del diagnóstico para el cliente (RF-22): la que
+    acompaña al envío."""
+    query = (
+        select(DiagnosisVersion.id)
+        .where(DiagnosisVersion.work_order_id == order_id)
+        .order_by(DiagnosisVersion.version_no.desc())
+        .limit(1)
+    )
+    return await session.scalar(query)

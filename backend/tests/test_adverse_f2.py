@@ -267,6 +267,9 @@ ADMIN_ONLY = {
     ("POST", "/orders/{order_id}/quotes"),
     ("PUT", "/quotes/{quote_id}"),
     ("POST", "/quotes/{quote_id}/discard"),
+    ("POST", "/quotes/{quote_id}/send"),
+    ("POST", "/quotes/{quote_id}/cancel"),
+    ("POST", "/quotes/{quote_id}/renew"),
 }
 
 

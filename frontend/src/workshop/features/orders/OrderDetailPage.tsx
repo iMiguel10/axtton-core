@@ -140,7 +140,11 @@ export function OrderDetailPage() {
             {/* keepMounted también aquí: el borrador del presupuesto vive en el
                 navegador hasta que se guarda. */}
             <TabsContent value="quotes" keepMounted>
-              <QuotesSection orderId={current.id} closed={CLOSED.includes(current.status)} />
+              <QuotesSection
+                orderId={current.id}
+                closed={CLOSED.includes(current.status)}
+                onOrderChanged={refresh}
+              />
             </TabsContent>
             <TabsContent value="notes" keepMounted>
               {parts?.notes ?? <LinesSkeleton lines={4} />}

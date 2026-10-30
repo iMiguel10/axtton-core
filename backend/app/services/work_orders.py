@@ -41,6 +41,7 @@ from app.domain.work_orders import (
 from app.models import AuditEntry, WorkOrder, WorkOrderStatusChange
 from app.repositories import clients as client_repo
 from app.repositories import employees as employee_repo
+from app.repositories import quotes as quote_repo
 from app.repositories import vehicles as vehicle_repo
 from app.repositories import work_orders as order_repo
 from app.repositories import worklog as worklog_repo
@@ -305,7 +306,7 @@ async def _locked(
     return order
 
 
-async def _record(
+async def record_status_change(
     session: AsyncSession,
     order: WorkOrder,
     to_status: str,
@@ -365,15 +366,16 @@ async def change_status(
     # Cancelar es solo para órdenes abiertas por error: sin trabajos, piezas
     # usadas ni presupuestos enviados (§6). La orden está bloqueada FOR UPDATE:
     # un trabajo que se esté anotando a la vez espera, y luego la ve cancelada.
-    # Las piezas (F7) y los presupuestos (F3) se comprobarán aquí al llegar.
-    if (
-        transition.to_status == WorkOrderStatus.CANCELLED
-        and await worklog_repo.count_active_entries(session, order_id) > 0
-    ):
-        raise ConflictError("work_order_has_work")
+    # Las piezas (F7) se comprobarán aquí al llegar. Un borrador nunca enviado
+    # no cuenta: se queda en la orden cancelada sin salir en ningún listado.
+    if transition.to_status == WorkOrderStatus.CANCELLED:
+        if await worklog_repo.count_active_entries(session, order_id) > 0:
+            raise ConflictError("work_order_has_work")
+        if await quote_repo.count_not_draft(session, order_id) > 0:
+            raise ConflictError("work_order_has_quotes")
     if transition.unrepaired:
         order.unrepaired = True
-    await _record(
+    await record_status_change(
         session,
         order,
         transition.to_status,
@@ -405,7 +407,7 @@ async def undo_last_change(
     if last.to_status == WorkOrderStatus.READY and order.unrepaired:
         # Deshacer "lista · sin reparar" deshace también el "sin reparar".
         order.unrepaired = False
-    await _record(
+    await record_status_change(
         session,
         order,
         last.from_status,

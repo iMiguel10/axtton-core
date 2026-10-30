@@ -59,12 +59,23 @@ class QuoteRead(BaseModel):
     # saldría si se enviara ahora: no se guarda hasta enviarlo.
     totals: QuoteTotalsRead | None
     prices_hidden: bool
+    # Enviada y fuera de plazo, aunque su estado aún diga "enviada" (hasta F5):
+    # ya no se puede aprobar; se reenvía una versión nueva o se anula (§6).
+    expired: bool
     # Bloqueo optimista (RNF-15): se devuelve al guardar el borrador.
     version: int
 
 
 class QuoteCreated(BaseModel):
     id: UUID
+
+
+class QuoteCancel(BaseModel):
+    model_config = ConfigDict(str_strip_whitespace=True)
+
+    version: int
+    # Anular exige un motivo (especificación §6).
+    reason: str = Field(min_length=1, max_length=1000)
 
 
 class QuoteLineInput(BaseModel):

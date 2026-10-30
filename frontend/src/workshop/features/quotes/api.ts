@@ -54,6 +54,8 @@ export type Quote = {
   /** En un borrador, lo que saldría si se enviara ahora (lo calcula la API). */
   totals: QuoteTotals | null;
   prices_hidden: boolean;
+  /** Enviada y fuera de plazo, aunque su estado aún diga "enviada" (hasta F5). */
+  expired: boolean;
   version: number;
 };
 
@@ -111,5 +113,11 @@ export function quotesApi(workshopId: string) {
       request<{ version: number }>(`/workshop/quotes/${quoteId}`, "PUT", { version, ...input }),
     discard: (quoteId: string, version: number) =>
       request<void>(`/workshop/quotes/${quoteId}/discard`, "POST", { version }),
+    send: (quoteId: string, version: number) =>
+      request<void>(`/workshop/quotes/${quoteId}/send`, "POST", { version }),
+    cancel: (quoteId: string, version: number, reason: string) =>
+      request<void>(`/workshop/quotes/${quoteId}/cancel`, "POST", { version, reason }),
+    renew: (quoteId: string, version: number) =>
+      request<{ id: string }>(`/workshop/quotes/${quoteId}/renew`, "POST", { version }),
   };
 }

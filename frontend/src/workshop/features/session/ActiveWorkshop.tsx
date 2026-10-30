@@ -26,6 +26,8 @@ type ActiveWorkshopValue = {
   canManageOrders: boolean;
   /** Datos del taller, logotipo y tarifas (RF-02): solo el administrador. */
   canManageSettings: boolean;
+  /** Preparar, enviar y anular presupuestos: solo el administrador (especificación §3). */
+  canManageQuotes: boolean;
   workshops: Membership[];
   select: (workshopId: string) => void;
 };
@@ -108,6 +110,7 @@ export function ActiveWorkshopProvider({ children }: { children: ReactNode }) {
     // El mecánico ve todas las órdenes; abrirlas y editar su recepción, no.
     canManageOrders: active.data.role === "admin",
     canManageSettings: active.data.role === "admin",
+    canManageQuotes: active.data.role === "admin",
     workshops,
     select,
   };

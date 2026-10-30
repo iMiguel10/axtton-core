@@ -604,7 +604,17 @@
     "labor_rate_default_conflict": "Otra persona ha cambiado la tarifa por defecto a la vez. Vuelve a intentarlo.",
     "labor_rate_default_required": "Siempre hay una tarifa por defecto: marca antes otra como tal.",
     "labor_rate_archived": "Esa tarifa está archivada: recupérala para editarla.",
-    "labor_rate_limit_reached": "Como mucho 20 tarifas vigentes. Archiva alguna que ya no uses."
+    "labor_rate_limit_reached": "Como mucho 20 tarifas vigentes. Archiva alguna que ya no uses.",
+    "quote_not_found": "Ese presupuesto no existe.",
+    "quote_draft_exists": "Esta orden ya tiene un borrador de presupuesto: termina ese o descártalo.",
+    "quote_version_limit_reached": "Esta orden ya tiene 20 versiones de presupuesto, el máximo.",
+    "quote_not_draft": "Esta versión ya se envió: no se puede cambiar. Para corregirla, crea una versión nueva.",
+    "invalid_quantity": "Una cantidad tiene que ser mayor que cero, con tres decimales como mucho.",
+    "invalid_price": "Un precio no puede ser negativo.",
+    "invalid_vat": "El IVA tiene que estar entre 0 y 100 %.",
+    "invalid_discount": "Un descuento tiene que estar entre 0 y 100 %.",
+    "global_discount_exceeds_subtotal": "El descuento global no puede ser mayor que la suma de las líneas.",
+    "too_many_lines": "Un presupuesto tiene como mucho 200 líneas."
   },
   "palette": {
     "open": "Buscar en el taller",
@@ -676,5 +686,74 @@
     "none": "Aún no hay tarifas",
     "noneHint": "Añade al menos una para poder presupuestar mano de obra.",
     "noneArchived": "No hay tarifas archivadas"
+  },
+  "quotes": {
+    "tab": "Presupuesto",
+    "new": "Preparar presupuesto",
+    "newVersion": "Corregir: versión nueva",
+    "newVersionHint": "Copia la última versión; la enviada no cambia.",
+    "none": "Aún no hay presupuesto",
+    "noneHint": "El administrador lo prepara aquí: mano de obra, piezas y otros conceptos.",
+    "version": "Versión {{number}}",
+    "draftHint": "Borrador: se puede cambiar hasta enviarlo.",
+    "sentOn": "Enviado el {{sent}} · válido hasta el {{until}}",
+    "pricesHidden": "El taller no enseña los importes al personal de taller.",
+    "noLines": "Sin líneas todavía.",
+    "statuses": {
+      "draft": "Borrador",
+      "sent": "Enviado",
+      "approved": "Aprobado",
+      "rejected": "Rechazado",
+      "expired": "Caducado",
+      "superseded": "Sustituido",
+      "cancelled": "Anulado"
+    },
+    "kinds": {
+      "labor": "Mano de obra",
+      "part": "Pieza",
+      "other": "Otro"
+    },
+    "add": {
+      "labor": "Mano de obra",
+      "part": "Pieza",
+      "other": "Otro concepto"
+    },
+    "conditions": {
+      "new": "Nueva",
+      "used": "Usada",
+      "reconditioned": "Reacondicionada",
+      "non_specific": "No específica del modelo"
+    },
+    "conditionHint": "Saldrá marcada en el presupuesto: aprobarlo es la conformidad del cliente (RF-38).",
+    "description": "Concepto",
+    "reference": "Referencia",
+    "condition": "Estado de la pieza",
+    "quantity": "Cantidad",
+    "hours": "Horas",
+    "unitPrice": "Precio (€)",
+    "pricePerHour": "Precio/hora (€)",
+    "lineDiscount": "Descuento (%)",
+    "vatRate": "IVA (%)",
+    "removeLine": "Quitar la línea {{number}}",
+    "globalDiscount": "Descuento global",
+    "discountKind": "Tipo de descuento global",
+    "discountKinds": {
+      "none": "Sin descuento",
+      "percent": "Porcentaje (%)",
+      "amount": "Importe (€)"
+    },
+    "subtotal": "Suma de las líneas",
+    "base": "Base imponible {{rate}}",
+    "vat": "IVA {{rate}}",
+    "total": "Total",
+    "totalsAfterSave": "Hay cambios sin guardar: los totales se recalculan al guardar.",
+    "fixLines": "Revisa las líneas marcadas: falta el concepto o algún número no es válido.",
+    "reload": "Cargar lo suyo",
+    "saved": "Presupuesto guardado",
+    "discard": "Descartar borrador",
+    "discarded": "Borrador descartado",
+    "confirmDiscard": "Se borra la versión {{number}} con todas sus líneas. Nunca se envió.",
+    "conflict": "Otra persona ha guardado este borrador mientras lo editabas. Lo que has escrito sigue aquí: carga lo suyo o guarda lo tuyo encima.",
+    "overwrite": "Guardar lo mío encima"
   }
 }

@@ -13,6 +13,7 @@ import { useDates } from "@/shared/lib/dates";
 
 import { clientName } from "../clients/clientName";
 import { usePageCrumb } from "../layout/PageCrumb";
+import { QuotesSection } from "../quotes/QuotesSection";
 import { useActiveWorkshop } from "../session/ActiveWorkshop";
 import { ordersApi, type OrderDetail, type ReceptionInput } from "./api";
 import { StatusBadge } from "./OrderBits";
@@ -117,6 +118,7 @@ export function OrderDetailPage() {
                   {parts && <Count value={parts.counts.work} />}
                 </TabsTrigger>
                 <TabsTrigger value="diagnosis">{t("worklog.diagnosisTab")}</TabsTrigger>
+                <TabsTrigger value="quotes">{t("quotes.tab")}</TabsTrigger>
                 <TabsTrigger value="notes">
                   {t("worklog.notesTab")}
                   {parts && <Count value={parts.counts.notes} />}
@@ -130,6 +132,11 @@ export function OrderDetailPage() {
             </TabsContent>
             <TabsContent value="diagnosis" keepMounted>
               {parts?.diagnosis ?? <LinesSkeleton lines={4} />}
+            </TabsContent>
+            {/* keepMounted también aquí: el borrador del presupuesto vive en el
+                navegador hasta que se guarda. */}
+            <TabsContent value="quotes" keepMounted>
+              <QuotesSection orderId={current.id} closed={CLOSED.includes(current.status)} />
             </TabsContent>
             <TabsContent value="notes" keepMounted>
               {parts?.notes ?? <LinesSkeleton lines={4} />}

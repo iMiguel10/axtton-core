@@ -52,6 +52,9 @@ class Action(StrEnum):
     # Configurar el taller: datos legales, ajustes, logotipo y tarifas de mano de
     # obra (RF-02; especificación §3, "fijar precios"): solo el administrador.
     MANAGE_WORKSHOP_SETTINGS = "manage_workshop_settings"
+    # Preparar, enviar y anular presupuestos (especificación §3): solo el
+    # administrador. Verlos es de VIEW_ORDERS, sin importes si el taller lo dice.
+    MANAGE_QUOTES = "manage_quotes"
 
 
 ROLE_PERMISSIONS: dict[Role, frozenset[Action]] = {

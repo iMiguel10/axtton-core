@@ -219,6 +219,8 @@ MECHANIC_ALLOWED = {
     ("POST", "/orders/{order_id}/notes"),
     ("POST", "/orders/{order_id}/work-entries"),
     ("POST", "/orders/{order_id}/work-entries/{entry_id}/void"),
+    # Ver los presupuestos (F3), sin importes si el taller lo desactiva.
+    ("GET", "/orders/{order_id}/quotes"),
     ("POST", "/account/password"),
     ("GET", "/account/sessions"),
     ("POST", "/account/sessions/revoke-others"),
@@ -260,6 +262,10 @@ ADMIN_ONLY = {
     ("PATCH", "/labor-rates/{rate_id}"),
     ("POST", "/labor-rates/{rate_id}/archive"),
     ("POST", "/labor-rates/{rate_id}/unarchive"),
+    # Preparar presupuestos (F3 paso 4).
+    ("POST", "/orders/{order_id}/quotes"),
+    ("PUT", "/quotes/{quote_id}"),
+    ("POST", "/quotes/{quote_id}/discard"),
 }
 
 

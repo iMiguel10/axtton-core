@@ -19,6 +19,7 @@ from app.models.platform import (
     User,
     Workshop,
 )
+from app.models.quotes import Quote, QuoteDecision, QuoteLine
 from app.models.settings import LaborRate, WorkshopLogo
 
 __all__ = [
@@ -29,6 +30,9 @@ __all__ = [
     "InternalNote",
     "Invitation",
     "LaborRate",
+    "Quote",
+    "QuoteDecision",
+    "QuoteLine",
     "SuperadminInvitation",
     "User",
     "Vehicle",

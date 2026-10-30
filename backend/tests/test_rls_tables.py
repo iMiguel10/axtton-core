@@ -17,7 +17,9 @@ from sqlalchemy import text
 from sqlalchemy.exc import DBAPIError
 
 from tests.conftest import Engines, TwoWorkshops
+from tests.test_quotes_db import add_line, add_quote, send
 from tests.test_rls import set_workshops
+from tests.test_work_orders_db import Order
 
 # Tabla de taller -> columna con la que RLS la separa. Si aparece una tabla de
 # taller nueva, test_every_workshop_table_is_seeded_here obliga a añadirla.
@@ -37,6 +39,9 @@ WORKSHOP_TABLES = {
     "work_entries": "workshop_id",
     "labor_rates": "workshop_id",
     "workshop_logos": "workshop_id",
+    "quotes": "workshop_id",
+    "quote_lines": "workshop_id",
+    "quote_decisions": "workshop_id",
 }
 
 # Tablas sobre las que axtton_app no tiene DELETE: no se borran nunca, ni por un
@@ -55,6 +60,7 @@ NO_DELETE = {
     "internal_notes",
     "work_entries",
     "labor_rates",
+    "quote_decisions",
 }
 # La columna que axtton_app puede actualizar, si no puede todas.
 UPDATABLE_COLUMN = {
@@ -62,6 +68,9 @@ UPDATABLE_COLUMN = {
     "work_order_counters": "last_number",
     "work_entries": "voided_at",
     "work_orders": "version",
+    # Lo que fija la creación de una versión no se actualiza (0013quotes).
+    "quotes": "version",
+    "quote_lines": "position",
     # Sus datos legales y ajustes, desde 0012settings (RF-02).
     "workshops": "name",
 }
@@ -184,6 +193,23 @@ async def seeded(engines: Engines, two_workshops: TwoWorkshops) -> Seeded:
                 ),
                 {"w": workshop},
             )
+            # Una versión enviada, con su línea, y aprobada por teléfono.
+            seeded_order = Order(workshop, order)
+            quote = await add_quote(conn, seeded_order, employee, 1)
+            await add_line(conn, seeded_order, quote)
+            await send(conn, quote, employee)
+            await conn.execute(
+                text(
+                    "INSERT INTO quote_decisions (workshop_id, quote_id, outcome,"
+                    " channel, recorded_by_employee_id)"
+                    " VALUES (:w, :q, 'approved', 'phone', :e)"
+                ),
+                {"w": workshop, "q": quote, "e": employee},
+            )
+            await conn.execute(
+                text("UPDATE quotes SET status = 'approved' WHERE id = :q"),
+                {"q": quote},
+            )
         await conn.execute(
             text("INSERT INTO audit_log (action) VALUES ('workshop_created')")
         )
@@ -261,6 +287,7 @@ async def test_r2_with_workshop_a_every_table_returns_only_rows_of_a(
             "work_order_status_changes",
             "diagnosis_versions",
             "internal_notes",
+            "quote_decisions",
         }
     ],
 )

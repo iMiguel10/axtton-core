@@ -13,6 +13,7 @@
 """
 
 import asyncio
+import json
 import re
 from datetime import date
 from typing import Any
@@ -55,6 +56,13 @@ WORKSHOP_PREFIX = "/api/v1/workshop"
 # `invitations` ya tienen su R3 en test_rls_tables.py.
 R3_TABLES = sorted(set(WORKSHOP_TABLES) - {"workshops", "audit_log", "invitations"})
 BLOCKED_FIRST_BY = {"work_order_counters": "work order counters only grow"}
+# Al insertar, el trigger BEFORE de las líneas y de las decisiones busca su
+# versión antes de que WITH CHECK mire la fila, y desde A la de B no existe (RLS
+# la oculta): la para él, por el mismo aislamiento (0013quotes).
+INSERT_BLOCKED_FIRST_BY = {
+    "quote_lines": r"quote \S+ not found",
+    "quote_decisions": r"quote \S+ not found",
+}
 
 
 async def insertable_copy_of_b(
@@ -87,6 +95,11 @@ async def insertable_copy_of_b(
             .one()
         )
     values = {column: row[column] for column in columns}
+    # Un jsonb (el desglose de IVA de un presupuesto) vuelve como lista o
+    # diccionario de Python: se manda otra vez como texto JSON.
+    for column, value in values.items():
+        if isinstance(value, list | dict):
+            values[column] = json.dumps(value)
     if "id" in values:
         values["id"] = uuid4()
     return list(columns), values
@@ -108,7 +121,8 @@ async def test_r3_from_a_no_table_accepts_a_row_of_b(
     )
     async with engines.app.begin() as conn:
         await set_workshops(conn, a)
-        with pytest.raises(DBAPIError, match="row-level security policy"):
+        expected = INSERT_BLOCKED_FIRST_BY.get(table, "row-level security policy")
+        with pytest.raises(DBAPIError, match=expected):
             await conn.execute(statement, values)
 
 

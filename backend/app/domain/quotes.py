@@ -57,6 +57,39 @@ class Outcome(StrEnum):
     REJECTED = "rejected"
 
 
+class DecisionChannel(StrEnum):
+    """Por dónde llegó la decisión (RF-36). Por teléfono o en persona la
+    registra el taller (RF-35), y como prueba vale menos."""
+
+    PORTAL = "portal"
+    PHONE = "phone"
+    IN_PERSON = "in_person"
+
+
+# Cómo cambia de estado una versión ya enviada (especificación §6). Aprobada,
+# rechazada, sustituida y anulada son finales; caducada solo se anula o se
+# sustituye. Un borrador solo pasa a enviado (o se descarta, borrándolo). El
+# trigger quotes_frozen_after_send de la migración 0013quotes repite esta tabla:
+# si cambia aquí, cambia allí.
+QUOTE_TRANSITIONS: dict[QuoteStatus, frozenset[QuoteStatus]] = {
+    QuoteStatus.DRAFT: frozenset({QuoteStatus.SENT}),
+    QuoteStatus.SENT: frozenset(
+        {
+            QuoteStatus.APPROVED,
+            QuoteStatus.REJECTED,
+            QuoteStatus.EXPIRED,
+            QuoteStatus.SUPERSEDED,
+            QuoteStatus.CANCELLED,
+        }
+    ),
+    QuoteStatus.EXPIRED: frozenset({QuoteStatus.SUPERSEDED, QuoteStatus.CANCELLED}),
+    QuoteStatus.APPROVED: frozenset(),
+    QuoteStatus.REJECTED: frozenset(),
+    QuoteStatus.SUPERSEDED: frozenset(),
+    QuoteStatus.CANCELLED: frozenset(),
+}
+
+
 class QuoteRuleError(ValueError):
     """Unos datos con los que no se puede calcular un presupuesto. `code` es el
     código estable que el service devuelve a la interfaz."""

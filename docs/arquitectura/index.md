@@ -190,9 +190,9 @@ erDiagram
 | `internal_notes` | Hilo de notas internas | **Existe (F2).** Append-only (nadie edita lo de otro, RF-22), ordenado por `seq`; se admiten con la orden cerrada (RF-26) |
 | `work_entries` | Trabajos realizados | **Existe (F2).** `employee_id` es quien lo hizo; `recorded_by_employee_id`, quien lo anotó. No se edita ni se borra: se **anula** (`voided_at`, `voided_by_employee_id`, las únicas columnas que `axtton_app` puede escribir; un trigger impide lo demás). Lo anula quien lo anotó o el administrador. Los mecánicos que han trabajado (RF-25) salen de los trabajos sin anular; uno sin anular impide cancelar la orden |
 | `reception_sheets` | Hoja de recepción y su firma | Una por orden; congelada al firmarse (RF-52, RF-56) |
-| `quotes` | Cada **versión** de presupuesto | **Crítica** |
-| `quote_lines` | Líneas de una versión | **Crítica** |
-| `quote_decisions` | Aprobación o rechazo | **Crítica**, append-only |
+| `quotes` | Cada **versión** de presupuesto | **Existe (F3, migración `0013quotes`). Crítica**, ver más abajo |
+| `quote_lines` | Líneas de una versión | **Existe (F3). Crítica** |
+| `quote_decisions` | Aprobación o rechazo | **Existe (F3). Crítica**, append-only, también para la plataforma |
 | `parts` | Catálogo de piezas | `UNIQUE (workshop_id, lower(reference))` |
 | `used_parts` | Piezas montadas en una orden | Quitar una no la borra: se marca y genera el movimiento contrario |
 | `stock_movements` | Libro de movimientos de stock | **Crítica**, append-only |
@@ -293,6 +293,20 @@ Restricción: **índice único parcial** `(work_order_id) WHERE status = 'sent'`
 2. **Trigger.** Uno en `quote_lines` rechaza cualquier `INSERT`, `UPDATE` o `DELETE` si su versión no está en `draft`. Otro en `quotes` solo permite, una vez enviada, los cambios de `status` del ciclo de vida.
 
 Un fallo de la aplicación no puede alterar un presupuesto enviado.
+
+*Lo añadido al construirlo (F3 paso 3, migración `0013quotes`):*
+
+- **Los importes de cada línea se guardan enteros** al enviar: bruto, descuento de la línea, su parte del descuento global, base imponible, IVA y total (`domain/quotes.py::compute`). Dos CHECK exigen que estén todos o ninguno y que cuadren entre sí. El PDF y el portal los leen tal cual.
+- **Un CHECK separa el borrador de lo enviado**: un borrador no tiene ninguno de los datos del envío (fecha, quién, validez, estado de origen, totales y desglose), y una versión enviada, en cualquier estado posterior, los tiene todos.
+- **Como mucho un borrador por orden** (índice único parcial, además del de `sent`): corregir es crear la versión siguiente, y con dos borradores no se sabría cuál se envía.
+- **La versión del diagnóstico** que acompaña al envío tiene que ser de la misma orden: FK compuesta `(diagnosis_version_id, work_order_id, workshop_id)`, con un `UNIQUE` nuevo en `diagnosis_versions`.
+- **Los triggers, con más detalle:**
+  - `quote_lines_frozen` **bloquea la versión** (`FOR NO KEY UPDATE`) antes de mirar su estado. Sin el bloqueo, una línea añadida mientras otra transacción envía la versión leería "borrador" y entraría en una versión ya enviada (`test_quotes_db.py`, comprobado rompiéndolo).
+  - `quotes_frozen_after_send` deja enviar un borrador solo si tiene líneas, todas calculadas y sumando el total guardado. Compara la fila entera en `jsonb` salvo el estado, el motivo de anulación y el bloqueo optimista, así que una columna nueva queda congelada sin tocarlo. Las transiciones repiten `domain/quotes.py::QUOTE_TRANSITIONS`, y pasar a aprobada o rechazada exige su decisión ya registrada. Solo se borra un borrador (descartarlo).
+  - `quote_decisions_only_when_sent` admite una decisión solo sobre una versión enviada y vigente, y **pone la hora del servidor**: una decisión antedatada esquivaría la caducidad. Vale aunque nadie haya marcado la versión como caducada.
+  - `quote_decision_matches_status` es diferido, como el del invariante 5: al confirmar, la versión decidida tiene el estado de su decisión.
+- **Permisos:** `quote_decisions` es append-only también para `axtton_platform`. De `quotes` y `quote_lines`, `axtton_app` no puede actualizar lo que fija la creación (la orden, el número de versión, quién la creó); sí borrar, porque descartar un borrador es eso.
+- **Lo que queda fuera:** `part_id` llegará con el catálogo (F7). El estado `expired` no lo escribe nadie hasta el worker (F5): la caducidad se decide por `valid_until`.
 
 #### `vehicle_ownerships`
 

@@ -384,6 +384,9 @@ class DiagnosisVersion(IdMixin, CreatedAtMixin, Base):
     __tablename__ = "diagnosis_versions"
     __table_args__ = (
         UniqueConstraint("id", "workshop_id"),
+        # Para que un presupuesto solo pueda apuntar a una versión de su misma
+        # orden (FK compuesta de `quotes`, migración 0013quotes).
+        UniqueConstraint("id", "work_order_id", "workshop_id"),
         UniqueConstraint("work_order_id", "version_no"),
         ForeignKeyConstraint(
             ["work_order_id", "workshop_id"],

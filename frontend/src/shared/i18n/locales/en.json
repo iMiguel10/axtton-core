@@ -111,7 +111,8 @@
     "workshops": "Workshops",
     "signOut": "Sign out",
     "unpaid": "Awaiting payment",
-    "settings": "Workshop"
+    "settings": "Workshop",
+    "quotes": "Quotes"
   },
   "auth": {
     "tagline": "Run the workshop and follow every repair, in one place.",
@@ -754,6 +755,27 @@
     "discarded": "Draft discarded",
     "confirmDiscard": "Version {{number}} and all its lines will be deleted. It was never sent.",
     "conflict": "Someone else saved this draft while you were editing it. What you wrote is still here: load theirs or save yours over it.",
-    "overwrite": "Save mine over it"
+    "overwrite": "Save mine over it",
+    "list": {
+      "view": "Show",
+      "views": {
+        "pending": "Awaiting reply",
+        "expired": "Expired",
+        "drafts": "Drafts",
+        "all": "All"
+      },
+      "none": {
+        "pending": "No quote is awaiting a reply",
+        "expired": "No quote has expired",
+        "drafts": "No drafts",
+        "all": "No quotes yet"
+      },
+      "noneHint": "They are prepared from the \"Quote\" tab of each order.",
+      "version": "Version",
+      "when": "Deadline",
+      "validUntil": "Valid until",
+      "updated": "Changed",
+      "loadMore": "Show more"
+    }
   }
 }

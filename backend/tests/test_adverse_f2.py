@@ -221,6 +221,7 @@ MECHANIC_ALLOWED = {
     ("POST", "/orders/{order_id}/work-entries/{entry_id}/void"),
     # Ver los presupuestos (F3), sin importes si el taller lo desactiva.
     ("GET", "/orders/{order_id}/quotes"),
+    ("GET", "/quotes"),
     ("POST", "/account/password"),
     ("GET", "/account/sessions"),
     ("POST", "/account/sessions/revoke-others"),

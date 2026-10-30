@@ -73,10 +73,37 @@ export type DraftInput = {
   lines: QuoteLineInput[];
 };
 
+/** Los filtros del listado de la barra lateral. */
+export const QUOTE_VIEWS = ["pending", "expired", "drafts", "all"] as const;
+export type QuoteView = (typeof QUOTE_VIEWS)[number];
+export const QUOTES_PAGE_SIZE = 50;
+
+export type QuoteListItem = {
+  id: string;
+  order_id: string;
+  order_code: string;
+  plate: string;
+  /** Vacío si el cliente se anonimizó: se enseña con clientName(). */
+  client_name: string;
+  version_no: number;
+  status: QuoteStatus;
+  /** Enviada y fuera de plazo, aunque su estado aún diga "enviada". */
+  expired: boolean;
+  total_cents: number | null;
+  sent_at: string | null;
+  valid_until: string | null;
+  updated_at: string;
+};
+
 export function quotesApi(workshopId: string) {
   const request = <T>(path: string, method: "GET" | "POST" | "PUT", body?: unknown) =>
     apiRequest<T>(path, { method, body, workshopId });
   return {
+    listAll: (view: QuoteView, offset: number) =>
+      request<QuoteListItem[]>(
+        `/workshop/quotes?${new URLSearchParams({ view, limit: String(QUOTES_PAGE_SIZE), offset: String(offset) })}`,
+        "GET",
+      ),
     list: (orderId: string) => request<Quote[]>(`/workshop/orders/${orderId}/quotes`, "GET"),
     create: (orderId: string) =>
       request<{ id: string }>(`/workshop/orders/${orderId}/quotes`, "POST"),

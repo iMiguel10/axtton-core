@@ -408,3 +408,136 @@ async def test_two_drafts_created_at_once_give_one_draft_and_a_409(
     async with engines.platform.connect() as conn:
         drafts = await conn.scalar(text("SELECT count(*) FROM quotes"))
     assert drafts == 1
+
+
+# --- El listado de la barra lateral ---------------------------------------------
+
+
+async def expire_by_sql(quote_id: str) -> None:
+    """Deja pasar el plazo de una versión enviada: el dueño apaga el trigger
+    dentro de su transacción, como hace la demo para mover fechas."""
+    # El dueño también obedece RLS: el taller se lee antes con la plataforma.
+    platform = create_async_engine(os.environ["PLATFORM_DATABASE_URL"])
+    try:
+        async with platform.connect() as conn:
+            workshop = await conn.scalar(
+                text("SELECT workshop_id FROM quotes WHERE id = :q"), {"q": quote_id}
+            )
+    finally:
+        await platform.dispose()
+    engine = create_async_engine(os.environ["MIGRATIONS_DATABASE_URL"])
+    try:
+        async with engine.begin() as conn:
+            await conn.execute(
+                text("SELECT set_config('app.workshop_ids', :w, true)"),
+                {"w": "{" + str(workshop) + "}"},
+            )
+            await conn.execute(
+                text("ALTER TABLE quotes DISABLE TRIGGER quotes_frozen_after_send")
+            )
+            await conn.execute(
+                text(
+                    "UPDATE quotes SET valid_until = clock_timestamp()"
+                    " - interval '1 day' WHERE id = :q"
+                ),
+                {"q": quote_id},
+            )
+            await conn.execute(
+                text("ALTER TABLE quotes ENABLE TRIGGER quotes_frozen_after_send")
+            )
+    finally:
+        await engine.dispose()
+
+
+async def listed(
+    client: AsyncClient, headers: dict[str, str], view: str
+) -> list[tuple[str, int, str, bool]]:
+    response = await client.get(QUOTES, params={"view": view}, headers=headers)
+    assert response.status_code == 200, response.text
+    return [
+        (q["order_code"], q["version_no"], q["status"], q["expired"])
+        for q in response.json()
+    ]
+
+
+@pytest.mark.asyncio
+async def test_the_list_shows_each_order_once_per_view(
+    client: AsyncClient, shop: Shop
+) -> None:
+    """Pendientes (enviadas y en plazo), caducadas, borradores y, en "todos", la
+    versión más reciente de cada orden."""
+    corrected = await new_order(client, shop)  # v1 enviada y v2 en borrador
+    drafted = await new_order(client, shop)  # solo un borrador
+    expired = await new_order(client, shop)  # v1 enviada y fuera de plazo
+    codes = {
+        order_id: (
+            await client.get(f"{ORDERS}/{order_id}", headers=shop.headers)
+        ).json()["code"]
+        for order_id in (corrected, drafted, expired)
+    }
+    for order_id in (corrected, expired):
+        quote_id = await create(client, shop.headers, order_id)
+        await save(client, shop.headers, quote_id, 1, [ONE_HUNDRED])
+        await send_by_sql(quote_id)
+        if order_id == expired:
+            await expire_by_sql(quote_id)
+    await create(client, shop.headers, corrected)
+    await create(client, shop.headers, drafted)
+
+    assert await listed(client, shop.headers, "pending") == [
+        (codes[corrected], 1, "sent", False)
+    ]
+    assert await listed(client, shop.headers, "expired") == [
+        (codes[expired], 1, "sent", True)
+    ]
+    assert sorted(await listed(client, shop.headers, "drafts")) == sorted(
+        [(codes[corrected], 2, "draft", False), (codes[drafted], 1, "draft", False)]
+    )
+    assert sorted(await listed(client, shop.headers, "all")) == sorted(
+        [
+            (codes[corrected], 2, "draft", False),
+            (codes[drafted], 1, "draft", False),
+            (codes[expired], 1, "sent", True),
+        ]
+    )
+    # La pestaña por defecto: las que esperan respuesta.
+    default = await client.get(QUOTES, headers=shop.headers)
+    assert [q["order_code"] for q in default.json()] == [codes[corrected]]
+    (sent,) = default.json()
+    assert (sent["total_cents"], sent["plate"]) == (12100, shop.car["plate"])
+
+
+@pytest.mark.asyncio
+async def test_the_list_hides_totals_from_mechanics_if_the_workshop_says_so(
+    client: AsyncClient, shop: Shop, outbox: InMemoryEmailSender
+) -> None:
+    mechanic = await invite_and_accept(
+        client, shop.admin, outbox, await add_mechanic(client, shop.admin)
+    )
+    order_id = await new_order(client, shop)
+    quote_id = await create(client, shop.headers, order_id)
+    await save(client, shop.headers, quote_id, 1, [ONE_HUNDRED])
+    seen = await client.get(QUOTES, params={"view": "drafts"}, headers=mechanic)
+    assert seen.json()[0]["total_cents"] == 12100
+    settings = await client.get("/api/v1/workshop/settings", headers=shop.headers)
+    await client.patch(
+        "/api/v1/workshop/settings",
+        json={
+            "version": settings.json()["version"],
+            "mechanics_see_sale_prices": False,
+        },
+        headers=shop.headers,
+    )
+    seen = await client.get(QUOTES, params={"view": "drafts"}, headers=mechanic)
+    assert seen.json()[0]["total_cents"] is None
+
+
+@pytest.mark.asyncio
+async def test_the_list_only_has_quotes_of_the_active_workshop(
+    client: AsyncClient, shop: Shop
+) -> None:
+    order_id = await new_order(client, shop)
+    await create(client, shop.headers, order_id)
+    other = await open_workshop(client, "Talleres Gómez")
+    assert await listed(client, other.headers, "all") == []
+    assert len(await listed(client, shop.headers, "all")) == 1

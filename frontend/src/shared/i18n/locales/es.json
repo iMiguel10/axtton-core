@@ -111,7 +111,8 @@
     "workshops": "Talleres",
     "signOut": "Cerrar sesión",
     "unpaid": "Pendientes de cobro",
-    "settings": "Taller"
+    "settings": "Taller",
+    "quotes": "Presupuestos"
   },
   "auth": {
     "tagline": "Gestión del taller y seguimiento de cada reparación, en un solo sitio.",
@@ -754,6 +755,27 @@
     "discarded": "Borrador descartado",
     "confirmDiscard": "Se borra la versión {{number}} con todas sus líneas. Nunca se envió.",
     "conflict": "Otra persona ha guardado este borrador mientras lo editabas. Lo que has escrito sigue aquí: carga lo suyo o guarda lo tuyo encima.",
-    "overwrite": "Guardar lo mío encima"
+    "overwrite": "Guardar lo mío encima",
+    "list": {
+      "view": "Ver",
+      "views": {
+        "pending": "Pendientes de respuesta",
+        "expired": "Caducados",
+        "drafts": "Borradores",
+        "all": "Todos"
+      },
+      "none": {
+        "pending": "Ningún presupuesto espera respuesta",
+        "expired": "Ningún presupuesto ha caducado",
+        "drafts": "No hay borradores",
+        "all": "Aún no hay presupuestos"
+      },
+      "noneHint": "Se preparan desde la pestaña \"Presupuesto\" de cada orden.",
+      "version": "Versión",
+      "when": "Plazo",
+      "validUntil": "Válido hasta",
+      "updated": "Cambiado",
+      "loadMore": "Ver más"
+    }
   }
 }

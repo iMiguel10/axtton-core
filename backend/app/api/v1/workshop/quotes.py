@@ -2,18 +2,20 @@
 administrador (especificación §3). El mecánico los ve sin importes si el taller
 lo ha desactivado."""
 
-from typing import Annotated
+from typing import Annotated, Literal
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, status
+from fastapi import APIRouter, Depends, Query, status
 
 from app.api.v1.workshop.deps import WorkshopContext, require
 from app.domain.permissions import Action
+from app.domain.work_orders import order_code
 from app.schemas.clients import VersionOnly
 from app.schemas.quotes import (
     QuoteCreated,
     QuoteDraftSave,
     QuoteLineRead,
+    QuoteListItem,
     QuoteRead,
     QuoteSaved,
     QuoteTotalsRead,
@@ -26,6 +28,43 @@ router = APIRouter()
 
 Viewer = Annotated[WorkshopContext, Depends(require(Action.VIEW_ORDERS))]
 Manager = Annotated[WorkshopContext, Depends(require(Action.MANAGE_QUOTES))]
+
+
+@router.get("/quotes")
+async def list_quotes_of_workshop(
+    workshop: Viewer,
+    view: Literal["pending", "expired", "drafts", "all"] = "pending",
+    limit: Annotated[int, Query(ge=1, le=100)] = 50,
+    offset: Annotated[int, Query(ge=0)] = 0,
+) -> list[QuoteListItem]:
+    """Los presupuestos del taller, para la entrada de la barra lateral: por
+    defecto, los que esperan respuesta del cliente, los que caducan antes
+    primero."""
+    listed = await quote_service.list_page(
+        workshop.session,
+        workshop.workshop_id,
+        workshop.role,
+        view=view,
+        limit=limit,
+        offset=offset,
+    )
+    return [
+        QuoteListItem(
+            id=item.row.quote.id,
+            order_id=item.row.order.id,
+            order_code=order_code(item.row.order.year, item.row.order.number),
+            plate=item.row.plate,
+            client_name=item.row.client_name,
+            version_no=item.row.quote.version_no,
+            status=item.row.quote.status,  # type: ignore[arg-type]
+            expired=item.expired,
+            total_cents=item.total_cents,
+            sent_at=item.row.quote.sent_at,
+            valid_until=item.row.quote.valid_until,
+            updated_at=item.row.quote.updated_at,
+        )
+        for item in listed
+    ]
 
 
 def _read(view: QuoteView) -> QuoteRead:

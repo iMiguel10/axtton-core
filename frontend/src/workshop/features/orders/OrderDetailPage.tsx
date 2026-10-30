@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useTranslation } from "react-i18next";
-import { Link, useParams } from "react-router-dom";
+import { Link, useParams, useSearchParams } from "react-router-dom";
 
 import { DetailSkeleton, LinesSkeleton } from "@/shared/components/Loading";
 import { Card, CardContent, CardHeader, CardTitle } from "@/shared/components/ui/card";
@@ -23,6 +23,7 @@ import { StatusCard } from "./StatusCard";
 import { WorklogSection } from "./WorklogSection";
 
 const CLOSED = ["delivered", "cancelled"];
+const TABS = ["work", "diagnosis", "quotes", "notes", "reception", "history"] as const;
 
 /**
  * Ficha de una orden (RF-20 a RF-25): vehículo, cliente, recepción, responsable
@@ -31,6 +32,9 @@ const CLOSED = ["delivered", "cancelled"];
 export function OrderDetailPage() {
   const { t } = useTranslation();
   const { orderId = "" } = useParams();
+  // ?tab=quotes abre directamente una pestaña: lo usa el listado de presupuestos.
+  const [search] = useSearchParams();
+  const initialTab = TABS.find((tab) => tab === search.get("tab")) ?? "work";
   const { workshopId, canManageOrders } = useActiveWorkshop();
   const api = ordersApi(workshopId);
   const queryClient = useQueryClient();
@@ -110,7 +114,7 @@ export function OrderDetailPage() {
         orderCode={current.code}
         closed={CLOSED.includes(current.status)}
         layout={(parts) => (
-          <Tabs defaultValue="work" className="min-w-0">
+          <Tabs defaultValue={initialTab} className="min-w-0">
             <div className="-mx-4 min-w-0 overflow-x-auto overflow-y-hidden px-4 pb-1.5 md:mx-0 md:px-0">
               <TabsList>
                 <TabsTrigger value="work">

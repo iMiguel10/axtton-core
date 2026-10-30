@@ -53,7 +53,12 @@ export function QuotesSection({ orderId, closed }: { orderId: string; closed: bo
   const quotes = useQuery({ queryKey, queryFn: () => api.list(orderId) });
   const create = useMutation({
     mutationFn: () => api.create(orderId),
-    onSettled: () => queryClient.invalidateQueries({ queryKey }),
+    // El listado de la barra lateral también cambia.
+    onSettled: () =>
+      Promise.all([
+        queryClient.invalidateQueries({ queryKey }),
+        queryClient.invalidateQueries({ queryKey: ["quotes-list", workshopId] }),
+      ]),
   });
 
   if (!quotes.data) {
@@ -299,7 +304,11 @@ function DraftEditor({ quote, queryKey }: { quote: Quote; queryKey: unknown[] })
   const [dirty, setDirty] = useState(false);
   const [invalid, setInvalid] = useState<Set<string>>(new Set());
 
-  const refresh = () => queryClient.invalidateQueries({ queryKey });
+  const refresh = () =>
+    Promise.all([
+      queryClient.invalidateQueries({ queryKey }),
+      queryClient.invalidateQueries({ queryKey: ["quotes-list", workshopId] }),
+    ]);
   const save = useMutation({
     mutationFn: ({ input, version }: { input: DraftInput; version: number }) =>
       api.save(quote.id, version, input),

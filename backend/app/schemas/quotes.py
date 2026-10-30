@@ -114,3 +114,21 @@ class QuoteDraftSave(BaseModel):
 
 class QuoteSaved(BaseModel):
     version: int
+
+
+class QuoteListItem(BaseModel):
+    id: UUID
+    order_id: UUID
+    # OT-2026-0042 (RF-21).
+    order_code: str
+    plate: str
+    # Vacío si el cliente se anonimizó (RF-15): la interfaz dice "Cliente eliminado".
+    client_name: str
+    version_no: int
+    status: QuoteStatus
+    # Enviada y fuera de plazo, aunque su estado aún diga "enviada" (hasta F5).
+    expired: bool
+    total_cents: int | None
+    sent_at: datetime | None
+    valid_until: datetime | None
+    updated_at: datetime

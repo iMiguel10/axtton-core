@@ -275,3 +275,50 @@ async def discard_draft(
     await quote_repo.delete_lines(session, quote.id)
     await session.delete(quote)
     await session.flush()
+
+
+# --- El listado (la entrada "Presupuestos" de la barra lateral) ----------------
+
+
+@dataclass(frozen=True)
+class ListedQuote:
+    row: quote_repo.QuoteRow
+    # El total guardado, o el calculado si es un borrador; nulo si quien mira
+    # no puede ver importes.
+    total_cents: int | None
+    # Enviada y pasado su plazo, aunque nadie la haya marcado (hasta F5).
+    expired: bool
+
+
+async def list_page(
+    session: AsyncSession,
+    workshop_id: UUID,
+    role: str,
+    *,
+    view: quote_repo.ListView,
+    limit: int,
+    offset: int,
+) -> list[ListedQuote]:
+    rows = await quote_repo.list_page(session, view=view, limit=limit, offset=offset)
+    hidden = await _prices_hidden(session, workshop_id, role)
+    drafts = [r.quote.id for r in rows if r.quote.status == QuoteStatus.DRAFT]
+    draft_lines = await quote_repo.lines_of(session, drafts) if not hidden else {}
+    now = datetime.now(UTC)
+    listed = []
+    for row in rows:
+        quote = row.quote
+        total: int | None
+        if hidden:
+            total = None
+        elif quote.status == QuoteStatus.DRAFT:
+            discount = _global(quote.global_discount_kind, quote.global_discount_value)
+            total = _calculate(draft_lines.get(quote.id, []), discount).total_cents
+        else:
+            total = quote.total_cents
+        expired = quote.status == QuoteStatus.EXPIRED or (
+            quote.status == QuoteStatus.SENT
+            and quote.valid_until is not None
+            and quote.valid_until <= now
+        )
+        listed.append(ListedQuote(row, total, expired))
+    return listed

@@ -1,13 +1,16 @@
 """Presupuestos de una orden (F3), bajo RLS: los de otro taller no existen."""
 
 from collections import defaultdict
+from dataclasses import dataclass
+from typing import Literal
 from uuid import UUID
 
-from sqlalchemy import delete, func, select
+from sqlalchemy import and_, delete, func, or_, select
+from sqlalchemy.dialects.postgresql import distinct_on
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.domain.quotes import QuoteStatus
-from app.models import Quote, QuoteLine
+from app.models import Client, Quote, QuoteLine, Vehicle, WorkOrder
 
 
 async def list_for_order(session: AsyncSession, order_id: UUID) -> list[Quote]:
@@ -82,3 +85,64 @@ async def delete_lines(session: AsyncSession, quote_id: UUID) -> None:
         .where(QuoteLine.quote_id == quote_id)
         .execution_options(synchronize_session=False)
     )
+
+
+@dataclass(frozen=True)
+class QuoteRow:
+    quote: Quote
+    order: WorkOrder
+    plate: str
+    client_name: str
+
+
+ListView = Literal["pending", "expired", "drafts", "all"]
+
+
+async def list_page(
+    session: AsyncSession, *, view: ListView, limit: int, offset: int
+) -> list[QuoteRow]:
+    """Los presupuestos del taller fijado, con su orden, matrícula y cliente.
+
+    Cada orden tiene como mucho una versión enviada y un borrador (índices
+    únicos parciales), así que "pendientes", "caducados" y "borradores" dan
+    una fila por orden filtrando por estado. "Todos" da la versión más reciente
+    de cada orden: las anteriores están en su ficha.
+    """
+    now = func.clock_timestamp()
+    statement = (
+        select(Quote, WorkOrder, Vehicle.plate, Client.name)
+        .join(WorkOrder, WorkOrder.id == Quote.work_order_id)
+        .join(Vehicle, Vehicle.id == WorkOrder.vehicle_id)
+        .join(Client, Client.id == WorkOrder.client_id)
+    )
+    match view:
+        case "pending":
+            # Esperando al cliente y aún en plazo: los que caducan antes, primero.
+            statement = statement.where(
+                Quote.status == QuoteStatus.SENT, Quote.valid_until > now
+            ).order_by(Quote.valid_until, Quote.id)
+        case "expired":
+            # Pasado su plazo aunque nadie la haya marcado (hasta el worker, F5,
+            # nadie escribe `expired`): hay que reenviarla o anularla (§6).
+            statement = statement.where(
+                or_(
+                    Quote.status == QuoteStatus.EXPIRED,
+                    and_(Quote.status == QuoteStatus.SENT, Quote.valid_until <= now),
+                )
+            ).order_by(Quote.valid_until.desc(), Quote.id)
+        case "drafts":
+            statement = statement.where(Quote.status == QuoteStatus.DRAFT).order_by(
+                Quote.updated_at.desc(), Quote.id
+            )
+        case "all":
+            latest = (
+                select(Quote.id)
+                .ext(distinct_on(Quote.work_order_id))
+                .order_by(Quote.work_order_id, Quote.version_no.desc())
+                .subquery()
+            )
+            statement = statement.join(latest, latest.c.id == Quote.id).order_by(
+                Quote.updated_at.desc(), Quote.id
+            )
+    rows = await session.execute(statement.limit(limit).offset(offset))
+    return [QuoteRow(quote, order, plate, name) for quote, order, plate, name in rows]

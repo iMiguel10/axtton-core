@@ -4,6 +4,22 @@ Lo mantiene [release-please](https://github.com/googleapis/release-please) a par
 
 Las dos primeras versiones se escribieron a mano, resumidas por fase, al empezar a versionar.
 
+## [0.4.0](https://github.com/iMiguel10/axtton-core/compare/v0.3.0...v0.4.0) (2026-10-30)
+
+
+### Novedades
+
+* **quotes:** borrador del presupuesto, su editor y el listado (F3 paso 4) ([#11](https://github.com/iMiguel10/axtton-core/issues/11)) ([502c600](https://github.com/iMiguel10/axtton-core/commit/502c6000037784dd0e14be865797be76312fde3e))
+* **quotes:** enviar, renovar y anular el presupuesto (F3 paso 5) ([#12](https://github.com/iMiguel10/axtton-core/issues/12)) ([7ec665b](https://github.com/iMiguel10/axtton-core/commit/7ec665b080358a4023a4f2dcb1cf07659e5a572f))
+* **quotes:** regla única de los totales y validez en días hábiles (F3 paso 2) ([#9](https://github.com/iMiguel10/axtton-core/issues/9)) ([5aa6e48](https://github.com/iMiguel10/axtton-core/commit/5aa6e48e6ac0e9e7cba068f1edad598bb3a1d3f6))
+* **quotes:** tablas de presupuesto inmutables al enviarse (F3 paso 3) ([#10](https://github.com/iMiguel10/axtton-core/issues/10)) ([bb44e77](https://github.com/iMiguel10/axtton-core/commit/bb44e7712fea6f2c43fb9f66e611cbf862ea0e27))
+* **settings:** datos del taller, logotipo y tarifas de mano de obra (F3 paso 1, RF-02) ([#8](https://github.com/iMiguel10/axtton-core/issues/8)) ([d89f59b](https://github.com/iMiguel10/axtton-core/commit/d89f59b762e1c8e30b536935b66faf46cf182ea2))
+
+
+### Correcciones
+
+* **demo:** la demo pública ya no tiene superadministrador ([#6](https://github.com/iMiguel10/axtton-core/issues/6)) ([57cb223](https://github.com/iMiguel10/axtton-core/commit/57cb2232a511d636f372ba8d5076f7aa4dcc725a))
+
 ## [0.3.0](https://github.com/iMiguel10/axtton-core/compare/v0.2.0...v0.3.0) (2026-10-28)
 
 

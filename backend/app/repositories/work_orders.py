@@ -4,7 +4,17 @@ from datetime import date, datetime
 from typing import Any, Literal
 from uuid import UUID
 
-from sqlalchemy import ColumnElement, Select, func, or_, select, text, update
+from sqlalchemy import (
+    ColumnElement,
+    Date,
+    Select,
+    cast,
+    func,
+    or_,
+    select,
+    text,
+    update,
+)
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import InstrumentedAttribute, aliased
@@ -97,6 +107,25 @@ async def get_row(session: AsyncSession, order_id: UUID) -> OrderRow | None:
     return OrderRow(order, vehicle, client, responsible_name)
 
 
+def _due(due: Literal["overdue", "today", "week", "none"]) -> ColumnElement[bool]:
+    expected = WorkOrder.expected_delivery_at
+    if due == "none":
+        return expected.is_(None)
+    if due == "overdue":
+        return expected < func.now()
+    # El día, en la zona del taller (`workshops.timezone`, que RLS deja leer).
+    zone = (
+        select(Workshop.timezone)
+        .where(Workshop.id == WorkOrder.workshop_id)
+        .scalar_subquery()
+    )
+    day = cast(func.timezone(zone, expected), Date)
+    today = cast(func.timezone(zone, func.now()), Date)
+    if due == "today":
+        return day == today
+    return day.between(today, today + 6)
+
+
 async def list_page(
     session: AsyncSession,
     *,
@@ -105,14 +134,20 @@ async def list_page(
     mine_employee_id: UUID | None,
     vehicle_id: UUID | None,
     client_id: UUID | None,
-    sort: Literal["recent", "stalled"],
+    due: Literal["overdue", "today", "week", "none"] | None,
+    sort: Literal["recent", "stalled", "due"],
     limit: int,
     offset: int,
 ) -> list[OrderRow]:
     """Órdenes del taller fijado con su vehículo, cliente y responsable (RF-24).
 
     "recent": las últimas abiertas primero. "stalled": las que llevan más tiempo
-    sin actividad primero.
+    sin actividad primero. "due": la entrega prevista más próxima primero, y las
+    que no tienen fecha al final.
+
+    `due` filtra por la fecha prevista: pasada ("overdue"), hoy, en los próximos
+    7 días contando hoy ("week") o sin fecha. "Hoy" es el día del taller, no el
+    de UTC: a las 00:30 en Madrid, en UTC aún es ayer.
     """
     statement = _with_context()
     if statuses is not None:
@@ -138,11 +173,15 @@ async def list_page(
         statement = statement.where(WorkOrder.vehicle_id == vehicle_id)
     if client_id is not None:
         statement = statement.where(WorkOrder.client_id == client_id)
-    order_by = (
-        (WorkOrder.last_activity_at, WorkOrder.id)
-        if sort == "stalled"
-        else (WorkOrder.year.desc(), WorkOrder.number.desc())
-    )
+    if due is not None:
+        statement = statement.where(_due(due))
+    order_by: tuple[Any, ...]
+    if sort == "stalled":
+        order_by = (WorkOrder.last_activity_at, WorkOrder.id)
+    elif sort == "due":
+        order_by = (WorkOrder.expected_delivery_at.asc().nulls_last(), WorkOrder.id)
+    else:
+        order_by = (WorkOrder.year.desc(), WorkOrder.number.desc())
     rows = await session.execute(
         statement.order_by(*order_by).limit(limit).offset(offset)
     )

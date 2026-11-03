@@ -110,10 +110,20 @@ export type ReceptionInput = {
   responsible_employee_id: string | null;
 };
 
+/** Por la fecha prevista de entrega (RF-24), en el día del taller. */
+export const DUES = ["overdue", "today", "week", "none"] as const;
+export type Due = (typeof DUES)[number];
+export const SORTS = ["recent", "stalled", "due"] as const;
+export type Sort = (typeof SORTS)[number];
+
 export type OrderFilters = {
   state: "open" | "closed" | "all";
+  /** Dentro del grupo de `state`, solo este estado. */
+  status?: Status;
+  responsibleId?: string;
+  due?: Due;
   mine?: boolean;
-  sort?: "recent" | "stalled";
+  sort?: Sort;
   vehicleId?: string;
   clientId?: string;
 };
@@ -134,6 +144,9 @@ export function ordersApi(workshopId: string) {
         limit: String(PAGE_SIZE),
         offset: String(offset),
       });
+      if (filters.status) params.set("status", filters.status);
+      if (filters.responsibleId) params.set("responsible_id", filters.responsibleId);
+      if (filters.due) params.set("due", filters.due);
       if (filters.mine) params.set("mine", "true");
       if (filters.vehicleId) params.set("vehicle_id", filters.vehicleId);
       if (filters.clientId) params.set("client_id", filters.clientId);

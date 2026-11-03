@@ -195,7 +195,8 @@ async def list_orders(
     mine_employee_id: UUID | None,
     vehicle_id: UUID | None,
     client_id: UUID | None,
-    sort: Literal["recent", "stalled"],
+    due: Literal["overdue", "today", "week", "none"] | None,
+    sort: Literal["recent", "stalled", "due"],
     limit: int,
     offset: int,
 ) -> list[OrderRow]:
@@ -206,6 +207,7 @@ async def list_orders(
         mine_employee_id=mine_employee_id,
         vehicle_id=vehicle_id,
         client_id=client_id,
+        due=due,
         sort=sort,
         limit=limit,
         offset=offset,

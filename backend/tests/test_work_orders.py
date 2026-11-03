@@ -6,7 +6,9 @@ en test_work_orders_db.py; las aperturas simultáneas, en test_concurrency.py.
 
 from collections.abc import AsyncIterator
 from dataclasses import dataclass
+from datetime import datetime, time, timedelta
 from typing import Any
+from zoneinfo import ZoneInfo
 
 import pytest
 import pytest_asyncio
@@ -328,6 +330,57 @@ async def test_the_list_filters_by_state_status_vehicle_and_responsible(
         second["code"],
         first["code"],
     ]
+
+
+@pytest.mark.asyncio
+async def test_the_list_filters_and_sorts_by_the_expected_delivery(
+    client: AsyncClient, shop: Shop
+) -> None:
+    """RF-24: por la fecha prevista, en el día del taller (Europe/Madrid)."""
+    now = datetime.now(ZoneInfo("Europe/Madrid"))
+    if now.time() >= time(23, 50):
+        pytest.skip("cerca de medianoche, 'hoy' cambiaría a mitad de la prueba")
+    end_of_today = datetime.combine(now.date(), time(23, 55), now.tzinfo)
+
+    def expected(at: datetime) -> dict[str, str]:
+        return {"expected_delivery_at": at.isoformat()}
+
+    late = await open_order(
+        client, shop.headers, shop.car["id"], **expected(now - timedelta(days=2))
+    )
+    today = await open_order(
+        client, shop.headers, shop.car["id"], **expected(end_of_today)
+    )
+    soon = await open_order(
+        client, shop.headers, shop.car["id"], **expected(now + timedelta(days=4))
+    )
+    later = await open_order(
+        client, shop.headers, shop.car["id"], **expected(now + timedelta(days=10))
+    )
+    undated = await open_order(client, shop.headers, shop.car["id"])
+    # A las 00:30 de mañana en Madrid, en UTC aún es hoy: no es "hoy" del taller.
+    early = datetime.combine(now.date() + timedelta(days=1), time(0, 30), now.tzinfo)
+    tomorrow = await open_order(client, shop.headers, shop.car["id"], **expected(early))
+
+    assert await codes(client, shop.headers, due="overdue") == [late["code"]]
+    assert await codes(client, shop.headers, due="today") == [today["code"]]
+    assert set(await codes(client, shop.headers, due="week")) == {
+        today["code"],
+        tomorrow["code"],
+        soon["code"],
+    }
+    assert await codes(client, shop.headers, due="none") == [undated["code"]]
+    # La entrega más próxima primero; sin fecha, al final.
+    assert await codes(client, shop.headers, sort="due") == [
+        late["code"],
+        today["code"],
+        tomorrow["code"],
+        soon["code"],
+        later["code"],
+        undated["code"],
+    ]
+    bad = await client.get(URL, params={"due": "tomorrow"}, headers=shop.headers)
+    assert bad.status_code == 422
 
 
 @pytest.mark.asyncio

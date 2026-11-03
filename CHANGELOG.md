@@ -4,6 +4,26 @@ Lo mantiene [release-please](https://github.com/googleapis/release-please) a par
 
 Las dos primeras versiones se escribieron a mano, resumidas por fase, al empezar a versionar.
 
+## [0.4.0](https://github.com/iMiguel10/axtton-core/compare/v0.3.0...v0.4.0) (2026-11-03)
+
+
+### Novedades
+
+* **orders:** filtros del listado por estado, responsable y fecha prevista (F3 paso 8, RF-24) ([#15](https://github.com/iMiguel10/axtton-core/issues/15)) ([cc84885](https://github.com/iMiguel10/axtton-core/commit/cc84885630edbf9881b8f7f40a28d9136182ad71))
+* **quotes:** borrador del presupuesto, su editor y el listado (F3 paso 4) ([#11](https://github.com/iMiguel10/axtton-core/issues/11)) ([502c600](https://github.com/iMiguel10/axtton-core/commit/502c6000037784dd0e14be865797be76312fde3e))
+* **quotes:** decisión registrada por el taller e importe a cobrar (F3 paso 6) ([#13](https://github.com/iMiguel10/axtton-core/issues/13)) ([e2badef](https://github.com/iMiguel10/axtton-core/commit/e2badef5467f5a5deca719c761ee14426e707a1a))
+* **quotes:** enviar, renovar y anular el presupuesto (F3 paso 5) ([#12](https://github.com/iMiguel10/axtton-core/issues/12)) ([7ec665b](https://github.com/iMiguel10/axtton-core/commit/7ec665b080358a4023a4f2dcb1cf07659e5a572f))
+* **quotes:** PDF del presupuesto y vista previa del borrador (F3 paso 7) ([#14](https://github.com/iMiguel10/axtton-core/issues/14)) ([1759f91](https://github.com/iMiguel10/axtton-core/commit/1759f910f5a07d222778f7874e50deb8d077c4df))
+* **quotes:** regla única de los totales y validez en días hábiles (F3 paso 2) ([#9](https://github.com/iMiguel10/axtton-core/issues/9)) ([5aa6e48](https://github.com/iMiguel10/axtton-core/commit/5aa6e48e6ac0e9e7cba068f1edad598bb3a1d3f6))
+* **quotes:** tablas de presupuesto inmutables al enviarse (F3 paso 3) ([#10](https://github.com/iMiguel10/axtton-core/issues/10)) ([bb44e77](https://github.com/iMiguel10/axtton-core/commit/bb44e7712fea6f2c43fb9f66e611cbf862ea0e27))
+* **settings:** datos del taller, logotipo y tarifas de mano de obra (F3 paso 1, RF-02) ([#8](https://github.com/iMiguel10/axtton-core/issues/8)) ([d89f59b](https://github.com/iMiguel10/axtton-core/commit/d89f59b762e1c8e30b536935b66faf46cf182ea2))
+
+
+### Correcciones
+
+* cierre de F3, con las decisiones inmutables también para el dueño ([#16](https://github.com/iMiguel10/axtton-core/issues/16)) ([fcab7a5](https://github.com/iMiguel10/axtton-core/commit/fcab7a50bdb862fcb0ebe1da77b8bc88bc29a023))
+* **demo:** la demo pública ya no tiene superadministrador ([#6](https://github.com/iMiguel10/axtton-core/issues/6)) ([57cb223](https://github.com/iMiguel10/axtton-core/commit/57cb2232a511d636f372ba8d5076f7aa4dcc725a))
+
 ## [0.3.0](https://github.com/iMiguel10/axtton-core/compare/v0.2.0...v0.3.0) (2026-10-28)
 
 

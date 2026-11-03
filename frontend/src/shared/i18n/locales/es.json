@@ -65,7 +65,8 @@
       "labor_rate_unarchived": "Tarifa recuperada",
       "quote_sent": "Presupuesto enviado",
       "quote_cancelled": "Presupuesto anulado",
-      "quote_renewed": "Presupuesto renovado"
+      "quote_renewed": "Presupuesto renovado",
+      "quote_decided": "Respuesta al presupuesto"
     },
     "fields": {
       "email": "Email",
@@ -101,7 +102,9 @@
       "is_default": "Por defecto",
       "quote_version": "Versión",
       "total_cents": "Total",
-      "cancel_reason": "Motivo"
+      "cancel_reason": "Motivo",
+      "quote_outcome": "Respuesta",
+      "decision_channel": "Canal"
     }
   },
   "nav": {
@@ -297,7 +300,8 @@
     "daysPending": "Pendiente desde hace",
     "days_one": "{{count}} día",
     "days_other": "{{count}} días",
-    "saved": "Cobro guardado."
+    "saved": "Cobro guardado.",
+    "amountDue": "Importe"
   },
   "drafts": {
     "offline": "Sin conexión. Lo que escribas se guarda en este dispositivo y se enviará al volver.",
@@ -626,7 +630,10 @@
     "quote_empty": "Un presupuesto sin líneas no se envía.",
     "quote_not_cancellable": "Solo se anula una versión enviada que no se haya decidido ni sustituido.",
     "work_order_has_quotes": "La orden tiene presupuestos enviados: no se cancela. Si el cliente no sigue adelante, entrégala sin reparar.",
-    "quote_not_renewable": "Solo se renueva una versión enviada que espere respuesta."
+    "quote_not_renewable": "Solo se renueva una versión enviada que espere respuesta.",
+    "quote_not_decidable": "Solo se registra la respuesta de la versión enviada que espera respuesta: esta ya se decidió, se sustituyó o se anuló.",
+    "quote_expired": "Este presupuesto pasó su plazo de validez: renuévalo antes de registrar la respuesta.",
+    "quote_decision_channel_not_allowed": "Desde el taller, la respuesta se registra por teléfono o en persona."
   },
   "palette": {
     "open": "Buscar en el taller",
@@ -801,6 +808,36 @@
     "renew": "Renovar",
     "renewTitle": "Renovar la versión {{number}}",
     "confirmRenew": "Se envía una copia, con las mismas líneas y precios, válida {{days}} días hábiles desde hoy. Esta versión no cambia: queda sustituida, con su fecha y sus importes.",
-    "renewed": "Presupuesto renovado"
+    "renewed": "Presupuesto renovado",
+    "decision": {
+      "record": "Registrar la respuesta del cliente",
+      "title": "Respuesta del cliente",
+      "outcome": "Respuesta",
+      "outcomes": {
+        "approved": "Aprueba el presupuesto",
+        "rejected": "Lo rechaza"
+      },
+      "channel": "Por dónde",
+      "channels": {
+        "portal": "desde el portal",
+        "phone": "por teléfono",
+        "in_person": "en persona"
+      },
+      "note": "Nota (opcional)",
+      "weakProof": "Una respuesta registrada por el taller vale menos como prueba que la que da el cliente desde el portal o firmada. Si puedes, pídele que lo confirme por escrito y anótalo aquí.",
+      "submit": {
+        "approved": "Registrar la aprobación",
+        "rejected": "Registrar el rechazo"
+      },
+      "done": {
+        "approved": "Aprobación registrada",
+        "rejected": "Rechazo registrado"
+      },
+      "summary": {
+        "approved": "Aprobado {{channel}} el {{when}}",
+        "rejected": "Rechazado {{channel}} el {{when}}"
+      },
+      "recordedBy": "lo registró {{name}}"
+    }
   }
 }

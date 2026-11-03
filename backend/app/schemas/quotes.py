@@ -1,13 +1,16 @@
 from datetime import datetime
 from decimal import Decimal
+from typing import Literal
 from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 from app.domain.quotes import (
     MAX_LINES_PER_VERSION,
+    DecisionChannel,
     DiscountKind,
     LineKind,
+    Outcome,
     PartCondition,
     QuoteStatus,
 )
@@ -44,6 +47,15 @@ class QuoteLineRead(BaseModel):
     total_cents: int | None
 
 
+class QuoteDecisionRead(BaseModel):
+    outcome: Outcome
+    channel: DecisionChannel
+    decided_at: datetime
+    # Quién la registró si la registró el taller; nulo si decidió el cliente.
+    recorded_by_name: str | None
+    note: str | None
+
+
 class QuoteRead(BaseModel):
     id: UUID
     version_no: int
@@ -62,6 +74,7 @@ class QuoteRead(BaseModel):
     # Enviada y fuera de plazo, aunque su estado aún diga "enviada" (hasta F5):
     # ya no se puede aprobar; se reenvía una versión nueva o se anula (§6).
     expired: bool
+    decision: QuoteDecisionRead | None
     # Bloqueo optimista (RNF-15): se devuelve al guardar el borrador.
     version: int
 
@@ -143,3 +156,15 @@ class QuoteListItem(BaseModel):
     sent_at: datetime | None
     valid_until: datetime | None
     updated_at: datetime
+
+
+class QuoteDecisionCreate(BaseModel):
+    """La decisión que el cliente dio por teléfono o en persona (RF-35)."""
+
+    model_config = ConfigDict(str_strip_whitespace=True)
+
+    version: int
+    outcome: Outcome
+    # El portal decide por su propia vía (F4): aquí, solo teléfono o en persona.
+    channel: Literal[DecisionChannel.PHONE, DecisionChannel.IN_PERSON]
+    note: str | None = Field(default=None, max_length=2000)

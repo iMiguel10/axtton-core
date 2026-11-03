@@ -47,6 +47,7 @@ from app.repositories import work_orders as order_repo
 from app.repositories import worklog as worklog_repo
 from app.repositories.work_orders import OrderRow
 from app.services import limits as limit_service
+from app.services.settings import prices_hidden
 
 # Lo que se puede cambiar con PATCH: los datos de recepción y el responsable.
 # El tipo, el vehículo y el cliente quedan fijados al abrir.
@@ -532,6 +533,16 @@ def _json(value: object) -> object:
 
 
 async def unpaid_orders(
-    session: AsyncSession, *, limit: int, offset: int
-) -> list[tuple[OrderRow, int]]:
-    return await order_repo.unpaid_page(session, limit=limit, offset=offset)
+    session: AsyncSession,
+    workshop_id: UUID,
+    role: str,
+    *,
+    limit: int,
+    offset: int,
+) -> list[tuple[OrderRow, int, int | None]]:
+    """Las entregadas pendientes de cobro con sus días y su importe (RF-29).
+    El importe, nulo si quien mira no puede ver importes de venta."""
+    rows = await order_repo.unpaid_page(session, limit=limit, offset=offset)
+    if await prices_hidden(session, workshop_id, role):
+        return [(row, days, None) for row, days, _ in rows]
+    return rows

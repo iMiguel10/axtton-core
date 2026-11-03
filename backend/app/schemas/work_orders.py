@@ -166,9 +166,12 @@ class PaymentChange(BaseModel):
 
 
 class UnpaidOrderRead(WorkOrderRead):
-    """Una entregada pendiente de cobro (RF-29). El importe a cobrar llegará con
-    los presupuestos (F3): hoy no hay de dónde sacarlo."""
+    """Una entregada pendiente de cobro (RF-29), con el importe del presupuesto
+    aprobado."""
 
     delivered_at: datetime
     # De la entrega a hoy, en días del taller.
     days_pending: int
+    # El total de la última versión aprobada. Nulo si no tuvo presupuesto
+    # aprobado (sin presupuesto, sin reparar) o si quien mira no ve importes.
+    amount_cents: int | None

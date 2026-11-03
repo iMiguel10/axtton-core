@@ -123,6 +123,8 @@ function show(t: TFunction, field: string, value: unknown): string {
   if (field === "role") return t(`roles.${String(value)}`);
   if (field === "status") return t(`admin.statuses.${String(value)}`);
   if (field === "work_order_status") return t(`orders.statuses.${String(value)}`);
+  if (field === "quote_outcome") return t(`quotes.decision.outcomes.${String(value)}`);
+  if (field === "decision_channel") return t(`quotes.decision.channels.${String(value)}`);
   if (field === "no_quote_reason") return t(`orders.noQuoteReasons.${String(value)}`);
   if (field === "hourly_cost_cents" && typeof value === "number") return formatEur(value);
   if (field === "paid_amount_cents" && typeof value === "number") return formatEur(value);

@@ -19,6 +19,7 @@ import { LinkRow } from "@/shared/components/table/LinkRow";
 import { MobileCard, MobileCards } from "@/shared/components/table/MobileCards";
 import { When } from "@/shared/components/When";
 import { errorMessage } from "@/shared/lib/errors";
+import { formatEur } from "@/shared/money";
 
 import { clientName } from "../clients/clientName";
 import { useActiveWorkshop } from "../session/ActiveWorkshop";
@@ -26,9 +27,11 @@ import { ordersApi, PAGE_SIZE } from "./api";
 
 /**
  * Las entregadas pendientes de cobro, la que más lleva primero (RF-29). Los días
- * los calcula el servidor en la zona del taller. El importe llegará con los
- * presupuestos (F3): hoy no hay de dónde sacarlo.
+ * los calcula el servidor en la zona del taller; el importe es el del último
+ * presupuesto aprobado ("—" si no tuvo, o si el taller no deja ver importes).
  */
+const amount = (cents: number | null) => (cents === null ? "—" : formatEur(cents));
+
 export function UnpaidOrdersPage() {
   const { t } = useTranslation();
   const { workshopId } = useActiveWorkshop();
@@ -63,6 +66,7 @@ export function UnpaidOrdersPage() {
               lines={[
                 <span key="v" className="text-foreground tabular-nums">{order.vehicle.plate}</span>,
                 clientName(t, order.client.name),
+                <span key="a" className="tabular-nums">{amount(order.amount_cents)}</span>,
               ]}
             />
           ))}
@@ -75,6 +79,7 @@ export function UnpaidOrdersPage() {
               <TableHead>{t("orders.vehicle")}</TableHead>
               <TableHead>{t("orders.client")}</TableHead>
               <TableHead className="hidden md:table-cell">{t("payment.deliveredAt")}</TableHead>
+              <TableHead className="text-right">{t("payment.amountDue")}</TableHead>
               <TableHead className="text-right">{t("payment.daysPending")}</TableHead>
             </TableRow>
           </TableHeader>
@@ -96,6 +101,7 @@ export function UnpaidOrdersPage() {
                 <TableCell className="hidden md:table-cell">
                   <When iso={order.delivered_at} />
                 </TableCell>
+                <TableCell className="text-right tabular-nums">{amount(order.amount_cents)}</TableCell>
                 <TableCell className="text-right tabular-nums">
                   {t("payment.days", { count: order.days_pending })}
                 </TableCell>

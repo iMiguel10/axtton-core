@@ -93,7 +93,12 @@ export type PaymentInput = {
 };
 
 /** Una entregada pendiente de cobro (RF-29). */
-export type UnpaidOrder = Order & { delivered_at: string; days_pending: number };
+export type UnpaidOrder = Order & {
+  delivered_at: string;
+  days_pending: number;
+  /** El total del último presupuesto aprobado; nulo si no tuvo o no se ven importes. */
+  amount_cents: number | null;
+};
 
 export type ReceptionInput = {
   odometer_km: number | null;

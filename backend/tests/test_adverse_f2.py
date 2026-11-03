@@ -270,6 +270,7 @@ ADMIN_ONLY = {
     ("POST", "/quotes/{quote_id}/send"),
     ("POST", "/quotes/{quote_id}/cancel"),
     ("POST", "/quotes/{quote_id}/renew"),
+    ("POST", "/quotes/{quote_id}/decision"),
 }
 
 

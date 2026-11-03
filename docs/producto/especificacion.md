@@ -1,6 +1,6 @@
 # Especificación de producto
 
-> Estado: **v0.3, revisada completa con el usuario** (2026-10-22) · F0 a F2 construidas; lo que resultó distinto al construirlo lleva su precisión marcada con "*F1*" o "*F2*"
+> Estado: **v0.3, revisada completa con el usuario** (2026-10-22) · F0 a F3 construidas y cerradas; lo que resultó distinto al construirlo lleva su precisión marcada con "*F1*", "*F2*" o "*F3*"
 
 !!! info "Cómo leer este documento"
     Los requisitos están numerados (RF-xx funcionales, RNF-xx no funcionales) con huecos entre grupos para poder insertar sin renumerar. Lo marcado con **`[C]`** está considerado y pospuesto por ser propio de un producto comercial, no olvidado. Lo marcado con **`[?]`** es una decisión abierta que está en la sección 13.

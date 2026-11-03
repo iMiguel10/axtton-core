@@ -311,7 +311,8 @@ async def _locked_draft(
         raise NotFoundError("quote_not_found")
     await _locked_open_order(session, found.work_order_id)
     quote = await quote_repo.get_for_update(session, quote_id)
-    assert quote is not None
+    if quote is None:  # otro la descartó mientras esperábamos a la orden
+        raise NotFoundError("quote_not_found")
     if quote.status != QuoteStatus.DRAFT:
         raise ConflictError("quote_not_draft")
     if quote.version != expected_version:
@@ -449,7 +450,8 @@ async def _locked_for_status_change(
     if order.status in CLOSED:
         raise ConflictError("work_order_closed")
     quote = await quote_repo.get_for_update(session, quote_id)
-    assert quote is not None
+    if quote is None:  # otro la descartó mientras esperábamos a la orden
+        raise NotFoundError("quote_not_found")
     if quote.version != expected_version:
         raise ConflictError("modified_by_someone_else")
     return order, quote
@@ -629,20 +631,20 @@ async def cancel_quote(
     expected_version: int,
     reason: str,
 ) -> None:
-    """Anula una versión enviada, con motivo (§6): el taller la retira. Si era
-    la que esperaba respuesta, la orden vuelve al estado desde el que se envió.
-    El aviso al cliente, si ya la había recibido, llega con el worker (F5)."""
+    """Anula una versión enviada, con motivo (§6): el taller la retira y la
+    orden vuelve al estado desde el que se envió. El aviso al cliente, si ya la
+    había recibido, llega con el worker (F5)."""
     order, quote = await _locked_for_status_change(session, quote_id, expected_version)
-    # Enviada (también pasado su plazo) o ya marcada como caducada.
+    # Enviada (también pasado su plazo) o ya marcada como caducada: las dos son
+    # la que espera respuesta, porque una versión nueva sustituye a cualquiera
+    # de ellas (quote_repo.awaiting_version).
     if quote.status not in (QuoteStatus.SENT, QuoteStatus.EXPIRED):
         raise ConflictError("quote_not_cancellable")
-    was_waiting = quote.status == QuoteStatus.SENT
     quote.status = QuoteStatus.CANCELLED
     quote.cancel_reason = reason
     await session.flush()
     if (
-        was_waiting
-        and order.status == WorkOrderStatus.PENDING_APPROVAL
+        order.status == WorkOrderStatus.PENDING_APPROVAL
         and quote.origin_status is not None
     ):
         await record_status_change(

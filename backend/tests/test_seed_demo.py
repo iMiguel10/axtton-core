@@ -121,6 +121,7 @@ async def test_it_can_run_every_night_and_leaves_a_working_demo(
     assert {o["status"] for o in orders} >= {
         "received",
         "diagnosing",
+        "pending_approval",
         "in_repair",
         "waiting_parts",
         "ready",
@@ -130,6 +131,29 @@ async def test_it_can_run_every_night_and_leaves_a_working_demo(
 
     unpaid = (await client.get("/api/v1/workshop/orders/unpaid", headers=main)).json()
     assert [o["days_pending"] for o in unpaid] == [19, 3]
+    # La de hace 19 días tiene su presupuesto aprobado: se sabe cuánto cobrar.
+    assert unpaid[0]["amount_cents"] is not None
+
+    # F3: presupuestos en cada estado, y uno enviado hace semanas, caducado.
+    quotes = (
+        await client.get(
+            "/api/v1/workshop/quotes", params={"view": "all"}, headers=main
+        )
+    ).json()
+    assert {q["status"] for q in quotes} >= {"draft", "sent", "approved", "rejected"}
+    expired = (
+        await client.get(
+            "/api/v1/workshop/quotes", params={"view": "expired"}, headers=main
+        )
+    ).json()
+    assert len(expired) == 1
+    approved = next(q for q in quotes if q["status"] == "approved")
+    pdf = await client.get(
+        f"/api/v1/workshop/quotes/{approved['id']}/pdf", headers=main
+    )
+    assert pdf.status_code == 200
+    rates = (await client.get("/api/v1/workshop/labor-rates", headers=main)).json()
+    assert [r["is_default"] for r in rates].count(True) == 1
 
     # La siguiente orden sigue la serie.
     car = next(o for o in orders if o["status"] == "received")["vehicle"]["id"]
@@ -151,7 +175,16 @@ async def test_it_can_run_every_night_and_leaves_a_working_demo(
                 " WHERE tgname = 'vehicle_ownerships_closed_frozen'"
             )
         )
-    assert (anonymized, trigger) == (1, "O")
+        # Y los que congelan los presupuestos enviados y sus decisiones, también.
+        frozen = (
+            await conn.scalars(
+                text(
+                    "SELECT tgenabled::text FROM pg_trigger WHERE tgname IN"
+                    " ('quotes_frozen_after_send', 'quote_decisions_frozen')"
+                )
+            )
+        ).all()
+    assert (anonymized, trigger, frozen) == (1, "O", ["O", "O"])
 
 
 @pytest.mark.asyncio

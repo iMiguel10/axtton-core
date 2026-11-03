@@ -41,6 +41,7 @@ import os
 from collections.abc import Awaitable, Callable
 from dataclasses import dataclass, field
 from datetime import date, datetime, timedelta
+from decimal import Decimal
 from typing import Any
 from uuid import UUID
 
@@ -67,14 +68,21 @@ from supertokens_python.types.base import AccountInfoInput
 from app.core import db
 from app.core.config import get_settings
 from app.core.supertokens import init_supertokens
+from app.domain.business_days import quote_valid_until
 from app.domain.limits import DEMO_PLAN, limit_column
+from app.domain.quotes import DecisionChannel, LineKind, Outcome
+from app.models import Quote
 from app.platform.db import platform_engine
+from app.repositories import quotes as quote_repo
 from app.repositories import work_orders as order_repo
 from app.scripts.reset_data import truncate_all
 from app.services import clients as client_service
+from app.services import quotes as quote_service
+from app.services import settings as settings_service
 from app.services import vehicles as vehicle_service
 from app.services import work_orders as order_service
 from app.services import worklog as worklog_service
+from app.services.quotes import LineInput
 
 # Pública a propósito: es la de la demo, y se enseña en su página de acceso.
 DEFAULT_PASSWORD = "demo-axtton-2026"
@@ -164,6 +172,10 @@ class Shop:
     ownerships: list[tuple[UUID, UUID, int]] = field(default_factory=list)
     # Hace cuántos días se abrió y se tocó por última vez cada orden.
     order_days: list[tuple[UUID, int, int]] = field(default_factory=list)
+    # Lo que pasó a cada presupuesto (versión, qué, orden y el `seq` del último
+    # cambio de estado de la orden en ese momento): sus fechas se ponen junto a
+    # ese cambio cuando se mueven hacia atrás.
+    quote_events: list[tuple[UUID, str, UUID, int]] = field(default_factory=list)
 
     def employee(self, key: str) -> UUID:
         return self.staff[key][0]
@@ -200,13 +212,15 @@ async def _platform_rows(
                 {"s": user_id},
             )
 
-        async def workshop(name: str, **legal: str) -> Shop:
+        async def workshop(name: str, delivery: int | None, **legal: str) -> Shop:
+            # Con todo lo que el PDF del presupuesto pide del taller (RF-37).
             workshop_id = await conn.scalar(
                 text(
-                    "INSERT INTO workshops (name, legal_name, tax_id, address, phone)"
-                    " VALUES (:n, :ln, :t, :a, :p) RETURNING id"
+                    "INSERT INTO workshops (name, legal_name, tax_id, address, phone,"
+                    " industrial_registry_number, default_delivery_business_days)"
+                    " VALUES (:n, :ln, :t, :a, :p, :r, :d) RETURNING id"
                 ),
-                {"n": name, **legal},
+                {"n": name, "d": delivery, **legal},
             )
             # Los límites de la demo (domain/limits.py::DEMO_PLAN): bastan para
             # probarlo todo y no dejan llenar la base de datos en un día.
@@ -258,6 +272,8 @@ async def _platform_rows(
 
         main = await workshop(
             "Talleres Martínez",
+            3,
+            r="02-001234",
             ln="Talleres Martínez e Hijos, S.L.",
             t="B02123456",
             a="Calle de la Industria 14, 02006 Albacete",
@@ -297,6 +313,8 @@ async def _platform_rows(
 
         small = await workshop(
             "Taller Rápido Levante",
+            None,
+            r="46-009876",
             ln="Rápido Levante, S.L.U.",
             t="B46987654",
             a="Avenida del Puerto 210, 46023 Valencia",
@@ -398,6 +416,18 @@ class Builder:
         self.shop.order_days.append((order.id, opened, last))
         return order.id
 
+    async def rates(self, *rates: tuple[str, int]) -> None:
+        """Las tarifas de mano de obra (RF-02); la primera, la de por defecto."""
+        for index, (name, cents) in enumerate(rates):
+            await settings_service.create_labor_rate(
+                self.session,
+                self.shop.id,
+                self.shop.user("laura"),
+                name=name,
+                hourly_price_cents=cents,
+                is_default=index == 0,
+            )
+
     # Los pasos, para componer el ciclo de vida de cada orden.
 
     def move(self, to: str, note: str | None = None, by: str = "laura") -> Step:
@@ -461,8 +491,6 @@ class Builder:
         voided: bool = False,
     ) -> Step:
         async def step(session: AsyncSession, order_id: UUID) -> None:
-            from decimal import Decimal
-
             recorded_by = recorder or who
             entry_id = await worklog_service.add_work_entry(
                 session,
@@ -482,6 +510,93 @@ class Builder:
                     order_id,
                     entry_id,
                 )
+
+        return step
+
+    # Los presupuestos (F3), siempre del administrador.
+
+    async def _event(self, quote_id: UUID, kind: str, order_id: UUID) -> None:
+        last = await order_repo.last_change(self.session, order_id)
+        assert last is not None
+        self.shop.quote_events.append((quote_id, kind, order_id, last.seq))
+
+    async def _latest(self, order_id: UUID) -> Quote:
+        quote = await quote_repo.latest(self.session, order_id)
+        assert quote is not None
+        return quote
+
+    def quote(
+        self,
+        *lines: LineInput,
+        delivery: int | None = 3,
+        discount: dict[str, Any] | None = None,
+    ) -> Step:
+        """Una versión nueva en borrador con estas líneas. Si ya hay versiones,
+        es la corrección de la última."""
+
+        async def step(session: AsyncSession, order_id: UUID) -> None:
+            quote_id = await quote_service.create_draft(
+                session, self.shop.id, self.shop.employee("laura"), order_id
+            )
+            await quote_service.save_draft(
+                session,
+                self.shop.id,
+                quote_id,
+                expected_version=1,
+                global_discount=discount,
+                lines=list(lines),
+                delivery_business_days=delivery,
+            )
+            await self._event(quote_id, "created", order_id)
+
+        return step
+
+    def send(self) -> Step:
+        async def step(session: AsyncSession, order_id: UUID) -> None:
+            draft = await self._latest(order_id)
+            await quote_service.send_quote(
+                session,
+                self.shop.id,
+                self.shop.user("laura"),
+                self.shop.employee("laura"),
+                draft.id,
+                expected_version=draft.version,
+            )
+            await self._event(draft.id, "sent", order_id)
+
+        return step
+
+    def decide(self, outcome: str, channel: str, note: str | None = None) -> Step:
+        async def step(session: AsyncSession, order_id: UUID) -> None:
+            sent = await self._latest(order_id)
+            await quote_service.record_decision(
+                session,
+                self.shop.id,
+                self.shop.user("laura"),
+                self.shop.employee("laura"),
+                sent.id,
+                expected_version=sent.version,
+                outcome=Outcome(outcome),
+                channel=DecisionChannel(channel),
+                note=note,
+            )
+            await self._event(sent.id, "decided", order_id)
+
+        return step
+
+    def cancel_quote(self, reason: str) -> Step:
+        async def step(session: AsyncSession, order_id: UUID) -> None:
+            sent = await self._latest(order_id)
+            await quote_service.cancel_quote(
+                session,
+                self.shop.id,
+                self.shop.user("laura"),
+                self.shop.employee("laura"),
+                sent.id,
+                expected_version=sent.version,
+                reason=reason,
+            )
+            await self._event(sent.id, "changed", order_id)
 
         return step
 
@@ -509,8 +624,10 @@ class Builder:
 
 
 async def _main_workshop(b: Builder) -> None:
-    """Talleres Martínez: un mes de trabajo con órdenes en cada estado posible
-    sin presupuestos (los presupuestos llegan en F3)."""
+    """Talleres Martínez: un mes de trabajo con órdenes en cada estado posible y
+    presupuestos en cada estado (F3): borrador, enviado, corregido, aprobado,
+    rechazado, anulado y caducado."""
+    await b.rates(("Mecánica", 4550), ("Electricidad", 5200), ("Chapa y pintura", 4800))
     await b.client(
         "carmen",
         name="Carmen López Gil",
@@ -687,6 +804,16 @@ async def _main_workshop(b: Builder) -> None:
         year=2006,
         fuel="diesel",
     )
+    # El coche que José compró al vender el Clio.
+    await b.vehicle(
+        "308",
+        [("jose", 25)],
+        plate="4410 LHT",
+        make="Peugeot",
+        model="308",
+        year=2020,
+        fuel="diesel",
+    )
 
     # Recibida hoy, sin tocar: la que acaba de llegar al mostrador.
     await b.order(
@@ -719,6 +846,13 @@ async def _main_workshop(b: Builder) -> None:
                 "1.0",
             ),
             b.note("laura", "La clienta pide que la llamemos antes de desmontar nada."),
+            # A medias: Laura lo está preparando y aún no lo ha enviado.
+            b.quote(
+                line("labor", "Mecánica", "6", "45.50"),
+                line("part", "Junta de culata", "1", "189.00", reference="JC-1.6TDI"),
+                line("part", "Juego de tornillos de culata", "1", "42.00"),
+                delivery=4,
+            ),
         ),
     )
     # En reparación sin presupuesto: precio cerrado (RF-27).
@@ -747,6 +881,13 @@ async def _main_workshop(b: Builder) -> None:
                 "Se sustituye la correa de distribución, tensor, rodillos y bomba de agua, "
                 "según el mantenimiento del fabricante.",
             ),
+            # Un trabajo adicional, fuera del precio cerrado: espera respuesta.
+            b.quote(
+                line("part", "Termostato", "1", "38.90", reference="TH-5521"),
+                line("labor", "Mecánica", "0.5", "45.50"),
+                delivery=1,
+            ),
+            b.send(),
         ),
     )
     # Esperando piezas, con un trabajo anotado por error y anulado.
@@ -765,7 +906,28 @@ async def _main_workshop(b: Builder) -> None:
                 "El sincronizador de segunda está desgastado y hay holgura en el "
                 "rodamiento del primario. Hay que abrir la caja de cambios.",
             ),
-            b.no_quote("fixed_price"),
+            b.quote(
+                line("labor", "Mecánica", "8", "45.50"),
+                line("part", "Kit de sincronizadores", "1", "310.00"),
+                delivery=5,
+            ),
+            b.send(),
+            # Corregido: faltaba el rodamiento. La versión 1 queda sustituida.
+            b.quote(
+                line("labor", "Mecánica", "8", "45.50"),
+                line("part", "Kit de sincronizadores", "1", "310.00"),
+                line(
+                    "part",
+                    "Rodamiento del primario",
+                    "1",
+                    "74.00",
+                    reference="SKF-6305",
+                ),
+                delivery=5,
+                discount={"kind": "percent", "value": 500},
+            ),
+            b.send(),
+            b.decide("approved", "phone", "Lo aprueba el jefe de flota por teléfono."),
             b.move("in_repair", by="javier"),
             b.work("javier", "Desmontaje de la caja de cambios", 6, "4.0"),
             b.work("sergio", "Desmontaje de la caja de cambios", 6, "4.0", voided=True),
@@ -840,6 +1002,23 @@ async def _main_workshop(b: Builder) -> None:
         steps=(
             b.move("diagnosing"),
             b.work("sergio", "Prueba en carretera y equilibrado de ruedas", 2, "0.75"),
+            b.quote(
+                line(
+                    "part",
+                    "Juego de amortiguadores delanteros",
+                    "1",
+                    "160.00",
+                    condition="reconditioned",
+                ),
+                line("labor", "Mecánica", "2", "45.50"),
+                delivery=2,
+            ),
+            b.send(),
+            b.decide(
+                "rejected",
+                "in_person",
+                "Prefiere no cambiar los amortiguadores por ahora.",
+            ),
             b.move(
                 "ready",
                 note="Se equilibran las ruedas y la vibración desaparece. No hay avería.",
@@ -855,7 +1034,15 @@ async def _main_workshop(b: Builder) -> None:
         type_="maintenance",
         odometer_km=165500,
         steps=(
-            b.no_quote("fixed_price"),
+            b.move("diagnosing"),
+            b.quote(
+                line("labor", "Mecánica", "2.5", "45.50"),
+                line("part", "Kit de filtros", "1", "86.40"),
+                line("part", "Aceite 5W30", "7.5", "9.80"),
+                delivery=1,
+            ),
+            b.send(),
+            b.decide("approved", "phone", "Confirmado con la oficina de la flota."),
             b.move("in_repair", by="javier"),
             b.work("javier", "Revisión completa, filtros y aceite", 21, "2.5"),
             b.move("ready", by="javier"),
@@ -938,6 +1125,55 @@ async def _main_workshop(b: Builder) -> None:
             b.pay("no_charge"),
         ),
     )
+    # Esperando respuesta: la versión 1 se anuló por un precio equivocado y se
+    # envió otra.
+    await b.order(
+        "clio",
+        opened=3,
+        last=1,
+        reason="Chirrían los frenos al parar.",
+        odometer_km=144200,
+        responsible_employee_id=b.shop.employee("sergio"),
+        expected_delivery_at=_at(b.today, 3, 18),
+        steps=(
+            b.move("diagnosing"),
+            b.diagnose(
+                "sergio", "Pastillas delanteras al límite y discos con escalón."
+            ),
+            b.quote(
+                line("part", "Pastillas delanteras", "1", "64.00"),
+                line("labor", "Mecánica", "1", "45.50"),
+            ),
+            b.send(),
+            b.cancel_quote("Faltaban los discos: el precio no era el bueno."),
+            b.quote(
+                line("part", "Pastillas delanteras", "1", "64.00"),
+                line("part", "Discos delanteros", "2", "52.00", reference="BR-0932"),
+                line("labor", "Mecánica", "1.5", "45.50"),
+            ),
+            b.send(),
+        ),
+    )
+    # Caducado sin respuesta (RF-33): hay que renovarlo o anularlo.
+    await b.order(
+        "308",
+        opened=26,
+        last=25,
+        reason="Revisar el aire acondicionado: no enfría.",
+        odometer_km=61200,
+        steps=(
+            b.move("diagnosing"),
+            b.diagnose(
+                "javier", "Fuga en el condensador. Hay que sustituirlo y recargar."
+            ),
+            b.quote(
+                line("part", "Condensador", "1", "145.00"),
+                line("other", "Recarga de gas R1234yf", "1", "95.00"),
+                line("labor", "Mecánica", "1.5", "45.50"),
+            ),
+            b.send(),
+        ),
+    )
     # Cancelada: abierta por error.
     await b.order(
         "ibiza",
@@ -980,6 +1216,7 @@ async def _main_workshop(b: Builder) -> None:
 
 async def _small_workshop(b: Builder) -> None:
     """Taller Rápido Levante: poco, para que se note al cambiar de taller."""
+    await b.rates(("Mano de obra", 4000))
     await b.client(
         "vicente",
         name="Vicente Ferrer Climent",
@@ -1034,6 +1271,30 @@ async def _small_workshop(b: Builder) -> None:
     )
 
 
+def line(
+    kind: str,
+    description: str,
+    quantity: str,
+    euros: str,
+    *,
+    vat: int = 2100,
+    discount: int = 0,
+    reference: str | None = None,
+    condition: str | None = None,
+) -> LineInput:
+    """Una línea de presupuesto; `euros` como se escribiría, "45.50"."""
+    return LineInput(
+        LineKind(kind),
+        description,
+        reference,
+        condition or ("new" if kind == "part" else None),
+        Decimal(quantity),
+        int(Decimal(euros) * 100),
+        discount,
+        vat,
+    )
+
+
 def _at(today: date, days: int, hour: int) -> datetime:
     """Una hora en Madrid dentro de `days` días, para la entrega prevista."""
     from zoneinfo import ZoneInfo
@@ -1057,7 +1318,8 @@ async def _backdate(shops: tuple[Shop, ...]) -> None:
     órdenes, sus historiales, clientes y vehículos. Los periodos de titularidad
     los congela un trigger con cualquier rol, así que esos van con el dueño, que
     lo desactiva dentro de su transacción (y vuelve a activarlo antes de
-    confirmar).
+    confirmar). Lo mismo con los presupuestos enviados, que congela
+    `quotes_frozen_after_send`.
     """
     async with platform_engine.begin() as conn:
         for shop in shops:
@@ -1094,6 +1356,22 @@ async def _backdate(shops: tuple[Shop, ...]) -> None:
                     " ENABLE TRIGGER vehicle_ownerships_closed_frozen"
                 )
             )
+            # Lo enviado y lo decidido no cambia (invariante 6): para moverlo,
+            # sus dos triggers, solo dentro de esta transacción.
+            frozen = (
+                ("quotes", "quotes_frozen_after_send"),
+                ("quote_decisions", "quote_decisions_frozen"),
+            )
+            for table, trigger in frozen:
+                await conn.execute(
+                    text(f"ALTER TABLE {table} DISABLE TRIGGER {trigger}")
+                )
+            for shop in shops:
+                await _backdate_quotes(conn, shop)
+            for table, trigger in frozen:
+                await conn.execute(
+                    text(f"ALTER TABLE {table} ENABLE TRIGGER {trigger}")
+                )
     finally:
         await owner.dispose()
 
@@ -1142,6 +1420,55 @@ async def _backdate_order(conn: Any, order_id: UUID, opened: int, last: int) -> 
         ),
         {"o": order_id},
     )
+
+
+async def _backdate_quotes(conn: Any, shop: Shop) -> None:
+    """Cada cosa que pasó a un presupuesto, justo después del cambio de estado
+    de su orden que la precedía (ya movido), con unos minutos entre una y otra
+    para que no se desordenen. La validez se vuelve a calcular desde la fecha
+    de envío nueva, con la misma regla (RF-33): así una enviada hace semanas
+    sale caducada."""
+    zone, days = (
+        await conn.execute(
+            text(
+                "SELECT timezone, quote_validity_business_days FROM workshops"
+                " WHERE id = :w"
+            ),
+            {"w": shop.id},
+        )
+    ).one()
+    after: dict[tuple[UUID, int], int] = {}
+    for quote_id, kind, order_id, seq in shop.quote_events:
+        count = after[(order_id, seq)] = after.get((order_id, seq), 0) + 1
+        change = await conn.scalar(
+            text(
+                "SELECT created_at FROM work_order_status_changes"
+                " WHERE work_order_id = :o AND seq = :s"
+            ),
+            {"o": order_id, "s": seq},
+        )
+        at = change + timedelta(minutes=10 * count)
+        params = {"q": quote_id, "at": at}
+        if kind == "created":
+            await conn.execute(
+                text("UPDATE quotes SET created_at = :at WHERE id = :q"), params
+            )
+        elif kind == "sent":
+            await conn.execute(
+                text("UPDATE quotes SET sent_at = :at, valid_until = :v WHERE id = :q"),
+                {**params, "v": quote_valid_until(at, zone, days)},
+            )
+        elif kind == "decided":
+            await conn.execute(
+                text(
+                    "UPDATE quote_decisions SET decided_at = :at, created_at = :at"
+                    " WHERE quote_id = :q"
+                ),
+                params,
+            )
+        await conn.execute(
+            text("UPDATE quotes SET updated_at = :at WHERE id = :q"), params
+        )
 
 
 async def _renumber(conn: Any, workshop_id: UUID) -> None:

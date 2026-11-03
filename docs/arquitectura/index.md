@@ -1,6 +1,6 @@
 # Arquitectura
 
-> Estado: **v0.1** (2026-10-24, puesto al día el 2026-10-28) · F0 y F1 hechas y cerradas ([lo aprendido en F0](f0-cierre.md), [en F1](f1-cierre.md)); F2 construida y desplegada. Donde F1 o F2 resultaron distintas del diseño, el texto lo dice ("al construirlo en F1", "al construirlo en F2").
+> Estado: **v0.1** (2026-10-24, puesto al día el 2026-11-03) · F0 a F3 hechas y cerradas ([lo aprendido en F0](f0-cierre.md), [en F1](f1-cierre.md), [en F2](f2-cierre.md), [en F3](f3-cierre.md)). Donde F1, F2 o F3 resultaron distintas del diseño, el texto lo dice ("al construirlo en F1", "al construirlo (F3 paso 5)").
 
 Este documento recoge **qué se ha decidido y contra qué alternativa**. La especificación de producto está en [producto/especificacion.md](../producto/especificacion.md); los requisitos se citan por su número (RF-xx, RNF-xx).
 
@@ -246,7 +246,7 @@ El estado de una orden es una copia del último cambio de su historial (especifi
 - **Permisos:** `axtton_app` no tiene `DELETE` sobre `work_orders` (una orden abierta por error se cancela) ni sobre `work_order_counters`, y no tiene `UPDATE` ni `DELETE` sobre `work_order_status_changes` (RNF-12).
 - **Las transiciones manuales** (F2, paso 4) son una tabla en `domain/work_orders.py` (`TRANSITIONS`): cada una dice qué acción de la matriz de permisos la autoriza (`MOVE_REPAIR_STATUS`, que tiene también el mecánico, o `MANAGE_ORDERS`), si exige nota (cancelar, "sin reparar") y si exige "sin presupuesto" (RF-27). Las del presupuesto no están: no se hacen a mano. `POST /workshop/orders/{id}/status` las aplica con la orden bloqueada (`FOR UPDATE`) y su versión comprobada. La ficha devuelve `allowed_transitions` para el rol de quien la mira, así que la interfaz no repite las reglas.
 - **Deshacer** (`POST /workshop/orders/{id}/undo`) escribe un cambio con causa `undo` y `undoes_seq`, vuelve al estado anterior (y quita la marca "sin reparar" si era eso) y se audita. Solo se deshace un último cambio `manual`, no notificado y que no cerró la orden.
-- **El bloqueo y la versión, comprobados rompiendo el bloqueo:** sin el `FOR UPDATE`, dos cambios simultáneos siguen sin pisarse, porque SQLAlchemy vigila la `version` al escribir la orden y el segundo choca (`StaleDataError` → 409). Pero entonces es el ORM, al final, quien detecta el conflicto, no el service con sus reglas. El bloqueo es lo que hace que el service lea el último cambio de verdad; la versión es la red. En F3, cuando el presupuesto cambie el estado sin que nadie mande una versión, el bloqueo será lo único que quede.
+- **El bloqueo y la versión, comprobados rompiendo el bloqueo:** sin el `FOR UPDATE`, dos cambios simultáneos siguen sin pisarse, porque SQLAlchemy vigila la `version` al escribir la orden y el segundo choca (`StaleDataError` → 409). Pero entonces es el ORM, al final, quien detecta el conflicto, no el service con sus reglas. El bloqueo es lo que hace que el service lea el último cambio de verdad; la versión es la red. Desde F3, cuando el presupuesto cambia el estado sin que nadie mande una versión, el bloqueo es lo único que queda (§7.1).
 - **Qué bloqueo pide cada escritura sobre una orden** (F2, paso 5):
   - un cambio de estado pide `FOR UPDATE`;
   - guardar el diagnóstico o anular un trabajo pide `FOR SHARE`: solo necesita que la orden no cambie de estado mientras tanto;
@@ -254,7 +254,7 @@ El estado de una orden es una copia del último cambio de su historial (especifi
 
   Gracias a eso, cancelar (que exige no tener trabajos) y anotar un trabajo nunca pasan los dos: el segundo espera y ve lo que hizo el primero. `last_activity_at` se escribe con un `UPDATE` directo, sin subir la `version`, para que un trabajo no provoque un 409 a quien edita la recepción.
 - **El directorio del personal** (`GET /workshop/staff`): id y nombre de las fichas activas, para todo el personal. Hace falta para anotar el trabajo de un compañero (RF-23) sin abrirle al mecánico `/employees`, que incluye costes y accesos.
-- **El cobro** (`PUT /workshop/orders/{id}/payment`, F2 paso 8): solo con la orden cerrada (RF-26), con la orden bloqueada y su versión comprobada, y auditado (`payment_recorded`, solo lo que cambió). Se puede corregir: es una marca operativa, no una factura. `GET /workshop/orders/unpaid` da las entregadas pendientes, la más antigua primero, con los días pendientes calculados en la zona del taller; el importe a cobrar llegará con los presupuestos (F3).
+- **El cobro** (`PUT /workshop/orders/{id}/payment`, F2 paso 8): solo con la orden cerrada (RF-26), con la orden bloqueada y su versión comprobada, y auditado (`payment_recorded`, solo lo que cambió). Se puede corregir: es una marca operativa, no una factura. `GET /workshop/orders/unpaid` da las entregadas pendientes, la más antigua primero, con los días pendientes calculados en la zona del taller; el importe a cobrar llegó con los presupuestos (F3 paso 6): el total guardado de la última versión aprobada (especificación RF-29).
 
 #### `quotes`, `quote_lines` y `quote_decisions`
 
@@ -263,11 +263,13 @@ Una fila de `quotes` es **una versión**, no "el presupuesto". Así, versionar e
 | Columna de `quotes` | Notas |
 |---|---|
 | `work_order_id`, `version_no` | `UNIQUE (work_order_id, version_no)` |
+| `created_by_employee_id`, `sent_by_employee_id` | Quién creó el borrador y quién lo envió; la segunda se escribe al enviar |
 | `status` | `CHECK IN ('draft','sent','approved','rejected','expired','superseded','cancelled')` |
 | `sent_at`, `valid_until` | `valid_until` se calcula al enviar: al menos 12 días hábiles (RF-33) |
 | `origin_status` | El estado de la orden al enviarla: adonde vuelve tras decidir o anular (§6 de la especificación) |
 | `diagnosis_version_id` | La versión del diagnóstico que acompañaba al envío |
 | `global_discount_kind`, `global_discount_value` | Porcentaje o importe (RF-39) |
+| `global_discount_cents` | El descuento global resuelto en céntimos; se guarda al enviar, con los totales |
 | `subtotal_cents`, `vat_breakdown jsonb`, `total_cents` | **Se guardan al enviar** y no se recalculan nunca (RNF-11, RNF-14) |
 | `cancel_reason` | |
 | `delivery_business_days` | El plazo de entrega en días hábiles desde la aceptación (RF-37). Se escribe en el borrador y es obligatorio para enviar (CHECK). *F3 paso 7, migración `0014quotepdf`* |
@@ -307,6 +309,7 @@ Un fallo de la aplicación no puede alterar un presupuesto enviado.
   - `quotes_frozen_after_send` deja enviar un borrador solo si tiene líneas, todas calculadas y sumando el total guardado. Compara la fila entera en `jsonb` salvo el estado, el motivo de anulación y el bloqueo optimista, así que una columna nueva queda congelada sin tocarlo. Las transiciones repiten `domain/quotes.py::QUOTE_TRANSITIONS`, y pasar a aprobada o rechazada exige su decisión ya registrada. Solo se borra un borrador (descartarlo).
   - `quote_decisions_only_when_sent` admite una decisión solo sobre una versión enviada y vigente, y **pone la hora del servidor**: una decisión antedatada esquivaría la caducidad. Vale aunque nadie haya marcado la versión como caducada.
   - `quote_decision_matches_status` es diferido, como el del invariante 5: al confirmar, la versión decidida tiene el estado de su decisión.
+  - `quote_decisions_frozen` (añadido al cerrar F3, migración `0015decisionsfrozen`) rechaza cualquier `UPDATE` o `DELETE` de una decisión, también del dueño de las tablas: los permisos solo cubrían a la aplicación y a la plataforma. `TRUNCATE` no dispara triggers de fila, y la demo lo desactiva dentro de su transacción para mover las fechas.
 - **Permisos:** `quote_decisions` es append-only también para `axtton_platform`. De `quotes` y `quote_lines`, `axtton_app` no puede actualizar lo que fija la creación (la orden, el número de versión, quién la creó); sí borrar, porque descartar un borrador es eso.
 - **Lo que queda fuera:** `part_id` llegará con el catálogo (F7). El estado `expired` no lo escribe nadie hasta el worker (F5): la caducidad se decide por `valid_until`.
 - **El borrador** (F3 paso 4, `services/quotes.py`): `POST /workshop/orders/{id}/quotes` crea la versión siguiente (copiando la última), `PUT /workshop/quotes/{id}` reemplaza sus líneas y su descuento global y `POST /workshop/quotes/{id}/discard` lo borra. Los bloqueos van siempre en el mismo orden: la orden con `FOR SHARE` (un borrador no cambia la orden, pero el envío, que pedirá `FOR UPDATE`, no debe cruzarse con él) y después la versión con `FOR UPDATE`. Aunque solo cambien las líneas, guardar sube la `version` de la versión: es el bloqueo optimista de todo el borrador. Dos borradores creados a la vez chocan con el índice único y el segundo recibe un 409 (`test_quotes.py`).
@@ -476,7 +479,7 @@ axtton-core/
 │       ├── core/                configuración, SuperTokens, la sesión (sessions.py), BD con el taller fijado, errores
 │       ├── domain/              reglas puras: matriz de permisos (can), actores, límite de peticiones, invitaciones;
 │       │                        F2 añadió work_orders (transiciones, deshacer), limits, clients, vehicles, search y emails;
-│       │                        con F3 llegan totales, días hábiles y estados que ve el cliente (quotes.py y money.py son de F0)
+│       │                        F3 añadió settings, quotes (la regla única de los totales y las transiciones de versión) y business_days; los estados que ve el cliente llegan con el portal (F4). money.py es de F0
 │       ├── models/              SQLAlchemy
 │       ├── repositories/        consultas con axtton_app; siempre bajo RLS
 │       ├── schemas/             Pydantic, separados por actor cuando lo que se expone difiere
@@ -758,8 +761,8 @@ Como en Applications Tracker (su decisión 0023). Construido en F2 ([decisión 0
 |---|---|
 | **F0** ✔ | **Hecha** ([cierre y lo aprendido](f0-cierre.md)). Esqueleto vertical desechable: `workshops`, `clients`, `vehicles`, `work_orders`, `quotes` y `quote_lines` mínimos; un taller fijo; enviar un presupuesto de una línea, aprobarlo desde un enlace secreto y ver el cambio de estado. **Incluye un primer RLS de verdad** (dos roles y una política) y un PDF de una página, porque son lo que más puede sorprender. Se tira al terminar |
 | **F1** ✔ | Roles de BD y política generada por migración; R1–R5, R7 y R8 (R6 espera a los triggers de presupuesto, F3). SuperTokens con `emailpassword`, los tres routers y sus dependencias; T1–T3. `users`, `employees`, `invitations`, superadministrador por comando, alta de talleres, modo de instalación, taller activo. `audit_log`. Mailpit. **CI**. *Añadido al construirlo:* límite de peticiones con Valkey (RNF-06), cuenta del personal (cambio de contraseña y sesiones), consulta del registro de auditoría e invitación de otros superadministradores (RF-110) |
-| **F2** | Clientes, vehículos, `vehicle_ownerships`, órdenes con su historial, número correlativo, deshacer, búsqueda, bloqueo optimista, borradores en IndexedDB. *Añadido al planificarla:* diagnóstico, notas internas y trabajos (RF-22, RF-23: lo que guardan los borradores), cobro (RF-28, RF-29) y anonimización (RF-15), y una revisión del diseño de la interfaz validada **antes** del despliegue. **Primer despliegue en Coolify** |
-| **F3** | Datos del taller y `labor_rates` editables por su administrador (RF-02; `axtton_app` recibe `UPDATE` solo sobre esas columnas de `workshops`, migración `0003grants`), presupuestos versionados con sus triggers, totales y descuentos, decisión registrada por el taller, PDF del presupuesto con los datos legales |
+| **F2** ✔ | Clientes, vehículos, `vehicle_ownerships`, órdenes con su historial, número correlativo, deshacer, búsqueda, bloqueo optimista, borradores en IndexedDB. *Añadido al planificarla:* diagnóstico, notas internas y trabajos (RF-22, RF-23: lo que guardan los borradores), cobro (RF-28, RF-29) y anonimización (RF-15), y una revisión del diseño de la interfaz validada **antes** del despliegue. **Primer despliegue en Coolify** |
+| **F3** ✔ | **Hecha** ([cierre](f3-cierre.md)). Datos del taller y `labor_rates` editables por su administrador (RF-02; `axtton_app` recibe `UPDATE` solo sobre esas columnas de `workshops`, migración `0012settings`), presupuestos versionados con sus triggers (`0013quotes`; R6 desde aquí), totales y descuentos, envío, renovación y anulación, decisión registrada por el taller, PDF del presupuesto con los datos legales y vista previa del borrador (`0014quotepdf`) y, pendiente de F2, los filtros del listado de órdenes (RF-24) |
 | **F4** | Receta `passwordless`, petición y consumo del enlace por taller (§7.2), routers del portal, estados para el cliente, aprobación desde el portal; T4–T7 |
 | **F5** | `worker`, bandeja de avisos, despachador, presupuesto enviado y vehículo listo; B1–B6 |
 | **F6** | Hoja de recepción con firma (§7.3), resumen de entrega, informe de actuaciones, descarga en el portal; prueba de punta a punta en CI |

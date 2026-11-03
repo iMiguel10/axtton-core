@@ -9,10 +9,12 @@ from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import InstrumentedAttribute, aliased
 
+from app.domain.quotes import QuoteStatus
 from app.domain.work_orders import CLOSED, PaymentStatus, WorkOrderStatus
 from app.models import (
     Client,
     Employee,
+    Quote,
     Vehicle,
     WorkEntry,
     WorkOrder,
@@ -239,18 +241,35 @@ async def local_date(session: AsyncSession, workshop_id: UUID) -> date:
 
 async def unpaid_page(
     session: AsyncSession, *, limit: int, offset: int
-) -> list[tuple[OrderRow, int]]:
+) -> list[tuple[OrderRow, int, int | None]]:
     """Las entregadas pendientes de cobro (RF-29), la más antigua primero, con
-    los días que lleva pendiente: de la fecha de entrega a hoy, las dos en la
-    zona del taller (ix_work_orders_unpaid)."""
+    los días que lleva pendiente (de la fecha de entrega a hoy, las dos en la
+    zona del taller, ix_work_orders_unpaid) y el importe a cobrar.
+
+    El importe es el total guardado de la última versión aprobada, no la suma
+    de todas: un trabajo adicional se prepara como versión nueva que copia la
+    anterior y le añade lo nuevo, así que sumarlas contaría dos veces lo
+    aprobado primero. Si el adicional se rechazó, vale la anterior. Nulo si la
+    orden no tuvo presupuesto aprobado ("sin presupuesto", sin reparar).
+    """
 
     def local_day(at: ColumnElement[datetime] | InstrumentedAttribute[Any]) -> Any:
         return func.date(func.timezone(Workshop.timezone, at))
 
     days = local_day(func.clock_timestamp()) - local_day(WorkOrder.delivered_at)
+    approved_total = (
+        select(Quote.total_cents)
+        .where(
+            Quote.work_order_id == WorkOrder.id,
+            Quote.status == QuoteStatus.APPROVED,
+        )
+        .order_by(Quote.version_no.desc())
+        .limit(1)
+        .scalar_subquery()
+    )
     rows = await session.execute(
         _with_context()
-        .add_columns(days)
+        .add_columns(days, approved_total)
         .join(Workshop, Workshop.id == WorkOrder.workshop_id)
         .where(
             WorkOrder.status == WorkOrderStatus.DELIVERED,
@@ -260,7 +279,9 @@ async def unpaid_page(
         .limit(limit)
         .offset(offset)
     )
-    return [(OrderRow(o, v, c, name), int(d)) for o, v, c, name, d in rows]
+    return [
+        (OrderRow(o, v, c, name), int(d), total) for o, v, c, name, d, total in rows
+    ]
 
 
 async def count_open_for_client(session: AsyncSession, client_id: UUID) -> int:

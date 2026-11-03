@@ -65,7 +65,8 @@
       "labor_rate_unarchived": "Rate restored",
       "quote_sent": "Quote sent",
       "quote_cancelled": "Quote cancelled",
-      "quote_renewed": "Quote renewed"
+      "quote_renewed": "Quote renewed",
+      "quote_decided": "Quote reply"
     },
     "fields": {
       "email": "Email",
@@ -101,7 +102,9 @@
       "is_default": "Default",
       "quote_version": "Version",
       "total_cents": "Total",
-      "cancel_reason": "Reason"
+      "cancel_reason": "Reason",
+      "quote_outcome": "Reply",
+      "decision_channel": "Channel"
     }
   },
   "nav": {
@@ -297,7 +300,8 @@
     "daysPending": "Pending for",
     "days_one": "{{count}} day",
     "days_other": "{{count}} days",
-    "saved": "Payment saved."
+    "saved": "Payment saved.",
+    "amountDue": "Amount"
   },
   "drafts": {
     "offline": "No connection. What you write is kept on this device and will be sent when it's back.",
@@ -626,7 +630,10 @@
     "quote_empty": "A quote without lines is not sent.",
     "quote_not_cancellable": "Only a sent version that has not been decided or superseded can be cancelled.",
     "work_order_has_quotes": "The order has sent quotes: it cannot be cancelled. If the client does not go ahead, deliver it unrepaired.",
-    "quote_not_renewable": "Only a sent version awaiting a reply can be renewed."
+    "quote_not_renewable": "Only a sent version awaiting a reply can be renewed.",
+    "quote_not_decidable": "Only the sent version awaiting a reply can be decided: this one was already decided, superseded or cancelled.",
+    "quote_expired": "This quote is past its validity: renew it before recording the reply.",
+    "quote_decision_channel_not_allowed": "From the workshop, the reply is recorded by phone or in person."
   },
   "palette": {
     "open": "Search the workshop",
@@ -801,6 +808,36 @@
     "renew": "Renew",
     "renewTitle": "Renew version {{number}}",
     "confirmRenew": "A copy with the same lines and prices is sent, valid for {{days}} business days from today. This version does not change: it is superseded, with its date and amounts.",
-    "renewed": "Quote renewed"
+    "renewed": "Quote renewed",
+    "decision": {
+      "record": "Record the client reply",
+      "title": "Client reply",
+      "outcome": "Reply",
+      "outcomes": {
+        "approved": "Approves the quote",
+        "rejected": "Rejects it"
+      },
+      "channel": "How",
+      "channels": {
+        "portal": "from the portal",
+        "phone": "by phone",
+        "in_person": "in person"
+      },
+      "note": "Note (optional)",
+      "weakProof": "A reply recorded by the workshop is weaker evidence than one given by the client from the portal or signed. If you can, ask them to confirm in writing and note it here.",
+      "submit": {
+        "approved": "Record the approval",
+        "rejected": "Record the rejection"
+      },
+      "done": {
+        "approved": "Approval recorded",
+        "rejected": "Rejection recorded"
+      },
+      "summary": {
+        "approved": "Approved {{channel}} on {{when}}",
+        "rejected": "Rejected {{channel}} on {{when}}"
+      },
+      "recordedBy": "recorded by {{name}}"
+    }
   }
 }

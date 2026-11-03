@@ -15,6 +15,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.errors import ConflictError, NotFoundError, ValidationFailedError
 from app.domain.clients import normalize_email, normalize_tax_id
+from app.domain.permissions import Role
 from app.domain.settings import MAX_ACTIVE_LABOR_RATES
 from app.infra.images import InvalidImageError, normalize_logo
 from app.models import AuditEntry, LaborRate, Workshop, WorkshopLogo
@@ -70,6 +71,17 @@ def _audit(
             details=details,
         )
     )
+
+
+async def prices_hidden(session: AsyncSession, workshop_id: UUID, role: str) -> bool:
+    """Si quien mira no puede ver importes de venta: el mecánico, cuando el
+    taller lo desactiva (`mechanics_see_sale_prices`, especificación §3). Lo
+    usan los presupuestos y los pendientes de cobro."""
+    if role != Role.MECHANIC:
+        return False
+    workshop = await settings_repo.get_workshop(session, workshop_id)
+    assert workshop is not None
+    return not workshop.mechanics_see_sale_prices
 
 
 # --- Datos del taller --------------------------------------------------------

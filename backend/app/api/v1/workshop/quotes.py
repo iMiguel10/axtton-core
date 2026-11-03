@@ -9,11 +9,14 @@ from fastapi import APIRouter, Depends, Query, status
 
 from app.api.v1.workshop.deps import WorkshopContext, require
 from app.domain.permissions import Action
+from app.domain.quotes import DecisionChannel, Outcome
 from app.domain.work_orders import order_code
 from app.schemas.clients import VersionOnly
 from app.schemas.quotes import (
     QuoteCancel,
     QuoteCreated,
+    QuoteDecisionCreate,
+    QuoteDecisionRead,
     QuoteDraftSave,
     QuoteLineRead,
     QuoteListItem,
@@ -114,6 +117,17 @@ def _read(view: QuoteView) -> QuoteRead:
         ),
         prices_hidden=hidden,
         expired=view.expired,
+        decision=(
+            QuoteDecisionRead(
+                outcome=view.decision[0].outcome,  # type: ignore[arg-type]
+                channel=view.decision[0].channel,  # type: ignore[arg-type]
+                decided_at=view.decision[0].decided_at,
+                recorded_by_name=view.decision[1],
+                note=view.decision[0].note,
+            )
+            if view.decision
+            else None
+        ),
         version=quote.version,
     )
 
@@ -204,3 +218,23 @@ async def renew_quote(
         expected_version=body.version,
     )
     return QuoteCreated(id=renewed)
+
+
+@router.post("/quotes/{quote_id}/decision", status_code=status.HTTP_204_NO_CONTENT)
+async def record_decision(
+    quote_id: UUID, body: QuoteDecisionCreate, workshop: Manager
+) -> None:
+    """Registra la decisión que el cliente dio por teléfono o en persona
+    (RF-35, RF-36). Como prueba vale menos que la del portal: la interfaz lo
+    dice al registrarla."""
+    await quote_service.record_decision(
+        workshop.session,
+        workshop.workshop_id,
+        workshop.user_id,
+        workshop.employee_id,
+        quote_id,
+        expected_version=body.version,
+        outcome=Outcome(body.outcome),
+        channel=DecisionChannel(body.channel),
+        note=body.note or None,
+    )

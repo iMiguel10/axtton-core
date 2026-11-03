@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { FileText, Plus, RefreshCw, Send, Trash2 } from "lucide-react";
+import { CheckCircle, FileText, Plus, RefreshCw, Send, Trash2 } from "lucide-react";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 
@@ -32,11 +32,13 @@ import {
   LINE_KINDS,
   PART_CONDITIONS,
   quotesApi,
+  type DecisionOutcome,
   type DiscountKind,
   type DraftInput,
   type LineKind,
   type PartCondition,
   type Quote,
+  type QuoteDecision,
   type QuoteTotals,
 } from "./api";
 
@@ -113,6 +115,8 @@ export function QuotesSection({
               canCancel={canManageQuotes && !closed && quote.status === "sent"}
               // Renovar crea una versión nueva: no con una corrección a medias.
               canRenew={canManageQuotes && !closed && quote.status === "sent" && !draft}
+              // Registrar la respuesta del cliente: enviada y en plazo (RF-33).
+              canDecide={canManageQuotes && !closed && quote.status === "sent" && !quote.expired}
               queryKey={queryKey}
               onOrderChanged={onOrderChanged}
             />
@@ -167,12 +171,14 @@ function QuoteCard({
   quote,
   canCancel,
   canRenew,
+  canDecide,
   queryKey,
   onOrderChanged,
 }: {
   quote: Quote;
   canCancel: boolean;
   canRenew: boolean;
+  canDecide: boolean;
   queryKey: unknown[];
   onOrderChanged: () => unknown;
 }) {
@@ -222,7 +228,9 @@ function QuoteCard({
           {t("quotes.cancelledBecause", { reason: quote.cancel_reason })}
         </p>
       )}
+      {quote.decision && <DecisionSummary decision={quote.decision} />}
       <CardContent className="grid gap-4">
+        {canDecide && <DecisionForm quote={quote} onDecided={refresh} />}
         {quote.prices_hidden && (
           <p className="text-muted-foreground text-sm">{t("quotes.pricesHidden")}</p>
         )}
@@ -313,6 +321,109 @@ function QuoteCard({
         )}
       </CardContent>
     </Card>
+  );
+}
+
+/** Quién decidió, cuándo y por dónde (RF-36). */
+function DecisionSummary({ decision }: { decision: QuoteDecision }) {
+  const { t } = useTranslation();
+  const dates = useDates();
+  return (
+    <div className="-mt-2 grid gap-1 px-6 text-sm">
+      <p className={decision.outcome === "approved" ? "text-foreground" : "text-muted-foreground"}>
+        {t(`quotes.decision.summary.${decision.outcome}`, {
+          channel: t(`quotes.decision.channels.${decision.channel}`),
+          when: dates.dateTime(decision.decided_at),
+        })}
+        {decision.recorded_by_name && ` · ${t("quotes.decision.recordedBy", { name: decision.recorded_by_name })}`}
+      </p>
+      {decision.note && <p className="text-muted-foreground whitespace-pre-line">{decision.note}</p>}
+    </div>
+  );
+}
+
+/**
+ * La respuesta que el cliente dio por teléfono o en persona (RF-35). Como prueba
+ * vale menos que la del portal o una firmada, y el formulario lo dice.
+ */
+function DecisionForm({ quote, onDecided }: { quote: Quote; onDecided: () => unknown }) {
+  const { t } = useTranslation();
+  const { workshopId } = useActiveWorkshop();
+  const [open, setOpen] = useState(false);
+  const [outcome, setOutcome] = useState<DecisionOutcome>("approved");
+  const [channel, setChannel] = useState<"phone" | "in_person">("phone");
+  const [note, setNote] = useState("");
+  const decide = useMutation({
+    mutationFn: () =>
+      quotesApi(workshopId).decide(quote.id, quote.version, {
+        outcome,
+        channel,
+        note: note.trim() || null,
+      }),
+    onSuccess: () => {
+      setOpen(false);
+      notify(t(`quotes.decision.done.${outcome}`));
+    },
+    onSettled: onDecided,
+  });
+
+  if (!open) {
+    return (
+      <Button className="justify-self-start" onClick={() => setOpen(true)}>
+        <CheckCircle aria-hidden />
+        {t("quotes.decision.record")}
+      </Button>
+    );
+  }
+  const id = (field: string) => `${quote.id}-decision-${field}`;
+  return (
+    <form
+      className="grid gap-3 rounded-lg border p-3"
+      onSubmit={(event) => {
+        event.preventDefault();
+        decide.mutate();
+      }}
+    >
+      <p className="font-medium">{t("quotes.decision.title")}</p>
+      <div className="grid gap-3 sm:grid-cols-2">
+        <div className="grid gap-1">
+          <Label htmlFor={id("outcome")}>{t("quotes.decision.outcome")}</Label>
+          <Select id={id("outcome")} value={outcome} onChange={(e) => setOutcome(e.target.value as DecisionOutcome)}>
+            <option value="approved">{t("quotes.decision.outcomes.approved")}</option>
+            <option value="rejected">{t("quotes.decision.outcomes.rejected")}</option>
+          </Select>
+        </div>
+        <div className="grid gap-1">
+          <Label htmlFor={id("channel")}>{t("quotes.decision.channel")}</Label>
+          <Select
+            id={id("channel")}
+            value={channel}
+            onChange={(e) => setChannel(e.target.value as "phone" | "in_person")}
+          >
+            <option value="phone">{t("quotes.decision.channels.phone")}</option>
+            <option value="in_person">{t("quotes.decision.channels.in_person")}</option>
+          </Select>
+        </div>
+      </div>
+      <div className="grid gap-1">
+        <Label htmlFor={id("note")}>{t("quotes.decision.note")}</Label>
+        <Textarea id={id("note")} value={note} onChange={(e) => setNote(e.target.value)} />
+      </div>
+      <p className="text-muted-foreground text-xs">{t("quotes.decision.weakProof")}</p>
+      {decide.isError && (
+        <p role="alert" className="text-destructive text-sm">
+          {errorMessage(t, decide.error)}
+        </p>
+      )}
+      <div className="flex flex-wrap gap-2">
+        <Button type="submit" variant={outcome === "rejected" ? "destructive" : "default"} disabled={decide.isPending}>
+          {t(`quotes.decision.submit.${outcome}`)}
+        </Button>
+        <Button type="button" variant="ghost" onClick={() => setOpen(false)}>
+          {t("common.cancel")}
+        </Button>
+      </div>
+    </form>
   );
 }
 

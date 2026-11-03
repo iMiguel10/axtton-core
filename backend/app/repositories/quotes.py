@@ -14,7 +14,9 @@ from app.domain.work_orders import CLOSED
 from app.models import (
     Client,
     DiagnosisVersion,
+    Employee,
     Quote,
+    QuoteDecision,
     QuoteLine,
     Vehicle,
     WorkOrder,
@@ -192,3 +194,21 @@ async def latest_diagnosis_id(session: AsyncSession, order_id: UUID) -> UUID | N
         .limit(1)
     )
     return await session.scalar(query)
+
+
+async def decisions_of(
+    session: AsyncSession, quote_ids: list[UUID]
+) -> dict[UUID, tuple[QuoteDecision, str | None]]:
+    """La decisión de cada versión (como mucho una) y el nombre de quien la
+    registró, si la registró el taller (RF-36)."""
+    if not quote_ids:
+        return {}
+    query = (
+        select(QuoteDecision, Employee.name)
+        .outerjoin(Employee, Employee.id == QuoteDecision.recorded_by_employee_id)
+        .where(QuoteDecision.quote_id.in_(quote_ids))
+    )
+    return {
+        decision.quote_id: (decision, name)
+        for decision, name in await session.execute(query)
+    }

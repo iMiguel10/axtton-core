@@ -56,7 +56,20 @@ export type Quote = {
   prices_hidden: boolean;
   /** Enviada y fuera de plazo, aunque su estado aún diga "enviada" (hasta F5). */
   expired: boolean;
+  decision: QuoteDecision | null;
   version: number;
+};
+
+export type DecisionOutcome = "approved" | "rejected";
+export type DecisionChannel = "portal" | "phone" | "in_person";
+
+export type QuoteDecision = {
+  outcome: DecisionOutcome;
+  channel: DecisionChannel;
+  decided_at: string;
+  /** Quién la registró, si la registró el taller; nulo si decidió el cliente. */
+  recorded_by_name: string | null;
+  note: string | null;
 };
 
 export type QuoteLineInput = {
@@ -117,6 +130,11 @@ export function quotesApi(workshopId: string) {
       request<void>(`/workshop/quotes/${quoteId}/send`, "POST", { version }),
     cancel: (quoteId: string, version: number, reason: string) =>
       request<void>(`/workshop/quotes/${quoteId}/cancel`, "POST", { version, reason }),
+    decide: (
+      quoteId: string,
+      version: number,
+      decision: { outcome: DecisionOutcome; channel: "phone" | "in_person"; note: string | null },
+    ) => request<void>(`/workshop/quotes/${quoteId}/decision`, "POST", { version, ...decision }),
     renew: (quoteId: string, version: number) =>
       request<{ id: string }>(`/workshop/quotes/${quoteId}/renew`, "POST", { version }),
   };

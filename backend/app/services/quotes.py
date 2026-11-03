@@ -22,14 +22,15 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.errors import ConflictError, NotFoundError, ValidationFailedError
 from app.domain.business_days import quote_valid_until
-from app.domain.permissions import Role
 from app.domain.quotes import (
     MAX_VERSIONS_PER_ORDER,
+    DecisionChannel,
     DiscountKind,
     GlobalDiscount,
     Line,
     LineKind,
     LineTotals,
+    Outcome,
     QuoteRuleError,
     QuoteStatus,
     QuoteTotals,
@@ -37,11 +38,19 @@ from app.domain.quotes import (
     compute,
 )
 from app.domain.work_orders import CLOSED, StatusChangeCause, WorkOrderStatus
-from app.models import AuditEntry, Quote, QuoteLine, WorkOrder, Workshop
+from app.models import (
+    AuditEntry,
+    Quote,
+    QuoteDecision,
+    QuoteLine,
+    WorkOrder,
+    Workshop,
+)
 from app.repositories import quotes as quote_repo
 from app.repositories import vehicles as vehicle_repo
 from app.repositories import work_orders as order_repo
 from app.services.integrity import flush_or_conflict
+from app.services.settings import prices_hidden
 from app.services.work_orders import record_status_change
 
 # Dos borradores a la vez para la misma orden: el segundo choca con uno de los
@@ -88,6 +97,8 @@ class QuoteView:
     # El mecánico no ve importes si el taller lo desactiva (especificación §3).
     prices_hidden: bool
     expired: bool
+    # La decisión registrada y quién la registró (RF-36), si ya se decidió.
+    decision: tuple[QuoteDecision, str | None] | None = None
 
 
 def is_expired(quote: Quote, now: datetime) -> bool:
@@ -151,14 +162,6 @@ def _stored_totals(quote: Quote, lines: list[QuoteLine]) -> QuoteTotals:
     )
 
 
-async def _prices_hidden(session: AsyncSession, workshop_id: UUID, role: str) -> bool:
-    if role != Role.MECHANIC:
-        return False
-    workshop = await session.get(Workshop, workshop_id)
-    assert workshop is not None
-    return not workshop.mechanics_see_sale_prices
-
-
 async def list_quotes(
     session: AsyncSession, workshop_id: UUID, order_id: UUID, role: str
 ) -> list[QuoteView]:
@@ -166,7 +169,8 @@ async def list_quotes(
         raise NotFoundError("work_order_not_found")
     quotes = await quote_repo.list_for_order(session, order_id)
     lines = await quote_repo.lines_of(session, [q.id for q in quotes])
-    hidden = await _prices_hidden(session, workshop_id, role)
+    decisions = await quote_repo.decisions_of(session, [q.id for q in quotes])
+    hidden = await prices_hidden(session, workshop_id, role)
     views = []
     for quote in quotes:
         own = lines.get(quote.id, [])
@@ -183,6 +187,7 @@ async def list_quotes(
                 None if hidden else totals,
                 hidden,
                 is_expired(quote, datetime.now(UTC)),
+                decisions.get(quote.id),
             )
         )
     return views
@@ -342,7 +347,7 @@ async def list_page(
     offset: int,
 ) -> list[ListedQuote]:
     rows = await quote_repo.list_page(session, view=view, limit=limit, offset=offset)
-    hidden = await _prices_hidden(session, workshop_id, role)
+    hidden = await prices_hidden(session, workshop_id, role)
     drafts = [r.quote.id for r in rows if r.quote.status == QuoteStatus.DRAFT]
     draft_lines = await quote_repo.lines_of(session, drafts) if not hidden else {}
     now = datetime.now(UTC)
@@ -595,6 +600,94 @@ async def cancel_quote(
             target_type="work_order",
             target_id=order.id,
             details={"quote_version": quote.version_no, "cancel_reason": reason},
+        )
+    )
+    await session.flush()
+
+
+# --- Decidir (F3 paso 6: RF-35, RF-36; desde el portal, F4) -------------------
+
+
+def order_after_decision(outcome: Outcome, origin: str) -> str:
+    """Adónde va la orden cuando se decide su presupuesto (especificación §6).
+
+    Aprobado el inicial, a `approved`, y de ahí a la reparación. Aprobado un
+    trabajo adicional (enviado durante la reparación), de vuelta a
+    `in_repair`. Rechazado, al estado desde el que se envió: un adicional
+    rechazado no detiene el trabajo ya aprobado.
+    """
+    if outcome is Outcome.REJECTED:
+        return origin
+    if origin == WorkOrderStatus.IN_REPAIR:
+        return WorkOrderStatus.IN_REPAIR
+    return WorkOrderStatus.APPROVED
+
+
+async def record_decision(
+    session: AsyncSession,
+    workshop_id: UUID,
+    user_id: UUID,
+    employee_id: UUID,
+    quote_id: UUID,
+    *,
+    expected_version: int,
+    outcome: Outcome,
+    channel: DecisionChannel,
+    note: str | None,
+) -> None:
+    """Registra la decisión que el cliente dio por teléfono o en persona (RF-35):
+    quién la registró, por qué canal y cuándo (la hora la pone la base de
+    datos) quedan en `quote_decisions`, que no se cambia jamás (RF-36).
+
+    La versión tiene que estar enviada y en plazo: una sustituida, caducada o
+    ya decidida da 409 (arquitectura §7.1). Primero la decisión y después el
+    estado de la versión: el trigger exige que la decisión exista para
+    aprobarla o rechazarla, y el diferido, que al confirmar coincidan.
+    """
+    if channel is DecisionChannel.PORTAL:
+        # El portal decide por su propia vía, con la sesión del cliente (F4).
+        raise ConflictError("quote_decision_channel_not_allowed")
+    order, quote = await _locked_for_status_change(session, quote_id, expected_version)
+    if quote.status != QuoteStatus.SENT:
+        raise ConflictError("quote_not_decidable")
+    now = await vehicle_repo.db_now(session)
+    if is_expired(quote, now):
+        raise ConflictError("quote_expired")
+    assert quote.origin_status is not None  # toda versión enviada lo tiene
+    session.add(
+        QuoteDecision(
+            workshop_id=workshop_id,
+            quote_id=quote.id,
+            outcome=outcome,
+            channel=channel,
+            recorded_by_employee_id=employee_id,
+            note=note,
+        )
+    )
+    await session.flush()
+    quote.status = outcome.value
+    await session.flush()
+    if order.status == WorkOrderStatus.PENDING_APPROVAL:
+        await record_status_change(
+            session,
+            order,
+            order_after_decision(outcome, quote.origin_status),
+            cause=StatusChangeCause.QUOTE_DECIDED,
+            employee_id=employee_id,
+            note=note,
+        )
+    session.add(
+        AuditEntry(
+            workshop_id=workshop_id,
+            actor_user_id=user_id,
+            action="quote_decided",
+            target_type="work_order",
+            target_id=order.id,
+            details={
+                "quote_version": quote.version_no,
+                "quote_outcome": outcome.value,
+                "decision_channel": channel.value,
+            },
         )
     )
     await session.flush()

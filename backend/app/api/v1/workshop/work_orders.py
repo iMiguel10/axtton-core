@@ -120,7 +120,11 @@ async def unpaid_orders(
     """Las entregadas pendientes de cobro, la más antigua primero (RF-29). Va
     antes que `/{order_id}`: si no, "unpaid" se tomaría por un id y sería un 422."""
     rows = await order_service.unpaid_orders(
-        workshop.session, limit=limit, offset=offset
+        workshop.session,
+        workshop.workshop_id,
+        workshop.role,
+        limit=limit,
+        offset=offset,
     )
     return [
         UnpaidOrderRead.model_validate(
@@ -128,9 +132,10 @@ async def unpaid_orders(
                 **_summary(row),
                 "delivered_at": row.order.delivered_at,
                 "days_pending": days,
+                "amount_cents": amount,
             }
         )
-        for row, days in rows
+        for row, days, amount in rows
     ]
 
 

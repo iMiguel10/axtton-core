@@ -33,6 +33,11 @@ const schema = z.object({
   vat: z.string().refine((value) => parsePercentToBp(value) !== null, "validation.percent"),
   // RF-33: nunca menos de 12 días hábiles.
   validity: z.coerce.number<string>().int("validation.validity").min(12, "validation.validity").max(120, "validation.validity"),
+  // Vacío: cada presupuesto escribe su plazo de entrega.
+  delivery: z.union([
+    z.literal(""),
+    z.coerce.number<string>().int("validation.delivery").min(1, "validation.delivery").max(250, "validation.delivery"),
+  ]),
   mechanicsSeePrices: z.boolean(),
 });
 type Values = z.input<typeof schema>;
@@ -49,6 +54,7 @@ function toValues(settings: WorkshopSettings): Values {
     registry: settings.industrial_registry_number ?? "",
     vat: bpToInput(settings.default_vat_bp),
     validity: String(settings.quote_validity_business_days),
+    delivery: settings.default_delivery_business_days?.toString() ?? "",
     mechanicsSeePrices: settings.mechanics_see_sale_prices,
   };
 }
@@ -64,6 +70,7 @@ function toInput(values: Parsed): WorkshopSettingsInput {
     industrial_registry_number: values.registry || null,
     default_vat_bp: parsePercentToBp(values.vat)!,
     quote_validity_business_days: values.validity,
+    default_delivery_business_days: values.delivery === "" ? null : values.delivery,
     mechanics_see_sale_prices: values.mechanicsSeePrices,
   };
 }
@@ -174,6 +181,16 @@ function SettingsForm({
           {...form.register("validity")}
         />
         <p className="text-muted-foreground text-xs">{t("settings.validityHint")}</p>
+      </div>
+      <div className="grid gap-1.5">
+        <Field
+          id="settings-delivery"
+          inputMode="numeric"
+          label={t("settings.delivery")}
+          error={message(errors.delivery?.message)}
+          {...form.register("delivery")}
+        />
+        <p className="text-muted-foreground text-xs">{t("settings.deliveryHint")}</p>
       </div>
       <div className="flex items-start gap-3 md:col-span-2">
         <Controller

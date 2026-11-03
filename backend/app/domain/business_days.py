@@ -74,3 +74,13 @@ def quote_valid_until(sent_at: datetime, timezone: str, days: int) -> datetime:
     sent_day = sent_at.astimezone(zone).date()
     last_day = add_business_days(sent_day, days)
     return datetime.combine(last_day + timedelta(days=1), time(), tzinfo=zone)
+
+
+def delivery_date(decided_at: datetime, timezone: str, days: int) -> date:
+    """La fecha prevista de entrega de un presupuesto aprobado en `decided_at`
+    (RF-37): el día hábil número `days` desde la aceptación, con la misma regla
+    que la validez. El día de la aceptación no cuenta, y se toma en la zona del
+    taller."""
+    if decided_at.tzinfo is None:
+        raise ValueError("decided_at must be timezone-aware")
+    return add_business_days(decided_at.astimezone(ZoneInfo(timezone)).date(), days)

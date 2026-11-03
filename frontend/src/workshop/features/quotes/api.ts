@@ -1,4 +1,4 @@
-import { apiRequest } from "@/shared/lib/apiClient";
+import { apiBlob, apiRequest } from "@/shared/lib/apiClient";
 
 export const QUOTE_STATUSES = [
   "draft",
@@ -50,6 +50,10 @@ export type Quote = {
   cancel_reason: string | null;
   global_discount_kind: DiscountKind | null;
   global_discount_value: number | null;
+  /** Plazo de entrega en días hábiles desde la aceptación (RF-37). */
+  delivery_business_days: number | null;
+  /** Aprobada la versión, la fecha prevista de entrega ("2026-11-20"). */
+  delivery_on: string | null;
   lines: QuoteLine[];
   /** En un borrador, lo que saldría si se enviara ahora (lo calcula la API). */
   totals: QuoteTotals | null;
@@ -86,6 +90,7 @@ export type QuoteLineInput = {
 export type DraftInput = {
   global_discount: { kind: DiscountKind; value: number } | null;
   lines: QuoteLineInput[];
+  delivery_business_days: number | null;
 };
 
 /** Los filtros del listado de la barra lateral. */
@@ -135,6 +140,8 @@ export function quotesApi(workshopId: string) {
       version: number,
       decision: { outcome: DecisionOutcome; channel: "phone" | "in_person"; note: string | null },
     ) => request<void>(`/workshop/quotes/${quoteId}/decision`, "POST", { version, ...decision }),
+    /** El PDF de la versión; de un borrador, la vista previa con marca de agua. */
+    pdf: (quoteId: string) => apiBlob(`/workshop/quotes/${quoteId}/pdf`, { workshopId }),
     renew: (quoteId: string, version: number) =>
       request<{ id: string }>(`/workshop/quotes/${quoteId}/renew`, "POST", { version }),
   };

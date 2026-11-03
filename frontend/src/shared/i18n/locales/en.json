@@ -96,6 +96,7 @@
       "industrial_registry_number": "Industrial registry",
       "default_vat_bp": "Default VAT",
       "quote_validity_business_days": "Quote validity",
+      "default_delivery_business_days": "Default delivery time",
       "mechanics_see_sale_prices": "Mechanics see prices",
       "labor_rate": "Rate",
       "hourly_price_cents": "Hourly price",
@@ -153,7 +154,8 @@
     "amount": "Enter an amount, for example 25.50.",
     "number": "Enter a whole number within a sensible range.",
     "percent": "Enter a percentage between 0 and 100, for example 21.",
-    "validity": "Between 12 and 120 business days."
+    "validity": "Between 12 and 120 business days.",
+    "delivery": "Between 1 and 250 business days, or empty."
   },
   "invitation": {
     "title": "Invitation",
@@ -633,7 +635,9 @@
     "quote_not_renewable": "Only a sent version awaiting a reply can be renewed.",
     "quote_not_decidable": "Only the sent version awaiting a reply can be decided: this one was already decided, superseded or cancelled.",
     "quote_expired": "This quote is past its validity: renew it before recording the reply.",
-    "quote_decision_channel_not_allowed": "From the workshop, the reply is recorded by phone or in person."
+    "quote_decision_channel_not_allowed": "From the workshop, the reply is recorded by phone or in person.",
+    "quote_delivery_missing": "Set the delivery time before sending it: the regulation requires it on the quote.",
+    "quote_prices_hidden": "The workshop does not let mechanics see amounts, so the quote PDF is not available either."
   },
   "palette": {
     "open": "Search the workshop",
@@ -668,6 +672,8 @@
     "quotesTitle": "Quotes",
     "defaultVat": "Default VAT (%)",
     "validity": "Quote validity (business days)",
+    "delivery": "Default delivery time (business days)",
+    "deliveryHint": "Every new quote starts with it, and each one can change it. Empty: each quote sets it, and it cannot be sent without one.",
     "validityHint": "At least 12, the legal minimum. Counted Monday to Friday without national holidays: if your region or town has its own holidays, extend it.",
     "mechanicsSeePrices": "Mechanics see prices",
     "mechanicsSeePricesHint": "Sale prices on quotes and parts. Turn it off if you prefer only the office to see them.",
@@ -744,6 +750,16 @@
       "non_specific": "Not model-specific"
     },
     "conditionHint": "It will be marked on the quote: approving it is the client's consent (RF-38).",
+    "delivery": "Delivery time (business days)",
+    "deliveryHint": "Counted from the day after approval. Required to send it.",
+    "deliveryTerm_one": "Delivery {{count}} business day after approval",
+    "deliveryTerm_other": "Delivery {{count}} business days after approval",
+    "deliveryOn": "Expected delivery: {{date}}",
+    "deliveryMissing": "The delivery time is missing: it cannot be sent without it.",
+    "invalidDelivery": "The delivery time is a number of days between 1 and 250.",
+    "pdf": "PDF",
+    "preview": "Preview",
+    "previewHint": "What is saved, watermarked “Draft, not valid”.",
     "description": "Item",
     "reference": "Reference",
     "condition": "Part condition",

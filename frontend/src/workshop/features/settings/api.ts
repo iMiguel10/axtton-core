@@ -11,6 +11,8 @@ export type WorkshopSettings = {
   /** Puntos básicos: 2100 = 21 %. */
   default_vat_bp: number;
   quote_validity_business_days: number;
+  /** El plazo de entrega con el que empieza un presupuesto (RF-37); nulo si no hay. */
+  default_delivery_business_days: number | null;
   mechanics_see_sale_prices: boolean;
   /** Solo lectura: la fija la plataforma. */
   timezone: string;

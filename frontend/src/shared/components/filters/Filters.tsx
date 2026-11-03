@@ -1,6 +1,7 @@
 import { Search } from "lucide-react";
 import { useId, type ComponentProps } from "react";
 
+import { Select } from "@/shared/components/form/Select";
 import { InputGroup, InputGroupAddon, InputGroupInput } from "@/shared/components/ui/input-group";
 import { Switch } from "@/shared/components/ui/switch";
 import { ToggleGroup, ToggleGroupItem } from "@/shared/components/ui/toggle-group";
@@ -8,7 +9,8 @@ import { cn } from "@/shared/lib/utils";
 
 /**
  * Los filtros de los listados, iguales en todos: búsqueda con lupa, opciones de
- * sí o no como interruptor y "cuáles ver" como un control segmentado.
+ * sí o no como interruptor, "cuáles ver" como un control segmentado y, cuando
+ * las opciones no caben, un desplegable.
  */
 
 export function SearchInput({ className, ...props }: ComponentProps<typeof InputGroupInput>) {
@@ -76,5 +78,41 @@ export function SegmentedFilter<T extends string>({
         </ToggleGroupItem>
       ))}
     </ToggleGroup>
+  );
+}
+
+/**
+ * Uno de varios cuando no caben como control segmentado (estados, personas).
+ * La primera opción es "cualquiera" (valor vacío), y su texto hace de etiqueta.
+ */
+export function SelectFilter<T extends string>({
+  label,
+  any,
+  value,
+  options,
+  onChange,
+}: {
+  /** Para lectores de pantalla: qué se está eligiendo. */
+  label: string;
+  /** El texto de "cualquiera": "Todos los estados", "Cualquier responsable". */
+  any: string;
+  value: T | "";
+  options: { value: T; label: string }[];
+  onChange: (value: T | "") => void;
+}) {
+  return (
+    <Select
+      aria-label={label}
+      value={value}
+      className={cn(value !== "" && "border-primary")}
+      onChange={(event) => onChange(event.target.value as T | "")}
+    >
+      <option value="">{any}</option>
+      {options.map((option) => (
+        <option key={option.value} value={option.value}>
+          {option.label}
+        </option>
+      ))}
+    </Select>
   );
 }

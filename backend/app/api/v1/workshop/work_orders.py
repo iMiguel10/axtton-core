@@ -88,7 +88,9 @@ async def list_orders(
     mine: bool = False,
     vehicle_id: UUID | None = None,
     client_id: UUID | None = None,
-    sort: Literal["recent", "stalled"] = "recent",
+    # Por la fecha prevista de entrega (RF-24), en la zona del taller.
+    due: Literal["overdue", "today", "week", "none"] | None = None,
+    sort: Literal["recent", "stalled", "due"] = "recent",
     limit: Annotated[int, Query(ge=1, le=100)] = 50,
     offset: Annotated[int, Query(ge=0)] = 0,
 ) -> list[WorkOrderRead]:
@@ -104,6 +106,7 @@ async def list_orders(
         mine_employee_id=workshop.employee_id if mine else None,
         vehicle_id=vehicle_id,
         client_id=client_id,
+        due=due,
         sort=sort,
         limit=limit,
         offset=offset,

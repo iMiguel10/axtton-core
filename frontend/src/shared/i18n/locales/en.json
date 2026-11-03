@@ -331,10 +331,28 @@
       "all": "All"
     },
     "mine": "My work orders",
-    "stalledFirst": "Most stalled first",
+    "filters": {
+      "anyStatus": "All statuses",
+      "anyResponsible": "Any responsible",
+      "anyDue": "Any delivery date",
+      "dues": {
+        "overdue": "Delivery date passed",
+        "today": "Delivery today",
+        "week": "Delivery in the next 7 days",
+        "none": "No delivery date"
+      },
+      "sort": "Sort",
+      "sorts": {
+        "recent": "Most recent first",
+        "stalled": "Most stalled first",
+        "due": "Soonest delivery first"
+      },
+      "clear": "Clear filters"
+    },
     "stalled": "Stalled",
     "none": "No work orders.",
     "noneMine": "You are not responsible for any work order.",
+    "noneFiltered": "No work orders match these filters.",
     "loadMore": "Show more",
     "type": "Type",
     "types": {

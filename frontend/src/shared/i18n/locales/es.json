@@ -331,10 +331,28 @@
       "all": "Todas"
     },
     "mine": "Mis órdenes",
-    "stalledFirst": "Las más paradas primero",
+    "filters": {
+      "anyStatus": "Todos los estados",
+      "anyResponsible": "Cualquier responsable",
+      "anyDue": "Cualquier fecha de entrega",
+      "dues": {
+        "overdue": "Entrega ya pasada",
+        "today": "Entrega hoy",
+        "week": "Entrega en los próximos 7 días",
+        "none": "Sin fecha de entrega"
+      },
+      "sort": "Ordenar",
+      "sorts": {
+        "recent": "Las más recientes primero",
+        "stalled": "Las más paradas primero",
+        "due": "La entrega más próxima primero"
+      },
+      "clear": "Quitar filtros"
+    },
     "stalled": "Parada",
     "none": "No hay órdenes.",
     "noneMine": "No eres responsable de ninguna orden.",
+    "noneFiltered": "Ninguna orden con estos filtros.",
     "loadMore": "Ver más",
     "type": "Tipo",
     "types": {

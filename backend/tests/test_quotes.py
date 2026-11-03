@@ -81,10 +81,16 @@ async def save(
     version: int,
     lines: list[dict[str, Any]],
     global_discount: dict[str, Any] | None = None,
+    delivery_business_days: int | None = 5,
 ) -> Any:
     return await client.put(
         f"{QUOTES}/{quote_id}",
-        json={"version": version, "lines": lines, "global_discount": global_discount},
+        json={
+            "version": version,
+            "lines": lines,
+            "global_discount": global_discount,
+            "delivery_business_days": delivery_business_days,
+        },
         headers=headers,
     )
 

@@ -13,7 +13,7 @@ guardado del mismo borrador nunca se cruzan.
 """
 
 from dataclasses import dataclass
-from datetime import UTC, datetime
+from datetime import UTC, date, datetime
 from decimal import Decimal
 from typing import Any
 from uuid import UUID
@@ -21,7 +21,7 @@ from uuid import UUID
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.errors import ConflictError, NotFoundError, ValidationFailedError
-from app.domain.business_days import quote_valid_until
+from app.domain.business_days import delivery_date, quote_valid_until
 from app.domain.quotes import (
     MAX_VERSIONS_PER_ORDER,
     DecisionChannel,
@@ -43,6 +43,7 @@ from app.models import (
     Quote,
     QuoteDecision,
     QuoteLine,
+    Vehicle,
     WorkOrder,
     Workshop,
 )
@@ -99,6 +100,8 @@ class QuoteView:
     expired: bool
     # La decisión registrada y quién la registró (RF-36), si ya se decidió.
     decision: tuple[QuoteDecision, str | None] | None = None
+    # La fecha prevista de entrega, aprobado el presupuesto (RF-37).
+    delivery_on: date | None = None
 
 
 def is_expired(quote: Quote, now: datetime) -> bool:
@@ -113,6 +116,31 @@ def is_expired(quote: Quote, now: datetime) -> bool:
         and quote.valid_until is not None
         and quote.valid_until <= now
     )
+
+
+def vehicle_snapshot(vehicle: Vehicle, order: WorkOrder) -> dict[str, Any]:
+    """Lo que identifica lo presupuestado (RF-37): se congela al enviar y, en un
+    borrador, se lee de la ficha y de la recepción en el momento."""
+    return {
+        "plate": vehicle.plate,
+        "make": vehicle.make,
+        "model": vehicle.model,
+        "odometer_km": order.odometer_km,
+    }
+
+
+def delivery_on(
+    quote: Quote, decision: QuoteDecision | None, timezone: str
+) -> date | None:
+    """La fecha prevista de entrega (RF-37): solo existe aprobado el
+    presupuesto, porque se cuenta desde la aceptación."""
+    if (
+        decision is None
+        or decision.outcome != Outcome.APPROVED
+        or quote.delivery_business_days is None
+    ):
+        return None
+    return delivery_date(decision.decided_at, timezone, quote.delivery_business_days)
 
 
 def _as_domain(line: QuoteLine | LineInput) -> Line:
@@ -162,6 +190,16 @@ def _stored_totals(quote: Quote, lines: list[QuoteLine]) -> QuoteTotals:
     )
 
 
+def totals_of(quote: Quote, lines: list[QuoteLine]) -> QuoteTotals:
+    """Los de una versión enviada, tal como se guardaron; los de un borrador,
+    calculados ahora con la regla única."""
+    if quote.status == QuoteStatus.DRAFT:
+        return _calculate(
+            lines, _global(quote.global_discount_kind, quote.global_discount_value)
+        )
+    return _stored_totals(quote, lines)
+
+
 async def list_quotes(
     session: AsyncSession, workshop_id: UUID, order_id: UUID, role: str
 ) -> list[QuoteView]:
@@ -171,15 +209,13 @@ async def list_quotes(
     lines = await quote_repo.lines_of(session, [q.id for q in quotes])
     decisions = await quote_repo.decisions_of(session, [q.id for q in quotes])
     hidden = await prices_hidden(session, workshop_id, role)
+    workshop = await session.get(Workshop, workshop_id)
+    assert workshop is not None
     views = []
     for quote in quotes:
         own = lines.get(quote.id, [])
-        if quote.status == QuoteStatus.DRAFT:
-            totals = _calculate(
-                own, _global(quote.global_discount_kind, quote.global_discount_value)
-            )
-        else:
-            totals = _stored_totals(quote, own)
+        totals = totals_of(quote, own)
+        decision = decisions.get(quote.id)
         views.append(
             QuoteView(
                 quote,
@@ -187,7 +223,10 @@ async def list_quotes(
                 None if hidden else totals,
                 hidden,
                 is_expired(quote, datetime.now(UTC)),
-                decisions.get(quote.id),
+                decision,
+                delivery_on(
+                    quote, decision[0] if decision else None, workshop.timezone
+                ),
             )
         )
     return views
@@ -235,6 +274,12 @@ async def _new_version(
         created_by_employee_id=employee_id,
         global_discount_kind=source.global_discount_kind if source else None,
         global_discount_value=source.global_discount_value if source else None,
+        # Corregir copia el plazo de la anterior; el primero, el del taller.
+        delivery_business_days=(
+            source.delivery_business_days
+            if source
+            else await _default_delivery(session, workshop_id)
+        ),
     )
     session.add(draft)
     await flush_or_conflict(session, UNIQUE)
@@ -250,6 +295,12 @@ async def _new_version(
             )
         await session.flush()
     return draft
+
+
+async def _default_delivery(session: AsyncSession, workshop_id: UUID) -> int | None:
+    workshop = await session.get(Workshop, workshop_id)
+    assert workshop is not None
+    return workshop.default_delivery_business_days
 
 
 async def _locked_draft(
@@ -276,8 +327,10 @@ async def save_draft(
     expected_version: int,
     global_discount: dict[str, Any] | None,
     lines: list[LineInput],
+    delivery_business_days: int | None,
 ) -> int:
-    """Reemplaza las líneas y el descuento del borrador. Antes de guardar se
+    """Reemplaza las líneas, el descuento y el plazo de entrega del borrador
+    (el plazo puede faltar hasta enviarlo). Antes de guardar se
     calcula con la regla única: lo que luego no se podría enviar (un descuento
     mayor que el presupuesto) se rechaza ya ahora. Devuelve la versión nueva."""
     quote = await _locked_draft(session, quote_id, expected_version)
@@ -307,6 +360,7 @@ async def save_draft(
         )
     quote.global_discount_kind = discount.kind if discount else None
     quote.global_discount_value = discount.value if discount else None
+    quote.delivery_business_days = delivery_business_days
     # Aunque solo cambien las líneas, la versión sube: es lo que avisa a quien
     # edita el mismo borrador a la vez (RNF-15).
     quote.updated_at = datetime.now(UTC)
@@ -488,6 +542,9 @@ async def _freeze_and_send(
     lines = (await quote_repo.lines_of(session, [quote.id])).get(quote.id, [])
     if not lines:
         raise ConflictError("quote_empty")
+    # RF-37: sin la fecha prevista de entrega, el presupuesto no es válido.
+    if quote.delivery_business_days is None:
+        raise ConflictError("quote_delivery_missing")
     totals = _calculate(
         lines, _global(quote.global_discount_kind, quote.global_discount_value)
     )
@@ -511,6 +568,8 @@ async def _freeze_and_send(
     assert workshop is not None
     sent_at = await vehicle_repo.db_now(session)
     diagnosis_id = await quote_repo.latest_diagnosis_id(session, order.id)
+    vehicle = await vehicle_repo.get(session, order.vehicle_id)
+    assert vehicle is not None  # FK compuesta: la orden no existe sin él
     quote.status = QuoteStatus.SENT
     quote.sent_at = sent_at
     quote.sent_by_employee_id = employee_id
@@ -532,6 +591,8 @@ async def _freeze_and_send(
         for g in totals.vat_breakdown
     ]
     quote.total_cents = totals.total_cents
+    # Sobre qué vehículo y con cuántos km se dio el precio (RF-37, RF-55).
+    quote.vehicle_snapshot = vehicle_snapshot(vehicle, order)
     await session.flush()
 
     if order.status != WorkOrderStatus.PENDING_APPROVAL:

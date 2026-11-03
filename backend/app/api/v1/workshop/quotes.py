@@ -5,7 +5,7 @@ lo ha desactivado."""
 from typing import Annotated, Literal
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, Query, status
+from fastapi import APIRouter, Depends, Query, Response, status
 
 from app.api.v1.workshop.deps import WorkshopContext, require
 from app.domain.permissions import Action
@@ -25,6 +25,7 @@ from app.schemas.quotes import (
     QuoteTotalsRead,
     VatGroupRead,
 )
+from app.services import quote_pdf as quote_pdf_service
 from app.services import quotes as quote_service
 from app.services.quotes import LineInput, QuoteView
 
@@ -83,6 +84,8 @@ def _read(view: QuoteView) -> QuoteRead:
         cancel_reason=quote.cancel_reason,
         global_discount_kind=quote.global_discount_kind,  # type: ignore[arg-type]
         global_discount_value=None if hidden else quote.global_discount_value,
+        delivery_business_days=quote.delivery_business_days,
+        delivery_on=view.delivery_on,
         lines=[
             QuoteLineRead(
                 id=line.id,
@@ -164,8 +167,29 @@ async def save_draft(
             else None
         ),
         lines=[LineInput(**line.model_dump()) for line in body.lines],
+        delivery_business_days=body.delivery_business_days,
     )
     return QuoteSaved(version=version)
+
+
+@router.get("/quotes/{quote_id}/pdf")
+async def quote_pdf(quote_id: UUID, workshop: Viewer) -> Response:
+    """El PDF de la versión (RF-37): de una enviada, con lo que se congeló al
+    enviarla; de un borrador, la vista previa con la marca de agua "Borrador,
+    no válido". Se genera ahora y no se guarda (A14)."""
+    pdf = await quote_pdf_service.quote_pdf(
+        workshop.session, workshop.workshop_id, workshop.role, quote_id
+    )
+    return Response(
+        content=pdf.content,
+        media_type="application/pdf",
+        headers={
+            # inline: el navegador lo abre; el nombre sirve al guardarlo.
+            "Content-Disposition": f'inline; filename="{pdf.filename}"',
+            # La sesión va por cookie: que ningún proxy lo guarde para otro.
+            "Cache-Control": "private, no-store",
+        },
+    )
 
 
 @router.post("/quotes/{quote_id}/discard", status_code=status.HTTP_204_NO_CONTENT)

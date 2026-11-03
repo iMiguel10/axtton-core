@@ -1,0 +1,252 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<title>Presupuesto {{ number }}</title>
+<style>
+  @page {
+    size: A4;
+    margin: 16mm 15mm 18mm;
+    @bottom-left {
+      content: "{{ number }}";
+      font: 8pt "DejaVu Sans", sans-serif;
+      color: #6b7280;
+    }
+    @bottom-right {
+      content: "Página " counter(page) " de " counter(pages);
+      font: 8pt "DejaVu Sans", sans-serif;
+      color: #6b7280;
+    }
+  }
+  * { box-sizing: border-box; }
+  body {
+    font: 9pt/1.4 "DejaVu Sans", sans-serif;
+    color: #111827;
+    margin: 0;
+  }
+  .watermark {
+    position: fixed;
+    top: 95mm;
+    left: -10mm;
+    width: 200mm;
+    text-align: center;
+    transform: rotate(-35deg);
+    font-size: 54pt;
+    font-weight: bold;
+    color: rgba(185, 28, 28, 0.14);
+    letter-spacing: 2pt;
+  }
+  header { display: flex; justify-content: space-between; gap: 8mm; }
+  .logo img { max-height: 22mm; max-width: 70mm; }
+  .logo .name { font-size: 15pt; font-weight: bold; }
+  .issuer { text-align: right; font-size: 8pt; color: #374151; }
+  .issuer strong { font-size: 9.5pt; color: #111827; }
+  h1 {
+    font-size: 17pt;
+    margin: 7mm 0 1mm;
+    letter-spacing: 0.3pt;
+  }
+  .number { color: #374151; }
+  .status {
+    display: inline-block;
+    margin-top: 2mm;
+    padding: 1mm 3mm;
+    border-radius: 2mm;
+    background: #f3f4f6;
+    font-weight: bold;
+    font-size: 8.5pt;
+  }
+  .status.draft { background: #fee2e2; color: #991b1b; }
+  .missing {
+    margin-top: 4mm;
+    padding: 2.5mm 3mm;
+    border: 0.3mm solid #f59e0b;
+    background: #fffbeb;
+    font-size: 8pt;
+  }
+  .boxes { display: flex; gap: 4mm; margin-top: 5mm; }
+  .box {
+    flex: 1;
+    border: 0.3mm solid #d1d5db;
+    border-radius: 1.5mm;
+    padding: 2.5mm 3mm;
+  }
+  .box h2 {
+    font-size: 7.5pt;
+    text-transform: uppercase;
+    letter-spacing: 0.5pt;
+    color: #6b7280;
+    margin: 0 0 1mm;
+  }
+  .box p { margin: 0; }
+  table.lines { width: 100%; border-collapse: collapse; margin-top: 6mm; }
+  .lines th {
+    text-align: left;
+    font-size: 7.5pt;
+    text-transform: uppercase;
+    letter-spacing: 0.3pt;
+    color: #6b7280;
+    border-bottom: 0.4mm solid #111827;
+    padding: 1.5mm 1.5mm;
+  }
+  .lines td {
+    border-bottom: 0.2mm solid #e5e7eb;
+    padding: 1.8mm 1.5mm;
+    vertical-align: top;
+  }
+  .lines tr { page-break-inside: avoid; }
+  .lines th.num, .lines td.num, .num { text-align: right; white-space: nowrap; }
+  .lines .concept { width: 46%; }
+  .kind { color: #6b7280; font-size: 7.5pt; }
+  .ref { color: #6b7280; font-size: 7.5pt; }
+  .condition {
+    display: inline-block;
+    margin-top: 0.8mm;
+    padding: 0.3mm 1.5mm;
+    border: 0.3mm solid #b45309;
+    color: #92400e;
+    font-size: 7pt;
+    font-weight: bold;
+  }
+  .totals {
+    width: 85mm;
+    margin: 5mm 0 0 auto;
+    border-collapse: collapse;
+    page-break-inside: avoid;
+  }
+  .totals td { padding: 1mm 1.5mm; }
+  .totals .grand td {
+    border-top: 0.4mm solid #111827;
+    font-size: 11pt;
+    font-weight: bold;
+    padding-top: 2mm;
+  }
+  .totals .muted td { color: #6b7280; font-size: 8pt; }
+  .decision {
+    margin-top: 6mm;
+    padding: 3mm;
+    border-left: 1.2mm solid #15803d;
+    background: #f0fdf4;
+    page-break-inside: avoid;
+  }
+  .decision.rejected { border-color: #b91c1c; background: #fef2f2; }
+  .decision p { margin: 0.5mm 0; }
+  .notes { margin-top: 6mm; font-size: 7.5pt; color: #4b5563; }
+  .notes p { margin: 1mm 0; }
+</style>
+</head>
+<body>
+{% if draft %}<div class="watermark">BORRADOR · NO VÁLIDO</div>{% endif %}
+
+<header>
+  <div class="logo">
+    {% if has_logo %}<img src="axtton:logo" alt="">{% else %}<div class="name">{{ workshop.name }}</div>{% endif %}
+  </div>
+  <div class="issuer">
+    <strong>{{ workshop.legal_name or workshop.name }}</strong><br>
+    {% if workshop.tax_id %}NIF {{ workshop.tax_id }}<br>{% endif %}
+    {% if workshop.address %}{{ workshop.address }}<br>{% endif %}
+    {% if workshop.phone %}Tel. {{ workshop.phone }}{% endif %}{% if workshop.phone and workshop.email %} · {% endif %}{% if workshop.email %}{{ workshop.email }}{% endif %}<br>
+    {% if workshop.registry %}Registro industrial n.º {{ workshop.registry }}{% endif %}
+  </div>
+</header>
+
+<h1>Presupuesto de reparación</h1>
+<div class="number">N.º {{ number }}</div>
+<div class="status{% if draft %} draft{% endif %}">{{ status }}</div>
+{% if cancel_reason %}<p>Motivo de la anulación: {{ cancel_reason }}</p>{% endif %}
+
+{% if missing %}
+<div class="missing">
+  Antes de enviarlo, complete en los datos del taller {{ missing | join(", ") }}:
+  la normativa exige que consten en el presupuesto.
+</div>
+{% endif %}
+
+<div class="boxes">
+  <div class="box">
+    <h2>Cliente</h2>
+    <p>{{ client }}</p>
+  </div>
+  <div class="box">
+    <h2>Vehículo</h2>
+    <p><strong>{{ vehicle.plate }}</strong>{% if vehicle.make_model %} · {{ vehicle.make_model }}{% endif %}</p>
+    <p>Kilómetros: {{ vehicle.odometer_km or "sin indicar" }}</p>
+  </div>
+</div>
+
+<div class="boxes">
+  <div class="box">
+    <h2>Fecha del presupuesto</h2>
+    <p>{{ date or "Sin enviar" }}</p>
+  </div>
+  <div class="box">
+    <h2>Validez</h2>
+    <p>{% if valid_until %}Hasta el {{ valid_until }}, incluido{% else %}{{ validity_days }} días hábiles desde su envío{% endif %}</p>
+  </div>
+  <div class="box">
+    <h2>Entrega prevista</h2>
+    <p>
+      {% if delivery_days %}{{ delivery_days }} día{% if delivery_days != 1 %}s{% endif %} hábil{% if delivery_days != 1 %}es{% endif %} desde la aceptación{% else %}Sin indicar{% endif %}
+      {% if delivery_on %}<br><strong>{{ delivery_on }}</strong>{% endif %}
+    </p>
+  </div>
+</div>
+
+<table class="lines">
+  <thead>
+    <tr>
+      <th class="concept">Concepto</th>
+      <th class="num">Cantidad</th>
+      <th class="num">Precio</th>
+      <th class="num">Dto.</th>
+      <th class="num">IVA</th>
+      <th class="num">Importe sin IVA</th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for line in lines %}
+    <tr>
+      <td>
+        <div class="kind">{{ line.kind }}</div>
+        {{ line.description }}
+        {% if line.reference %}<div class="ref">Ref. {{ line.reference }}</div>{% endif %}
+        {% if line.condition %}<div class="condition">Pieza {{ line.condition | lower }}</div>{% endif %}
+      </td>
+      <td class="num">{{ line.quantity }}</td>
+      <td class="num">{{ line.unit_price }}</td>
+      <td class="num">{{ line.discount }}</td>
+      <td class="num">{{ line.vat }}</td>
+      <td class="num">{{ line.amount }}</td>
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+
+<table class="totals">
+  <tr><td>Suma de las líneas</td><td class="num">{{ subtotal }}</td></tr>
+  {% if global_discount %}
+  <tr><td>Descuento{% if global_discount_percent %} ({{ global_discount_percent }}){% endif %}</td><td class="num">−{{ global_discount }}</td></tr>
+  {% endif %}
+  {% for group in vat_breakdown %}
+  <tr class="muted"><td>Base al {{ group.rate }}: {{ group.base }}</td><td class="num">IVA {{ group.vat }}</td></tr>
+  {% endfor %}
+  <tr class="grand"><td>Total, IVA incluido</td><td class="num">{{ total }}</td></tr>
+</table>
+
+{% if decision %}
+<div class="decision{% if not decision.approved %} rejected{% endif %}">
+  <p><strong>{% if decision.approved %}Aceptado{% else %}Rechazado{% endif %} por el cliente</strong> el {{ decision.when }}, {{ decision.channel }}.</p>
+  {% if decision.recorded_by %}<p>Decisión registrada por {{ decision.recorded_by }}, del taller.</p>{% endif %}
+</div>
+{% endif %}
+
+<div class="notes">
+  {% if has_conditions %}
+  <p>Las piezas marcadas como usadas, reacondicionadas o no específicas del modelo necesitan la conformidad del cliente: aceptar este presupuesto la da.</p>
+  {% endif %}
+  <p>Son días hábiles los de lunes a viernes que no son festivos nacionales. La fecha de entrega se cuenta desde el día siguiente a la aceptación.</p>
+  <p>Este presupuesto incluye los importes de mano de obra, piezas y otros conceptos con el IVA aplicable a cada uno.</p>
+</div>
+</body>
+</html>

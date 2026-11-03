@@ -8,7 +8,7 @@ import pytest
 from weasyprint import HTML  # type: ignore[import-untyped]
 from weasyprint.urls import URLFetchingError  # type: ignore[import-untyped]
 
-from app.infra.pdf import NoExternalResources
+from app.infra.pdf import NoExternalResources, Resource
 
 
 def test_fetcher_refuses_any_url() -> None:
@@ -22,3 +22,15 @@ def test_html_with_an_external_image_still_renders_without_fetching_it() -> None
     html = '<p>Hola</p><img src="http://169.254.169.254/latest/meta-data">'
     pdf = HTML(string=html, url_fetcher=NoExternalResources()).write_pdf()
     assert pdf.startswith(b"%PDF")
+
+
+def test_only_the_resources_given_by_name_are_served() -> None:
+    """El logotipo llega por nombre (`axtton:logo`) desde memoria; cualquier
+    otro `axtton:` o URL sigue rechazado."""
+    logo = Resource(b"\x89PNG...", "image/png")
+    fetcher = NoExternalResources({"logo": logo})
+    served = fetcher.fetch("axtton:logo")
+    assert served.read() == logo.content
+    for url in ("axtton:other", "axtton:../logo", "data:image/png;base64,AAAA"):
+        with pytest.raises(URLFetchingError):
+            fetcher.fetch(url)

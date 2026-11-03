@@ -18,6 +18,9 @@ BASIS_POINTS = 10_000  # 2100 puntos básicos = 21 %
 # Especificación §10: más indica un uso anómalo, y protegen el PDF y el cálculo.
 MAX_LINES_PER_VERSION = 200
 MAX_VERSIONS_PER_ORDER = 20
+# El plazo de entrega (RF-37), en días hábiles desde la aceptación: un año de
+# trabajo como mucho.
+MAX_DELIVERY_BUSINESS_DAYS = 250
 
 
 class QuoteStatus(StrEnum):

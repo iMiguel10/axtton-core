@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import date, datetime
 from decimal import Decimal
 from typing import Literal
 from uuid import UUID
@@ -6,6 +6,7 @@ from uuid import UUID
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 from app.domain.quotes import (
+    MAX_DELIVERY_BUSINESS_DAYS,
     MAX_LINES_PER_VERSION,
     DecisionChannel,
     DiscountKind,
@@ -66,6 +67,9 @@ class QuoteRead(BaseModel):
     cancel_reason: str | None
     global_discount_kind: DiscountKind | None
     global_discount_value: int | None
+    delivery_business_days: int | None
+    # Aprobada la versión, la fecha prevista de entrega (RF-37).
+    delivery_on: date | None
     lines: list[QuoteLineRead]
     # Nulo si quien mira no puede ver importes. En un borrador, es lo que
     # saldría si se enviara ahora: no se guarda hasta enviarlo.
@@ -134,6 +138,11 @@ class QuoteDraftSave(BaseModel):
     version: int
     global_discount: GlobalDiscountInput | None = None
     lines: list[QuoteLineInput] = Field(max_length=MAX_LINES_PER_VERSION)
+    # Plazo de entrega en días hábiles desde la aceptación (RF-37): puede faltar
+    # en el borrador, no al enviarlo.
+    delivery_business_days: int | None = Field(
+        default=None, ge=1, le=MAX_DELIVERY_BUSINESS_DAYS
+    )
 
 
 class QuoteSaved(BaseModel):

@@ -96,6 +96,7 @@
       "industrial_registry_number": "Registro industrial",
       "default_vat_bp": "IVA por defecto",
       "quote_validity_business_days": "Validez del presupuesto",
+      "default_delivery_business_days": "Plazo de entrega por defecto",
       "mechanics_see_sale_prices": "Los mecánicos ven importes",
       "labor_rate": "Tarifa",
       "hourly_price_cents": "Precio por hora",
@@ -153,7 +154,8 @@
     "amount": "Escribe un importe, por ejemplo 25,50.",
     "number": "Escribe un número entero dentro de lo razonable.",
     "percent": "Escribe un porcentaje entre 0 y 100, por ejemplo 21.",
-    "validity": "Entre 12 y 120 días hábiles."
+    "validity": "Entre 12 y 120 días hábiles.",
+    "delivery": "Entre 1 y 250 días hábiles, o vacío."
   },
   "invitation": {
     "title": "Invitación",
@@ -633,7 +635,9 @@
     "quote_not_renewable": "Solo se renueva una versión enviada que espere respuesta.",
     "quote_not_decidable": "Solo se registra la respuesta de la versión enviada que espera respuesta: esta ya se decidió, se sustituyó o se anuló.",
     "quote_expired": "Este presupuesto pasó su plazo de validez: renuévalo antes de registrar la respuesta.",
-    "quote_decision_channel_not_allowed": "Desde el taller, la respuesta se registra por teléfono o en persona."
+    "quote_decision_channel_not_allowed": "Desde el taller, la respuesta se registra por teléfono o en persona.",
+    "quote_delivery_missing": "Indica el plazo de entrega antes de enviarlo: la normativa exige que conste en el presupuesto.",
+    "quote_prices_hidden": "El taller no deja ver los importes a los mecánicos, así que tampoco el PDF del presupuesto."
   },
   "palette": {
     "open": "Buscar en el taller",
@@ -668,6 +672,8 @@
     "quotesTitle": "Presupuestos",
     "defaultVat": "IVA por defecto (%)",
     "validity": "Validez del presupuesto (días hábiles)",
+    "delivery": "Plazo de entrega por defecto (días hábiles)",
+    "deliveryHint": "Con él empieza cada presupuesto nuevo, y se cambia en cada uno. Vacío: se escribe en cada presupuesto, que sin él no se envía.",
     "validityHint": "Como mínimo 12, el mínimo legal. Se cuentan de lunes a viernes sin los festivos nacionales: si en tu comunidad o tu localidad hay festivos propios, amplía el plazo.",
     "mechanicsSeePrices": "Los mecánicos ven los importes",
     "mechanicsSeePricesHint": "Precios de venta en los presupuestos y en las piezas. Desactívalo si prefieres que solo los vea la administración.",
@@ -744,6 +750,16 @@
       "non_specific": "No específica del modelo"
     },
     "conditionHint": "Saldrá marcada en el presupuesto: aprobarlo es la conformidad del cliente (RF-38).",
+    "delivery": "Plazo de entrega (días hábiles)",
+    "deliveryHint": "Se cuenta desde el día siguiente a la aceptación. Hace falta para enviarlo.",
+    "deliveryTerm_one": "Entrega en {{count}} día hábil desde la aceptación",
+    "deliveryTerm_other": "Entrega en {{count}} días hábiles desde la aceptación",
+    "deliveryOn": "Entrega prevista: {{date}}",
+    "deliveryMissing": "Falta el plazo de entrega: sin él no se puede enviar.",
+    "invalidDelivery": "El plazo de entrega es un número de días entre 1 y 250.",
+    "pdf": "PDF",
+    "preview": "Vista previa",
+    "previewHint": "Lo guardado, con la marca de agua «Borrador, no válido».",
     "description": "Concepto",
     "reference": "Referencia",
     "condition": "Estado de la pieza",

@@ -28,6 +28,7 @@ import {
 
 import { useActiveWorkshop } from "../session/ActiveWorkshop";
 import { settingsApi } from "../settings/api";
+import { PdfButton } from "./PdfButton";
 import {
   LINE_KINDS,
   PART_CONDITIONS,
@@ -183,6 +184,7 @@ function QuoteCard({
   onOrderChanged: () => unknown;
 }) {
   const { t } = useTranslation();
+  const dates = useDates();
   const { workshopId } = useActiveWorkshop();
   const queryClient = useQueryClient();
   const [cancelling, setCancelling] = useState(false);
@@ -265,55 +267,71 @@ function QuoteCard({
           </ul>
         )}
         {quote.totals && <Totals totals={quote.totals} />}
-        {canCancel &&
-          (cancelling ? (
-            // Anular exige un motivo (§6), como cancelar una orden.
-            <form
-              className="grid gap-2"
-              onSubmit={(event) => {
-                event.preventDefault();
-                cancel.mutate();
-              }}
-            >
-              <Label htmlFor={`cancel-${quote.id}`}>{t("quotes.cancelReason")}</Label>
-              <Textarea
-                id={`cancel-${quote.id}`}
-                autoFocus
-                value={reason}
-                onChange={(event) => setReason(event.target.value)}
-              />
-              <div className="flex flex-wrap gap-2">
-                <Button type="submit" variant="destructive" size="sm" disabled={!reason.trim() || cancel.isPending}>
-                  {t("quotes.cancel")}
-                </Button>
-                <Button type="button" variant="ghost" size="sm" onClick={() => setCancelling(false)}>
-                  {t("common.cancel")}
-                </Button>
-              </div>
-            </form>
-          ) : (
+        {quote.delivery_business_days !== null && (
+          <p className="text-muted-foreground text-sm">
+            {t("quotes.deliveryTerm", { count: quote.delivery_business_days })}
+            {quote.delivery_on && (
+              <>
+                {" · "}
+                <span className="text-foreground font-medium">
+                  {t("quotes.deliveryOn", { date: dates.day(quote.delivery_on) })}
+                </span>
+              </>
+            )}
+          </p>
+        )}
+        {canCancel && cancelling ? (
+          // Anular exige un motivo (§6), como cancelar una orden.
+          <form
+            className="grid gap-2"
+            onSubmit={(event) => {
+              event.preventDefault();
+              cancel.mutate();
+            }}
+          >
+            <Label htmlFor={`cancel-${quote.id}`}>{t("quotes.cancelReason")}</Label>
+            <Textarea
+              id={`cancel-${quote.id}`}
+              autoFocus
+              value={reason}
+              onChange={(event) => setReason(event.target.value)}
+            />
             <div className="flex flex-wrap gap-2">
-              {canRenew && (
-                <ConfirmButton
-                  variant={quote.expired ? "default" : "outline"}
-                  size="sm"
-                  disabled={renew.isPending}
-                  title={t("quotes.renewTitle", { number: quote.version_no })}
-                  description={t("quotes.confirmRenew", {
-                    days: settings.data?.quote_validity_business_days ?? 12,
-                  })}
-                  confirmLabel={t("quotes.renew")}
-                  onConfirm={() => renew.mutate()}
-                >
-                  <RefreshCw aria-hidden />
-                  {t("quotes.renew")}
-                </ConfirmButton>
-              )}
+              <Button type="submit" variant="destructive" size="sm" disabled={!reason.trim() || cancel.isPending}>
+                {t("quotes.cancel")}
+              </Button>
+              <Button type="button" variant="ghost" size="sm" onClick={() => setCancelling(false)}>
+                {t("common.cancel")}
+              </Button>
+            </div>
+          </form>
+        ) : (
+          <div className="flex flex-wrap gap-2">
+            {/* Sin importes no hay presupuesto que descargar (§3). */}
+            {!quote.prices_hidden && <PdfButton quoteId={quote.id} label={t("quotes.pdf")} />}
+            {canRenew && (
+              <ConfirmButton
+                variant={quote.expired ? "default" : "outline"}
+                size="sm"
+                disabled={renew.isPending}
+                title={t("quotes.renewTitle", { number: quote.version_no })}
+                description={t("quotes.confirmRenew", {
+                  days: settings.data?.quote_validity_business_days ?? 12,
+                })}
+                confirmLabel={t("quotes.renew")}
+                onConfirm={() => renew.mutate()}
+              >
+                <RefreshCw aria-hidden />
+                {t("quotes.renew")}
+              </ConfirmButton>
+            )}
+            {canCancel && (
               <Button variant="outline" size="sm" onClick={() => setCancelling(true)}>
                 {t("quotes.cancel")}
               </Button>
-            </div>
-          ))}
+            )}
+          </div>
+        )}
         {(cancel.isError || renew.isError) && (
           <p role="alert" className="text-destructive text-sm">
             {errorMessage(t, cancel.error ?? renew.error)}
@@ -510,8 +528,21 @@ function toDiscount(quote: Quote): Discount {
   };
 }
 
+/** "5" → 5; vacío → null (puede faltar hasta enviarlo); undefined si no vale. */
+function parseDelivery(value: string): number | null | undefined {
+  const trimmed = value.trim();
+  if (trimmed === "") return null;
+  if (!/^\d{1,3}$/.test(trimmed)) return undefined;
+  const days = Number(trimmed);
+  return days >= 1 && days <= 250 ? days : undefined;
+}
+
 /** Lo escrito, pasado a lo que espera la API; o la lista de líneas con errores. */
-function toInput(lines: LineDraft[], discount: Discount): DraftInput | { invalid: Set<string> } {
+function toInput(
+  lines: LineDraft[],
+  discount: Discount,
+  delivery: string,
+): DraftInput | { invalid: Set<string> } {
   const invalid = new Set<string>();
   const parsed = lines.map((line) => {
     const quantity = parseQuantity(line.quantity);
@@ -538,7 +569,11 @@ function toInput(lines: LineDraft[], discount: Discount): DraftInput | { invalid
     if (value === null) invalid.add("discount");
     else globalDiscount = { kind: discount.kind, value };
   }
-  return invalid.size ? { invalid } : { lines: parsed, global_discount: globalDiscount };
+  const deliveryDays = parseDelivery(delivery);
+  if (deliveryDays === undefined) invalid.add("delivery");
+  return invalid.size
+    ? { invalid }
+    : { lines: parsed, global_discount: globalDiscount, delivery_business_days: deliveryDays ?? null };
 }
 
 function DraftEditor({
@@ -561,6 +596,7 @@ function DraftEditor({
 
   const [lines, setLines] = useState<LineDraft[]>(() => toDraftLines(quote));
   const [discount, setDiscount] = useState<Discount>(() => toDiscount(quote));
+  const [delivery, setDelivery] = useState(() => quote.delivery_business_days?.toString() ?? "");
   // La versión desde la que se edita: guardar la sube, y un 409 avisa de que
   // otra persona guardó antes (RNF-15).
   const [baseVersion, setBaseVersion] = useState(quote.version);
@@ -629,7 +665,7 @@ function DraftEditor({
   // `version`: la desde la que se editó o, para guardar lo mío encima de lo del
   // otro, la última que hay (la recarga tras el 409 ya la trajo).
   const submit = (version = baseVersion) => {
-    const input = toInput(lines, discount);
+    const input = toInput(lines, discount, delivery);
     if ("invalid" in input) {
       setInvalid(input.invalid);
       return;
@@ -640,6 +676,7 @@ function DraftEditor({
   const reload = () => {
     setLines(toDraftLines(quote));
     setDiscount(toDiscount(quote));
+    setDelivery(quote.delivery_business_days?.toString() ?? "");
     setBaseVersion(quote.version);
     setDirty(false);
     save.reset();
@@ -702,7 +739,31 @@ function DraftEditor({
           </div>
         </div>
 
-        {invalid.size > 0 && (
+        <div className="grid gap-1.5 sm:max-w-md">
+          <Label htmlFor={`delivery-${quote.id}`}>{t("quotes.delivery")}</Label>
+          <Input
+            id={`delivery-${quote.id}`}
+            inputMode="numeric"
+            className="sm:max-w-32"
+            value={delivery}
+            aria-invalid={invalid.has("delivery") || undefined}
+            aria-describedby={`delivery-${quote.id}-hint`}
+            onChange={(event) => {
+              setDelivery(event.target.value);
+              setDirty(true);
+            }}
+          />
+          <p id={`delivery-${quote.id}-hint`} className="text-muted-foreground text-xs">
+            {t("quotes.deliveryHint")}
+          </p>
+        </div>
+
+        {invalid.has("delivery") && (
+          <p role="alert" className="text-destructive text-sm">
+            {t("quotes.invalidDelivery")}
+          </p>
+        )}
+        {[...invalid].some((key) => key !== "delivery") && (
           <p role="alert" className="text-destructive text-sm">
             {t("quotes.fixLines")}
           </p>
@@ -736,12 +797,15 @@ function DraftEditor({
           </div>
         )}
 
-        <div className="flex flex-wrap gap-2">
+        {!dirty && quote.delivery_business_days === null && lines.length > 0 && (
+          <p className="text-muted-foreground text-sm">{t("quotes.deliveryMissing")}</p>
+        )}
+        <div className="flex flex-wrap items-center gap-2">
           <Button disabled={save.isPending || !dirty} onClick={() => submit()}>
             {t("common.save")}
           </Button>
           <ConfirmButton
-            disabled={dirty || lines.length === 0 || send.isPending}
+            disabled={dirty || lines.length === 0 || quote.delivery_business_days === null || send.isPending}
             title={t("quotes.sendTitle", { number: quote.version_no })}
             description={t("quotes.confirmSend", {
               days: workshop.data?.quote_validity_business_days ?? 12,
@@ -752,6 +816,9 @@ function DraftEditor({
             <Send aria-hidden />
             {t("quotes.send")}
           </ConfirmButton>
+          {/* La vista previa es de lo guardado (la genera la API): con cambios
+              sin guardar enseñaría otra cosa. */}
+          <PdfButton quoteId={quote.id} label={t("quotes.preview")} disabled={dirty || lines.length === 0} />
           <ConfirmButton
             variant="ghost"
             disabled={discard.isPending}

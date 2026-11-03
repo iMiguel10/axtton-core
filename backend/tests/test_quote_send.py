@@ -450,8 +450,9 @@ async def sendable_draft(engines: Engines, workshop_id: Any, order_id: Any) -> A
         quote_id = await conn.scalar(
             text(
                 "INSERT INTO quotes"
-                " (workshop_id, work_order_id, version_no, created_by_employee_id)"
-                " VALUES (:w, :o, 1, :e) RETURNING id"
+                " (workshop_id, work_order_id, version_no, created_by_employee_id,"
+                " delivery_business_days)"
+                " VALUES (:w, :o, 1, :e, 5) RETURNING id"
             ),
             {"w": workshop_id, "o": order_id, "e": employee},
         )
@@ -484,7 +485,13 @@ async def test_a_draft_saved_while_it_is_being_sent_makes_the_send_wait_and_fail
 
     async with open_transaction(a) as first, open_transaction(a) as second:
         await quote_service.save_draft(
-            first, a, quote_id, expected_version=1, global_discount=None, lines=[line]
+            first,
+            a,
+            quote_id,
+            expected_version=1,
+            global_discount=None,
+            lines=[line],
+            delivery_business_days=5,
         )
         work = asyncio.create_task(
             quote_service.send_quote(

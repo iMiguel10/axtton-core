@@ -221,6 +221,8 @@ MECHANIC_ALLOWED = {
     ("POST", "/orders/{order_id}/work-entries/{entry_id}/void"),
     # Ver los presupuestos (F3), sin importes si el taller lo desactiva.
     ("GET", "/orders/{order_id}/quotes"),
+    # Su PDF también; si el taller le oculta los importes, 403 (paso 7).
+    ("GET", "/quotes/{quote_id}/pdf"),
     ("GET", "/quotes"),
     ("POST", "/account/password"),
     ("GET", "/account/sessions"),

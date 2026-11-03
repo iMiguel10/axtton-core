@@ -24,6 +24,7 @@ from sqlalchemy import (
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column
 
+from app.domain.quotes import MAX_DELIVERY_BUSINESS_DAYS
 from app.models.base import Base, CreatedAtMixin, IdMixin, UpdatedAtMixin
 
 
@@ -46,6 +47,11 @@ class Workshop(IdMixin, CreatedAtMixin, UpdatedAtMixin, Base):
         # Mínimo legal de validez del presupuesto (RF-33).
         CheckConstraint(
             "quote_validity_business_days >= 12", name="quote_validity_business_days"
+        ),
+        CheckConstraint(
+            "default_delivery_business_days IS NULL OR default_delivery_business_days"
+            f" BETWEEN 1 AND {MAX_DELIVERY_BUSINESS_DAYS}",
+            name="default_delivery_business_days",
         ),
         CheckConstraint(
             "signature_retention_months BETWEEN 1 AND 60",
@@ -76,6 +82,9 @@ class Workshop(IdMixin, CreatedAtMixin, UpdatedAtMixin, Base):
     quote_validity_business_days: Mapped[int] = mapped_column(
         SmallInteger, server_default="12"
     )
+    # El plazo de entrega con el que empieza un presupuesto nuevo (RF-37), en
+    # días hábiles desde la aceptación. Vacío: cada presupuesto lo escribe.
+    default_delivery_business_days: Mapped[int | None] = mapped_column(SmallInteger)
     mechanics_see_sale_prices: Mapped[bool] = mapped_column(server_default="true")
     signature_retention_months: Mapped[int] = mapped_column(
         SmallInteger, server_default="6"

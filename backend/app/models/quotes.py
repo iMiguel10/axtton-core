@@ -30,6 +30,7 @@ from sqlalchemy.dialects.postgresql import INET, JSONB
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.domain.quotes import (
+    MAX_DELIVERY_BUSINESS_DAYS,
     DecisionChannel,
     DiscountKind,
     LineKind,
@@ -51,6 +52,7 @@ _SENT_FIELDS = (
     "global_discount_cents",
     "vat_breakdown",
     "total_cents",
+    "vehicle_snapshot",
 )
 
 
@@ -117,6 +119,14 @@ class Quote(IdMixin, CreatedAtMixin, UpdatedAtMixin, Base):
             " global_discount_cents BETWEEN 0 AND subtotal_cents AND total_cents >= 0)",
             name="totals",
         ),
+        # El plazo de entrega (RF-37): se escribe en el borrador y sin él no se
+        # envía.
+        CheckConstraint(
+            "(delivery_business_days IS NULL OR delivery_business_days BETWEEN 1"
+            f" AND {MAX_DELIVERY_BUSINESS_DAYS}) AND (status = 'draft'"
+            " OR delivery_business_days IS NOT NULL)",
+            name="delivery_business_days",
+        ),
         # Anular exige un motivo (especificación §6).
         CheckConstraint(
             "(status = 'cancelled') = (cancel_reason IS NOT NULL)",
@@ -148,6 +158,9 @@ class Quote(IdMixin, CreatedAtMixin, UpdatedAtMixin, Base):
     global_discount_kind: Mapped[str | None] = mapped_column(String(10))
     # Puntos básicos si es porcentaje; céntimos si es importe.
     global_discount_value: Mapped[int | None] = mapped_column(BigInteger)
+    # La fecha prevista de entrega "a contar desde la aceptación" (RF-37): se
+    # sabe al decidir, así que se guarda el plazo, no la fecha.
+    delivery_business_days: Mapped[int | None] = mapped_column(SmallInteger)
     # --- Lo que se guarda al enviar (y no cambia nunca más) ---
     sent_at: Mapped[datetime | None]
     sent_by_employee_id: Mapped[UUID | None]
@@ -162,6 +175,11 @@ class Quote(IdMixin, CreatedAtMixin, UpdatedAtMixin, Base):
     # [{"vat_bp": 2100, "base_cents": …, "vat_cents": …}, …] (RF-30).
     vat_breakdown: Mapped[list[dict[str, Any]] | None] = mapped_column(JSONB)
     total_cents: Mapped[int | None] = mapped_column(BigInteger)
+    # El vehículo y los km tal como eran al enviar (RF-37, RF-55): identifican
+    # sobre qué se dio el precio, y corregir después la ficha no lo cambia.
+    # {"plate", "make", "model", "odometer_km"}. Los datos del taller, su
+    # logotipo y el nombre del cliente se leen al generar el PDF.
+    vehicle_snapshot: Mapped[dict[str, Any] | None] = mapped_column(JSONB)
     # --- Anulación ---
     cancel_reason: Mapped[str | None] = mapped_column(String(1000))
     version: Mapped[int] = mapped_column(server_default="1")

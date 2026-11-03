@@ -78,7 +78,10 @@ SEND = (
     "UPDATE quotes SET status = 'sent', sent_at = clock_timestamp(),"
     " sent_by_employee_id = :e, valid_until = clock_timestamp() + interval '20 days',"
     " origin_status = 'diagnosing', subtotal_cents = :t / 121 * 100,"
-    " global_discount_cents = 0, vat_breakdown = '[]', total_cents = :t"
+    " global_discount_cents = 0, vat_breakdown = '[]', total_cents = :t,"
+    " delivery_business_days = 5,"
+    ' vehicle_snapshot = \'{"plate": "1234 ABC", "make": null,'
+    ' "model": null, "odometer_km": null}\''
     " WHERE id = :q"
 )
 

@@ -3,6 +3,7 @@ from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict, EmailStr, Field, model_validator
 
+from app.domain.quotes import MAX_DELIVERY_BUSINESS_DAYS
 from app.domain.settings import QUOTE_VALIDITY_MAX_DAYS, QUOTE_VALIDITY_MIN_DAYS
 
 
@@ -16,6 +17,7 @@ class WorkshopSettingsRead(BaseModel):
     industrial_registry_number: str | None
     default_vat_bp: int
     quote_validity_business_days: int
+    default_delivery_business_days: int | None
     mechanics_see_sale_prices: bool
     # Solo lectura: los fija la plataforma.
     timezone: str
@@ -40,6 +42,10 @@ class WorkshopSettingsUpdate(BaseModel):
     # Nunca menos de 12 días hábiles: es el mínimo legal (RF-33).
     quote_validity_business_days: int | None = Field(
         default=None, ge=QUOTE_VALIDITY_MIN_DAYS, le=QUOTE_VALIDITY_MAX_DAYS
+    )
+    # El plazo de entrega con el que empieza un presupuesto (RF-37); null lo quita.
+    default_delivery_business_days: int | None = Field(
+        default=None, ge=1, le=MAX_DELIVERY_BUSINESS_DAYS
     )
     mechanics_see_sale_prices: bool | None = None
 

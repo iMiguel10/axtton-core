@@ -23,7 +23,7 @@ from app.repositories import settings as settings_repo
 from app.services.integrity import flush_or_conflict
 
 # Lo que el administrador cambia con PUT /workshop/settings. Tiene que coincidir
-# con las columnas que le concede la migración 0012settings: una que no esté
+# con las columnas que le conceden las migraciones 0012settings y 0014quotepdf: una que no esté
 # allí daría "permission denied".
 EDITABLE = (
     "name",
@@ -35,6 +35,7 @@ EDITABLE = (
     "industrial_registry_number",
     "default_vat_bp",
     "quote_validity_business_days",
+    "default_delivery_business_days",
     "mechanics_see_sale_prices",
 )
 OPTIONAL_TEXT = (

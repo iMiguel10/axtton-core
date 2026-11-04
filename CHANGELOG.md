@@ -4,6 +4,13 @@ Lo mantiene [release-please](https://github.com/googleapis/release-please) a par
 
 Las dos primeras versiones se escribieron a mano, resumidas por fase, al empezar a versionar.
 
+## [0.5.0](https://github.com/iMiguel10/axtton-core/compare/v0.4.0...v0.5.0) (2026-11-04)
+
+
+### Novedades
+
+* **portal:** enlace mágico pedido desde la entrada de cada taller (F4 paso 1, RF-40) ([#17](https://github.com/iMiguel10/axtton-core/issues/17)) ([f1b03cc](https://github.com/iMiguel10/axtton-core/commit/f1b03cc7e9990f77f9a40e8cd3bc041badf4aca1))
+
 ## [0.4.0](https://github.com/iMiguel10/axtton-core/compare/v0.3.0...v0.4.0) (2026-11-03)
 
 

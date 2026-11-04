@@ -14,3 +14,9 @@ class Actor(StrEnum):
     STAFF = "staff"
     SUPERADMIN = "superadmin"
     CLIENT = "client"
+
+
+# Lo que lleva además la sesión de un cliente (F4): el taller y el cliente del
+# enlace mágico con el que entró. Una sesión de cliente vale para un solo taller.
+WORKSHOP_CLAIM = "workshop_id"
+CLIENT_CLAIM = "client_id"

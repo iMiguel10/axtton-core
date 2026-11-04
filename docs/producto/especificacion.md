@@ -238,12 +238,12 @@ Taller (organización, el "tenant")
 
 ### Portal del cliente (RF-40…)
 
-- **RF-40** El cliente entra introduciendo su email y recibe un enlace mágico de un solo uso y corta duración. Los emails del taller (presupuesto, vehículo listo) llevan su propio enlace de acceso.
+- **RF-40** El cliente entra introduciendo su email y recibe un enlace mágico de un solo uso y corta duración. Los emails del taller (presupuesto, vehículo listo) llevan su propio enlace de acceso. *Precisión al construirlo (F4 paso 1, decisión 0006):* el email se escribe en la página de entrada de un taller (`/portal/login/{taller}`), que el taller da en su web, en el resguardo o en sus correos, y el enlace que llega es de ese taller. El enlace abre una página del portal que pide pulsar «Entrar», porque algunos correos abren los enlaces para revisarlos y gastarían uno que solo sirve una vez. Cambiar el email del cliente o anonimizarlo invalida los enlaces que tuviera pendientes. Sin correo configurado no se emite ningún enlace.
 - **RF-41** Pedir un enlace para un email que no existe responde exactamente igual que para uno que existe, para no revelar quién es cliente de qué taller.
 - **RF-42** El portal muestra los vehículos del cliente y sus órdenes, con el estado en un lenguaje para el cliente (§6), la fecha de la última actualización y la fecha prevista de entrega.
 - **RF-43** El detalle de una orden muestra el texto de diagnóstico para el cliente, el presupuesto vigente con sus versiones anteriores, los trabajos realizados y sus documentos (RF-54). Nunca las notas internas.
 - **RF-44** El cliente ve en el portal **las órdenes de las que fue cliente**, es decir, las abiertas mientras era titular del vehículo, y nada más del historial: si compra un coche de segunda mano que ya pasó por el taller, no ve las reparaciones del dueño anterior. Si necesita ese historial, se lo da el taller con el informe de actuaciones (RF-18).
-- **RF-45** Si un mismo email es cliente de varios talleres, recibe **un único email con un enlace por taller**. Cada enlace abre el portal de ese taller y la sesión resultante solo ve ese taller: no existe una identidad del cliente por encima de los talleres.
+- **RF-45** Si un mismo email es cliente de varios talleres, **entra en cada uno desde la página de entrada de ese taller**, y recibe un enlace solo de ese taller. Cada enlace abre el portal de ese taller y la sesión resultante solo ve ese taller: no existe una identidad del cliente por encima de los talleres. *Cambiado al construirlo (F4 paso 1, decisión 0006):* con un correo de un enlace por taller, un email de muchos talleres habría recibido un correo inutilizable, y pedir el enlace habría tenido que buscar el email en todos los talleres. Así el portal es de cada taller, ninguna consulta del portal cruza talleres y la página de entrada se puede personalizar con la configuración del taller.
 - **RF-46** El portal muestra las próximas citas del cliente con su día, hora y motivo.
 - **RF-47** La sesión del portal dura 30 días en el dispositivo y el cliente puede cerrarla. Anonimizar al cliente (RF-15) o cambiarle el email cierra todas sus sesiones.
 
@@ -506,7 +506,7 @@ Existen desde el primer día, aunque no se cobre por ellos. Los de cuenta los pu
 | Versiones de presupuesto por orden | 20 | Más indica un uso anómalo |
 | Intentos de inicio de sesión | 10 por hora por email y 30 por minuto por IP | Frenar el ataque por fuerza bruta sin bloquear al usuario legítimo: se frena, nunca se bloquea la cuenta. *Al construirlo en F1 se fijó por hora y se añadió la IP, holgada porque el personal de un taller comparte la suya* |
 | Recuperaciones de contraseña | 3 por hora por email y 10 por hora por IP | Evitar usar el sistema para enviar spam. *Fijado en F1, más estricto que el 5 inicial* |
-| Enlaces mágicos por email y hora | 5 | Ídem. Llega con el portal (F4) |
+| Enlaces mágicos por email y hora | 5 | Ídem. *Al construirlo (F4):* además, 20 por hora por IP, y consumirlos, 30 por hora por IP |
 | Validez de un enlace mágico | 15 minutos | Equilibrio entre seguridad y que el cliente abra el correo tarde |
 | Validez de una invitación | 7 días | El invitado puede tardar en verla; después hay que reenviarla |
 | Sesión del portal | 30 días | RF-47 |
@@ -558,7 +558,7 @@ Solo se deja una costura si es barata. Si prepararse para el futuro cuesta traba
 |---|---|---|---|
 | R1 | **Sobreingeniería y alcance**: multi-tenancy con dos modos de instalación, tres tipos de usuario, versionado, inventario y citas ya son nueve fases. La tentación de añadir proveedores, reservas online o facturación hará que no se acabe nunca. | Alto | Siempre: cualquier cosa fuera de §1 pasa por la bitácora de decisiones. |
 | R2 | Cómo autenticar tres poblaciones (superadministrador y personal con contraseña, clientes con enlace mágico) sin que una sesión de cliente llegue a la API del taller ni una de superadministrador a los datos de un taller. | Alto | **Resuelto (2026-10-22):** SuperTokens para los tres actores, con el actor en la sesión y tres prefijos de API cerrados entre sí ([arquitectura](../arquitectura/index.md) A4, A5) |
-| R3 | Un mismo email cliente de varios talleres: ¿un enlace por taller, o un selector tras entrar? | Medio | **Resuelto (2026-10-22):** un enlace por taller en un único email (RF-45) |
+| R3 | Un mismo email cliente de varios talleres: ¿un enlace por taller, o un selector tras entrar? | Medio | **Resuelto (2026-10-22):** un enlace por taller en un único email (RF-45). **Revisado (2026-11-04, decisión 0006):** se entra desde la página de cada taller y el enlace es de ese taller |
 | R4 | Formato de exportación hacia programas de facturación: CSV genérico o alguno concreto. | Bajo | F9 |
 | R5 | Normativa de talleres en España (presupuesto por escrito, plazo de validez, resguardo de depósito, renuncia al presupuesto): confirmar qué exige para que el flujo sea realista. | Medio | **Resuelto (2026-10-22):** RD 1457/1986, modificado por el RD 455/2010. Se incorporan la validez mínima de 12 días hábiles (RF-33), el contenido del presupuesto (RF-37), la conformidad para piezas usadas (RF-38), la renuncia firmada en el resguardo (RF-27, RF-51) y la garantía de 3 meses o 2.000 km (RF-53). Algunas comunidades autónomas tienen normativa propia que puede añadir requisitos; no se ha revisado. Fuentes en la bitácora de decisiones cuando exista. |
 | R6 | ¿Ve el cliente "esperando piezas" o solo "en reparación"? | Bajo | **Resuelto (2026-10-22):** sí, como subestado |

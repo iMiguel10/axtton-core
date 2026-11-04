@@ -14,6 +14,7 @@ from app.api.v1.invitations.superadmin import (
     router as superadmin_invitations_router,
 )
 from app.api.v1.meta import router as meta_router
+from app.api.v1.portal.auth import router as portal_auth_router
 from app.api.v1.portal.router import router as portal_router
 from app.api.v1.workshop.router import router as workshop_router
 from app.core.config import get_settings
@@ -41,6 +42,7 @@ app.add_middleware(AuthRateLimitMiddleware)
 
 app.include_router(workshop_router)
 app.include_router(portal_router)
+app.include_router(portal_auth_router)
 app.include_router(admin_router)
 app.include_router(invitations_router)
 app.include_router(superadmin_invitations_router)

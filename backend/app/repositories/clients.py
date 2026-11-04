@@ -34,6 +34,22 @@ async def get_locked(
     return (await session.scalars(query)).one_or_none()
 
 
+async def get_by_email_locked(session: AsyncSession, email: str) -> Client | None:
+    """El cliente del taller fijado con ese email, bloqueado en compartido.
+
+    El email es único por taller (uq_clients_workshop_id_email), así que hay uno
+    o ninguno. Lo usa pedir un enlace del portal: el bloqueo pone en fila un
+    cambio de email o una anonimización a la vez (services/portal_auth.py).
+    """
+    query = (
+        select(Client)
+        .where(Client.email == email)
+        .with_for_update(read=True)
+        .execution_options(populate_existing=True)
+    )
+    return (await session.scalars(query)).one_or_none()
+
+
 async def email_taken(
     session: AsyncSession, email: str, *, except_id: UUID | None = None
 ) -> bool:

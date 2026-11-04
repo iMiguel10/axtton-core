@@ -62,3 +62,4 @@ nav:
       - "0003 — Versiones por etiqueta, con release-please": decisiones/0003-versionado-por-etiquetas-y-release-please.md
       - "0004 — Producción en Coolify": decisiones/0004-produccion-en-coolify.md
       - "0005 — El logotipo, la única imagen subida": decisiones/0005-logotipo-del-taller-como-unica-imagen-subida.md
+      - "0006 — Enlaces mágicos propios, por taller": decisiones/0006-enlaces-magicos-propios-ligados-al-taller.md

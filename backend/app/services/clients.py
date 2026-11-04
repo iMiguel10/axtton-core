@@ -17,6 +17,7 @@ from app.domain.clients import normalize_email, normalize_tax_id
 from app.domain.limits import Resource
 from app.models import AuditEntry, Client
 from app.repositories import clients as client_repo
+from app.repositories import portal_links as link_repo
 from app.repositories import vehicles as vehicle_repo
 from app.repositories import work_orders as order_repo
 from app.services import limits as limit_service
@@ -119,10 +120,16 @@ async def update_client(
         and await client_repo.email_taken(session, email, except_id=client_id)
     ):
         raise ConflictError("client_email_taken")
+    email_changed = "email" in values and values["email"] != client.email
     for field in EDITABLE:
         if field in values:
             setattr(client, field, values[field])
     await flush_or_conflict(session, UNIQUE)
+    if email_changed:
+        # Un enlace mágico pendiente se envió al email anterior: ya no es de este
+        # cliente (RF-47). Después del flush, que bloquea la fila del cliente: el
+        # mismo orden que al consumir un enlace (services/portal_auth.py).
+        await link_repo.revoke_open_for_client(session, client_id)
 
 
 async def set_archived(
@@ -181,6 +188,8 @@ async def anonymize_client(
     client.archived_at = client.archived_at or now
     client.anonymized_at = now
     await order_repo.forget_dropped_off_by(session, client_id)
+    # Sin email no hay portal: ningún enlace pendiente vale ya (RF-15, RF-47).
+    await link_repo.revoke_open_for_client(session, client_id)
     session.add(
         AuditEntry(
             workshop_id=workshop_id,

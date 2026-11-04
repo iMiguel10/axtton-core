@@ -19,6 +19,7 @@ from app.models.platform import (
     User,
     Workshop,
 )
+from app.models.portal import PortalLink
 from app.models.quotes import Quote, QuoteDecision, QuoteLine
 from app.models.settings import LaborRate, WorkshopLogo
 
@@ -30,6 +31,7 @@ __all__ = [
     "InternalNote",
     "Invitation",
     "LaborRate",
+    "PortalLink",
     "Quote",
     "QuoteDecision",
     "QuoteLine",

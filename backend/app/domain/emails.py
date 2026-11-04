@@ -81,3 +81,25 @@ def password_reset_email(*, link: str) -> EmailContent:
             " tú, ignora este mensaje: tu contraseña no cambia."
         ),
     )
+
+
+def portal_access_email(*, workshop_name: str, link: str) -> EmailContent:
+    """El acceso al portal de un taller (RF-40): se pidió desde su página de
+    entrada, y el enlace solo abre ese taller (RF-45, decisión 0006)."""
+    return EmailContent(
+        subject=f"Tu acceso al portal de {workshop_name}",
+        greeting="Hola:",
+        paragraphs=(
+            (
+                "Has pedido entrar en el portal, donde puedes seguir la reparación"
+                " de tu vehículo y responder a sus presupuestos."
+            ),
+        ),
+        action_label="Entrar en el portal",
+        action_url=link,
+        footnote=(
+            "El enlace caduca en 15 minutos y solo sirve una vez. Si no lo has"
+            " pedido tú, ignora este mensaje: nadie puede entrar sin él."
+        ),
+        workshop_name=workshop_name,
+    )

@@ -8,15 +8,19 @@ import { LanguageSwitcher, ThemeToggle } from "@/shared/components/Preferences";
  * Pantallas de acceso, como el bloque login-02 de shadcn: el formulario a la
  * izquierda, con la marca arriba, y el panel de marca a la derecha (oscuro en los
  * dos temas; desde `lg`, en el móvil no cabe). Todas las de acceso la comparten:
- * entrar, aceptar una invitación, recuperar y cambiar la contraseña.
+ * entrar, aceptar una invitación, recuperar y cambiar la contraseña, y la entrada
+ * al portal del cliente, con su propio lema.
  */
 export function AuthLayout({
   title,
   description,
   footer,
+  tagline,
   children,
 }: {
   title: string;
+  /** El texto del panel de marca; por defecto, el del taller. */
+  tagline?: string;
   description?: ReactNode;
   /** Bajo el formulario: el enlace a la otra pantalla de acceso. */
   footer?: ReactNode;
@@ -43,7 +47,7 @@ export function AuthLayout({
           </div>
         </main>
       </div>
-      <BrandPanel />
+      <BrandPanel tagline={tagline} />
     </div>
   );
 }
@@ -52,7 +56,7 @@ export function AuthLayout({
  * La mitad de la marca. En CSS, sin imagen: cuando llegue el logotipo, va aquí
  * (y en la barra lateral).
  */
-function BrandPanel() {
+function BrandPanel({ tagline }: { tagline?: string }) {
   const { t } = useTranslation();
   return (
     <aside className="bg-brand text-brand-foreground relative hidden overflow-hidden lg:flex lg:flex-col lg:justify-center lg:p-16">
@@ -68,7 +72,7 @@ function BrandPanel() {
       <div className="relative flex max-w-md flex-col gap-6">
         <Brand tone="onDark" className="h-20 self-start" />
         <span aria-hidden className="bg-brand-accent h-px w-16" />
-        <p className="text-lg leading-relaxed opacity-90">{t("auth.tagline")}</p>
+        <p className="text-lg leading-relaxed opacity-90">{tagline ?? t("auth.tagline")}</p>
       </div>
     </aside>
   );

@@ -8,19 +8,24 @@ quedan protegidas por construcción: una ruta nueva no puede olvidarlo.
 from collections.abc import Awaitable, Callable
 from dataclasses import dataclass
 from typing import Annotated
+from uuid import UUID
 
 from fastapi import Depends
 from supertokens_python.recipe.session import SessionContainer
 from supertokens_python.recipe.session.framework.fastapi import verify_session
 
 from app.core.errors import ForbiddenError
-from app.domain.actors import ACTOR_CLAIM, Actor
+from app.domain.actors import ACTOR_CLAIM, CLIENT_CLAIM, WORKSHOP_CLAIM, Actor
 
 
 @dataclass(frozen=True)
 class CurrentUser:
     supertokens_user_id: str
     actor: Actor
+    # Solo en una sesión de cliente: el taller y el cliente del enlace con el que
+    # entró (core/sessions.py). El personal elige taller en cada petición (A6).
+    workshop_id: UUID | None = None
+    client_id: UUID | None = None
 
 
 def _require(actor: Actor) -> Callable[..., Awaitable[CurrentUser]]:
@@ -31,9 +36,19 @@ def _require(actor: Actor) -> Callable[..., Awaitable[CurrentUser]]:
     ) -> CurrentUser:
         # El actor se lee SIEMPRE de la sesión verificada, nunca de una cabecera
         # ni del cuerpo de la petición (invariante 4).
-        if session.get_access_token_payload().get(ACTOR_CLAIM) != actor:
+        payload = session.get_access_token_payload()
+        if payload.get(ACTOR_CLAIM) != actor:
             raise ForbiddenError("wrong_actor")
-        return CurrentUser(supertokens_user_id=session.get_user_id(), actor=actor)
+        user = CurrentUser(supertokens_user_id=session.get_user_id(), actor=actor)
+        if actor is Actor.CLIENT:
+            # Los puso el servidor al crear la sesión, y van firmados (T9).
+            user = CurrentUser(
+                supertokens_user_id=user.supertokens_user_id,
+                actor=actor,
+                workshop_id=UUID(payload[WORKSHOP_CLAIM]),
+                client_id=UUID(payload[CLIENT_CLAIM]),
+            )
+        return user
 
     dependency.__name__ = f"require_{actor.value}"
     return dependency

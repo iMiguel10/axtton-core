@@ -314,3 +314,35 @@ async def test_a_superadmin_changing_the_password_is_limited_too(
         "/api/v1/admin/account/password", json=wrong, headers=headers
     )
     assert response.status_code == 429
+
+
+@pytest.mark.asyncio
+async def test_portal_links_are_limited_per_email_whatever_the_case(
+    client: AsyncClient,
+) -> None:
+    """5 por hora y email (especificación §10). Igual exista o no el cliente: el
+    límite tampoco dice quién lo es (RF-41)."""
+    email = f"cliente-{uuid4().hex[:8]}@example.com"
+    workshop = str(uuid4())
+    for spelling in (email, email.upper(), email, email, email):
+        response = await client.post(
+            "/api/v1/portal/auth/request-link",
+            json={"workshop_id": workshop, "email": spelling},
+        )
+        assert response.status_code == 202
+    response = await client.post(
+        "/api/v1/portal/auth/request-link",
+        json={"workshop_id": workshop, "email": email},
+    )
+    assert response.status_code == 429
+    assert response.json()["code"] == "rate_limited"
+
+
+@pytest.mark.asyncio
+async def test_consuming_portal_links_is_limited_per_ip(client: AsyncClient) -> None:
+    body = {"workshop_id": str(uuid4()), "token": "no-existe"}
+    for _ in range(30):
+        response = await client.post("/api/v1/portal/auth/consume", json=body)
+        assert response.status_code == 400
+    response = await client.post("/api/v1/portal/auth/consume", json=body)
+    assert response.status_code == 429

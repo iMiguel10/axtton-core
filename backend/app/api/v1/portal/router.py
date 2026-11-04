@@ -1,11 +1,12 @@
 from fastapi import APIRouter, Depends
 
-from app.api.v1.deps import Client, require_client
-from app.schemas.session import WhoAmI
+from app.api.v1.deps import require_client
+from app.api.v1.portal.deps import Portal
+from app.domain.actors import Actor
+from app.schemas.portal import PortalMe
 
-# Toda ruta de este router exige una sesión de cliente (A5). Hasta F4 no existe
-# forma de obtenerla: el router está para que las pruebas T1 y T2 cubran el prefijo
-# desde ahora.
+# Toda ruta de este router exige una sesión de cliente (A5). Las de entrar en el
+# portal (su página, pedir y consumir el enlace) van aparte, en auth.py.
 router = APIRouter(
     prefix="/api/v1/portal",
     tags=["portal"],
@@ -14,5 +15,12 @@ router = APIRouter(
 
 
 @router.get("/me")
-async def me(user: Client) -> WhoAmI:
-    return WhoAmI(actor=user.actor)
+async def me(portal: Portal) -> PortalMe:
+    return PortalMe(
+        actor=Actor.CLIENT,
+        workshop_id=portal.workshop_id,
+        workshop_name=portal.client.workshop_name,
+        timezone=portal.client.timezone,
+        client_name=portal.client.client_name,
+        language=portal.client.language,
+    )

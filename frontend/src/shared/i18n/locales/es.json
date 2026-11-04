@@ -569,7 +569,36 @@
     "intro": "Te han invitado a administrar esta instalación de AXTTON CORE con el email {{email}}. Elige tu contraseña para crear la cuenta."
   },
   "portal": {
-    "comingSoon": "El portal del cliente estará disponible próximamente."
+    "tagline": "Sigue la reparación de tu vehículo y responde a sus presupuestos, sin tener que llamar.",
+    "login": {
+      "title": "Entra en el portal de {{workshop}}",
+      "description": "Escribe el email que diste en el taller y te enviaremos un enlace para entrar, sin contraseña.",
+      "submit": "Enviarme el enlace",
+      "sent": "Si ese email es el de un cliente, te hemos enviado un enlace para entrar. Caduca en 15 minutos y solo sirve una vez.",
+      "sendAnother": "Pedir otro enlace",
+      "titleLoading": "Entra en tu portal",
+      "unknownTitle": "Esta dirección no lleva a ningún portal",
+      "unknownDescription": "Puede que el taller haya cambiado su dirección o que ya no use el portal. Pídele la dirección actual o entra desde uno de sus correos."
+    },
+    "access": {
+      "title": "Entrar en el portal",
+      "description": "Pulsa el botón para entrar. El enlace solo sirve una vez.",
+      "submit": "Entrar",
+      "missing": "Este enlace está incompleto. Ábrelo de nuevo desde el email o pide otro.",
+      "requestAnother": "Pedir otro enlace"
+    },
+    "home": {
+      "greeting": "Hola, {{name}}",
+      "soon": "Muy pronto verás aquí tus vehículos, el estado de cada reparación y sus presupuestos.",
+      "signOut": "Cerrar sesión",
+      "staffSession": "Este navegador tiene abierta una sesión del personal del taller. Para entrar como cliente, ciérrala primero desde la aplicación del taller.",
+      "goToWorkshop": "Ir a la aplicación del taller"
+    },
+    "noWorkshop": {
+      "title": "Entra desde tu taller",
+      "description": "Cada taller tiene su propia dirección para entrar en su portal.",
+      "hint": "Búscala en la web de tu taller, en el resguardo que te dieron al dejar el vehículo o en cualquiera de sus correos."
+    }
   },
   "errors": {
     "unknown": "Algo ha fallado. Inténtalo de nuevo.",
@@ -655,7 +684,9 @@
     "quote_expired": "Este presupuesto pasó su plazo de validez: renuévalo antes de registrar la respuesta.",
     "quote_decision_channel_not_allowed": "Desde el taller, la respuesta se registra por teléfono o en persona.",
     "quote_delivery_missing": "Indica el plazo de entrega antes de enviarlo: la normativa exige que conste en el presupuesto.",
-    "quote_prices_hidden": "El taller no deja ver los importes a los mecánicos, así que tampoco el PDF del presupuesto."
+    "quote_prices_hidden": "El taller no deja ver los importes a los mecánicos, así que tampoco el PDF del presupuesto.",
+    "portal_link_invalid": "Este enlace ya no sirve: puede que ya lo hayas usado, que haya caducado o que tu acceso haya cambiado. Pide otro.",
+    "portal_access_revoked": "Tu acceso a este portal ya no está activo. Si crees que es un error, habla con el taller."
   },
   "palette": {
     "open": "Buscar en el taller",

@@ -569,7 +569,36 @@
     "intro": "You have been invited to administer this AXTTON CORE installation with the email {{email}}. Choose your password to create the account."
   },
   "portal": {
-    "comingSoon": "The client portal will be available soon."
+    "tagline": "Follow your vehicle’s repair and answer its quotes without having to call.",
+    "login": {
+      "title": "Sign in to the {{workshop}} portal",
+      "description": "Enter the email you gave the workshop and we’ll send you a link to sign in, no password needed.",
+      "submit": "Send me the link",
+      "sent": "If that email belongs to a customer, we’ve sent you a sign-in link. It expires in 15 minutes and works only once.",
+      "sendAnother": "Request another link",
+      "titleLoading": "Sign in to your portal",
+      "unknownTitle": "This address doesn’t lead to any portal",
+      "unknownDescription": "The workshop may have changed its address or no longer uses the portal. Ask them for the current address or sign in from one of their emails."
+    },
+    "access": {
+      "title": "Enter the portal",
+      "description": "Press the button to enter. The link works only once.",
+      "submit": "Enter",
+      "missing": "This link is incomplete. Open it again from the email or request another one.",
+      "requestAnother": "Request another link"
+    },
+    "home": {
+      "greeting": "Hello, {{name}}",
+      "soon": "Soon you’ll see your vehicles here, the status of each repair and its quotes.",
+      "signOut": "Sign out",
+      "staffSession": "This browser has a workshop staff session open. To enter as a customer, sign out of it first from the workshop app.",
+      "goToWorkshop": "Go to the workshop app"
+    },
+    "noWorkshop": {
+      "title": "Sign in from your workshop",
+      "description": "Each workshop has its own address to sign in to its portal.",
+      "hint": "Look for it on your workshop’s website, on the receipt you got when you dropped off your vehicle or in any of their emails."
+    }
   },
   "errors": {
     "unknown": "Something went wrong. Please try again.",
@@ -655,7 +684,9 @@
     "quote_expired": "This quote is past its validity: renew it before recording the reply.",
     "quote_decision_channel_not_allowed": "From the workshop, the reply is recorded by phone or in person.",
     "quote_delivery_missing": "Set the delivery time before sending it: the regulation requires it on the quote.",
-    "quote_prices_hidden": "The workshop does not let mechanics see amounts, so the quote PDF is not available either."
+    "quote_prices_hidden": "The workshop does not let mechanics see amounts, so the quote PDF is not available either.",
+    "portal_link_invalid": "This link no longer works: you may have used it already, it may have expired or your access may have changed. Request another one.",
+    "portal_access_revoked": "Your access to this portal is no longer active. If you think this is a mistake, contact the workshop."
   },
   "palette": {
     "open": "Search the workshop",

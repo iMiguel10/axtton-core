@@ -6,11 +6,10 @@ import { Link } from "react-router-dom";
 import EmailPassword from "supertokens-web-js/recipe/emailpassword";
 import { z } from "zod";
 
+import { AuthLayout } from "@/shared/components/AuthLayout";
 import { Field } from "@/shared/components/form/Field";
 import { Button } from "@/shared/components/ui/button";
 import { errorMessage } from "@/shared/lib/errors";
-
-import { AuthLayout } from "./AuthLayout";
 
 const schema = z.object({ email: z.email("validation.email") });
 type ForgotForm = z.infer<typeof schema>;

@@ -47,6 +47,15 @@ INVITATION_ACCEPT_PER_TOKEN = RateRule(
 # sesión abierta ajena. Cuenta todos los intentos: nadie la cambia cinco veces seguidas.
 PASSWORD_CHANGE_PER_USER = RateRule("password_change", "5/15minutes", RateKey.USER)
 
+# Enlaces mágicos del portal (RF-40, especificación §10). Pedirlos manda un email:
+# por email, para que nadie llene el buzón de otro; por IP, para que nadie pida
+# enlaces para una lista de emails. El límite responde igual exista o no el
+# cliente (RF-41). Consumirlos se limita por IP: el token no se adivina, pero
+# probarlos en bucle tampoco debe salir gratis.
+PORTAL_LINK_PER_EMAIL = RateRule("portal_link", "5/hour", RateKey.EMAIL)
+PORTAL_LINK_PER_IP = RateRule("portal_link", "20/hour", RateKey.IP)
+PORTAL_CONSUME_PER_IP = RateRule("portal_consume", "30/hour", RateKey.IP)
+
 # Rutas de SuperTokens (POST, bajo /api/auth) y sus reglas. Las atiende su
 # middleware, no nuestros endpoints: las limita app/api/auth_rate_limit.py.
 AUTH_RULES: dict[str, tuple[RateRule, ...]] = {

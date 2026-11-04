@@ -23,6 +23,9 @@ from app.domain.rate_limits import (
     INVITATION_ACCEPT_PER_IP,
     INVITATION_ACCEPT_PER_TOKEN,
     INVITATION_VIEW_PER_IP,
+    PORTAL_CONSUME_PER_IP,
+    PORTAL_LINK_PER_EMAIL,
+    PORTAL_LINK_PER_IP,
     RateRule,
 )
 from app.infra.rate_limit import RateLimitResult, current_rate_limiter
@@ -81,6 +84,17 @@ async def limit_invitation_view(request: Request) -> None:
 async def limit_invitation_accept(request: Request, token: str) -> None:
     await enforce(INVITATION_ACCEPT_PER_IP, request_ip(request))
     await enforce(INVITATION_ACCEPT_PER_TOKEN, token)
+
+
+async def limit_portal_link(request: Request, email: str) -> None:
+    """Se llama desde el endpoint, con el email ya normalizado: así "Ana@x.com" y
+    "ana@x.com" cuentan juntos."""
+    await enforce(PORTAL_LINK_PER_IP, request_ip(request))
+    await enforce(PORTAL_LINK_PER_EMAIL, email)
+
+
+async def limit_portal_consume(request: Request) -> None:
+    await enforce(PORTAL_CONSUME_PER_IP, request_ip(request))
 
 
 # --- Rutas de SuperTokens ----------------------------------------------------

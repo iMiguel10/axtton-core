@@ -14,13 +14,23 @@ from uuid import uuid4
 import pytest
 from httpx import AsyncClient
 
-from tests.conftest import Account, sign_in
+from tests.conftest import Account, Engines, TwoWorkshops, sign_in
+from tests.test_portal_auth import enter_portal
 
 PREFIXES = ("/api/v1/workshop", "/api/v1/portal", "/api/v1/admin")
 # El prefijo de cada actor; los otros dos le están vedados.
 ALLOWED_PREFIX = {
     "staff": "/api/v1/workshop",
     "superadmin": "/api/v1/admin",
+    "client": "/api/v1/portal",
+}
+# Las únicas rutas de los tres prefijos que no exigen sesión: quien entra en el
+# portal todavía no la tiene (api/v1/portal/auth.py). Escritas aquí, como las
+# excepciones de R8, para que añadir otra sea una decisión visible.
+PUBLIC_ROUTES = {
+    ("GET", "/api/v1/portal/workshops/{workshop_id}"),
+    ("POST", "/api/v1/portal/auth/request-link"),
+    ("POST", "/api/v1/portal/auth/consume"),
 }
 
 MakeAccount = Callable[[str], Awaitable[Account]]
@@ -37,8 +47,21 @@ def protected_routes() -> list[tuple[str, str]]:
     for path, operations in app.openapi()["paths"].items():
         if path.startswith(PREFIXES):
             concrete = re.sub(r"\{[^}]+\}", str(uuid4()), path)
-            routes.extend((method.upper(), concrete) for method in operations)
+            routes.extend(
+                (method.upper(), concrete)
+                for method in operations
+                if (method.upper(), path) not in PUBLIC_ROUTES
+            )
     return routes
+
+
+def test_the_public_routes_exist() -> None:
+    """Si una cambiara de ruta, quedaría fuera de la excepción y T1 la cubriría;
+    pero una excepción que ya no nombra nada es un descuido que hay que ver."""
+    from app.main import app
+
+    paths = app.openapi()["paths"]
+    assert all(method.lower() in paths.get(path, {}) for method, path in PUBLIC_ROUTES)
 
 
 def test_route_discovery_finds_every_prefix() -> None:
@@ -75,6 +98,23 @@ async def test_t2_each_actor_only_enters_its_own_prefix(
         else:
             assert response.status_code == 403, (method, path)
             assert response.json() == {"code": "wrong_actor"}
+
+
+@pytest.mark.asyncio
+async def test_t2_a_client_only_enters_the_portal(
+    client: AsyncClient, engines: Engines, two_workshops: TwoWorkshops
+) -> None:
+    headers = await enter_portal(client, engines, two_workshops.a)
+    checked = 0
+    for method, path in protected_routes():
+        response = await client.request(method, path, headers=headers)
+        if path.startswith(ALLOWED_PREFIX["client"]):
+            assert response.status_code != 403, (method, path)
+        else:
+            assert response.status_code == 403, (method, path)
+            assert response.json() == {"code": "wrong_actor"}
+            checked += 1
+    assert checked > 0  # prueba de control
 
 
 @pytest.mark.asyncio

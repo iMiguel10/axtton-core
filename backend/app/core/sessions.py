@@ -1,14 +1,19 @@
 """El ÚNICO sitio que escribe el actor en una sesión (arquitectura §2, invariante 4).
 
 SuperTokens llama a `create_new_session` siempre que crea una sesión, venga del
-inicio de sesión con contraseña o (en F4) del enlace mágico. Al sobrescribir esa
-función aquí, el actor se decide en un solo punto y no hay forma de crear una
+inicio de sesión con contraseña o del enlace mágico del portal. Al sobrescribir
+esa función aquí, el actor se decide en un solo punto y no hay forma de crear una
 sesión sin él. Ningún otro código modifica el contenido de una sesión ya creada
 (la prueba T11 lo vigila).
+
+La sesión de un cliente (F4) solo nace de `create_client_session`, con el
+`PortalLogin` que devuelve consumir un enlace: el taller y el cliente salen del
+enlace guardado, nunca de la petición (T10).
 """
 
 from typing import Any
 
+from fastapi import Request
 from supertokens_python.recipe.emailpassword.interfaces import (
     RecipeInterface as EmailPasswordRecipe,
 )
@@ -16,6 +21,8 @@ from supertokens_python.recipe.emailpassword.interfaces import (
     SignInOkResult,
     WrongCredentialsError,
 )
+from supertokens_python.recipe.passwordless.asyncio import signinup
+from supertokens_python.recipe.session.asyncio import create_new_session as new_session
 from supertokens_python.recipe.session.interfaces import (
     RecipeInterface as SessionRecipe,
 )
@@ -23,7 +30,8 @@ from supertokens_python.recipe.session.interfaces import SessionContainer
 from supertokens_python.types import RecipeUserId
 
 from app.core.db import SessionFactory
-from app.domain.actors import ACTOR_CLAIM, Actor
+from app.domain.actors import ACTOR_CLAIM, CLIENT_CLAIM, WORKSHOP_CLAIM, Actor
+from app.domain.portal import PortalLogin
 from app.repositories import users as user_repo
 
 # Marca que el backend pone en user_context cuando solo quiere comprobar una
@@ -31,16 +39,20 @@ from app.repositories import users as user_repo
 # cuenta propia puede no existir todavía, y es justo lo que se va a crear.
 PASSWORD_CHECK_ONLY = "axtton_password_check_only"
 
+# Dónde lleva `create_client_session` el PortalLogin hasta `create_new_session`.
+# El user_context lo construye el backend: una petición no puede escribir en él.
+PORTAL_LOGIN = "axtton_portal_login"
+
 
 class NoAccountError(Exception):
     """Un usuario de SuperTokens sin cuenta propia intentó obtener una sesión."""
 
 
 async def actor_for(supertokens_user_id: str) -> Actor:
-    """Decide el actor a partir de nuestra base de datos, nunca de la petición.
+    """El actor del personal y del superadministrador, de `users.kind`.
 
-    F1: solo personal y superadministrador, por `users.kind`. El actor cliente
-    llega en F4 con la receta passwordless.
+    Decidido a partir de nuestra base de datos, nunca de la petición. Un cliente
+    no tiene fila en `users`: su sesión solo sale de `create_client_session`.
     """
     async with SessionFactory() as session:
         user = await user_repo.get_by_supertokens_id(session, supertokens_user_id)
@@ -61,11 +73,22 @@ def session_override(original: SessionRecipe) -> SessionRecipe:
         tenant_id: str,
         user_context: dict[str, Any],
     ) -> SessionContainer:
-        # Lo que viniera en el payload se sustituye: el actor solo lo decide actor_for.
+        # Lo que viniera en el payload sobre quién es se descarta: el actor, el
+        # taller y el cliente solo los decide este módulo.
         payload = {
-            **(access_token_payload or {}),
-            ACTOR_CLAIM: await actor_for(user_id),
+            key: value
+            for key, value in (access_token_payload or {}).items()
+            if key not in (ACTOR_CLAIM, WORKSHOP_CLAIM, CLIENT_CLAIM)
         }
+        login = user_context.get(PORTAL_LOGIN)
+        if isinstance(login, PortalLogin):
+            payload |= {
+                ACTOR_CLAIM: Actor.CLIENT,
+                WORKSHOP_CLAIM: str(login.workshop_id),
+                CLIENT_CLAIM: str(login.client_id),
+            }
+        else:
+            payload[ACTOR_CLAIM] = await actor_for(user_id)
         return await original_create(
             user_id,
             recipe_user_id,
@@ -78,6 +101,29 @@ def session_override(original: SessionRecipe) -> SessionRecipe:
 
     original.create_new_session = create_new_session  # type: ignore[method-assign]
     return original
+
+
+async def create_client_session(request: Request, login: PortalLogin) -> None:
+    """Abre la sesión del portal para el cliente de un enlace ya consumido.
+
+    El usuario de SuperTokens es el de la receta passwordless para ese email, uno
+    solo aunque sea cliente de varios talleres: `signinup` lo crea la primera vez
+    y lo devuelve las siguientes, sin enviar ningún código. Lo que separa los
+    talleres es la sesión, que lleva el taller y el cliente del enlace (RF-45).
+    Es otro usuario que el del personal con el mismo email (sin vinculación de
+    cuentas, arquitectura §2): Ana, mecánica en un taller y clienta de otro,
+    recibe aquí siempre una sesión de cliente (T10).
+
+    Las cookies (o, en modo cabecera, los tokens) los pone en la respuesta el
+    middleware de SuperTokens.
+    """
+    result = await signinup("public", email=login.email, phone_number=None)
+    await new_session(
+        request,
+        "public",
+        result.user.login_methods[0].recipe_user_id,
+        user_context={PORTAL_LOGIN: login},
+    )
 
 
 def emailpassword_override(original: EmailPasswordRecipe) -> EmailPasswordRecipe:

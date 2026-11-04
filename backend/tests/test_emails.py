@@ -4,7 +4,11 @@ el mensaje MIME que sale por SMTP. Lo que dice cada uno se prueba donde se enví
 
 from email.utils import parseaddr
 
-from app.domain.emails import invitation_email, password_reset_email
+from app.domain.emails import (
+    invitation_email,
+    password_reset_email,
+    portal_access_email,
+)
 from app.infra.email import LOGO_CID, build_message, compose
 
 LINK = "https://taller.example.com/invitations/w/t0k3n"
@@ -67,3 +71,16 @@ def test_what_the_workshop_writes_is_escaped_in_the_html() -> None:
     assert email.html is not None
     assert "<script>" not in email.html and "<b>Juan</b>" not in email.html
     assert "&lt;script&gt;" in email.html
+
+
+def test_the_portal_email_is_the_workshop_s_with_its_link() -> None:
+    """Se pidió desde la entrada de un taller: el correo es de ese taller."""
+    link = "https://x/portal/access/a#t1"
+    email = compose(
+        "ana@example.com",
+        portal_access_email(workshop_name="Taller Norte", link=link),
+    )
+    assert email.sender_name == "Taller Norte (AXTTON CORE)"
+    assert email.subject == "Tu acceso al portal de Taller Norte"
+    assert email.html is not None and f'href="{link}"' in email.html
+    assert link in email.body and "15 minutos" in email.body

@@ -53,7 +53,8 @@ En este proyecto "rol" quiere decir tres cosas distintas, en tres capas que no s
 - **Superadministradores y personal son cuentas distintas.** Un superadministrador no es un empleado con un permiso de más: si la misma persona trabaja también en un taller, usa otra cuenta. Así RNF-08 se cumple sin excepciones. Se comprueba en las dos direcciones: una cuenta de superadministrador no acepta una invitación de empleado (`superadmin_cannot_be_employee`), y una de personal no acepta una de superadministrador (`staff_cannot_be_superadmin`).
 - **El primer superadministrador sale de un comando; los demás, de una invitación** de uno que ya lo es (RF-110), en `/admin/superadmins`.
 - **Un mismo email en las dos recetas son dos usuarios distintos** de SuperTokens. No se usa la vinculación de cuentas (*account linking*), que además es de pago: activarla uniría la cuenta de cliente de alguien con su cuenta de personal, y exigiría una decisión nueva en la bitácora. Que Ana sea mecánica en un taller y clienta de otro no mezcla nada.
-- **Una sesión de cliente vale para un solo taller.** El enlace mágico lleva el taller (RF-45), y al consumirlo el backend comprueba que ese email es un cliente activo de ese taller antes de crear la sesión con su `workshop_id` y su `client_id`. Si el email es cliente de varios talleres, recibe un enlace por taller y cada uno crea una sesión distinta.
+- **Una sesión de cliente vale para un solo taller.** El enlace mágico lleva el taller (RF-45), y al consumirlo el backend comprueba que ese email es un cliente activo de ese taller antes de crear la sesión con su `workshop_id` y su `client_id`. Si el email es cliente de varios talleres, entra en cada uno desde su dirección, y cada enlace crea una sesión distinta. *Al construirlo (F4):* la sesión de cliente solo nace de `create_client_session` (`core/sessions.py`), que le pasa a `create_new_session` el taller y el cliente del enlace guardado; lo que traiga la petición no entra. En cada petición, la dependencia del portal comprueba que el taller sigue activo y el cliente sin archivar (403 `portal_access_revoked`).
+- **Un navegador lleva una sola sesión**, la del taller o la del portal: las cookies de SuperTokens son del dominio, que es uno solo (§5). Abrir un enlace del portal en el navegador donde se trabaja en el taller sustituye esa sesión. El taller manda una sesión de cliente al portal, y el portal avisa si encuentra una del personal.
 - **Cookies httpOnly en el navegador y token Bearer fuera de él**, como en Applications Tracker (su decisión 0003). Es la costura para las apps móviles.
 - **Las rutas de SuperTokens cuelgan de `/api/auth`**, como el resto de la API, para que el proxy solo tenga que reenviar `/api`.
 - **No hay registro público** (RF-01): la operación de registro de SuperTokens está anulada y responde `signup_disabled` en todas sus rutas. Las cuentas las crea el backend con la función de la receta: el comando del superadministrador y la aceptación de invitaciones.
@@ -95,7 +96,7 @@ Cada prefijo es un router con su dependencia. Esa dependencia, además de compro
 | T10 | Consumir un enlace mágico, también con un email que es a la vez de personal en otro taller | La sesión creada es siempre `actor: client`, con el taller del enlace |
 | T11 | Buscar en el código llamadas que modifiquen el contenido de una sesión ya creada | Ninguna fuera de `app/core/sessions.py`; la prueba revisa el código, como R8 revisa los imports |
 
-F1 cubre T1, T2, T3, T8, T9 y T11. T4, T5, T6, T7 y T10 hablan del cliente y llegan con el portal (F4).
+F1 cubre T1, T2, T3, T8, T9 y T11. T4, T5, T6, T7 y T10 hablan del cliente y llegan con el portal (F4): el paso 1 cubre T5, T6 y T10 (`test_portal_auth.py`) y T2 también para el actor cliente; T7 llega con el paso 2 y T4 con el 4. T1 deja fuera, con nombre (`PUBLIC_ROUTES` en `test_auth.py`), las tres rutas de entrada al portal (el nombre del taller, pedir y consumir el enlace), que no pueden exigir una sesión que aún no existe.
 
 ### Límite de peticiones (RNF-06)
 
@@ -108,7 +109,8 @@ Hecho en F1, heredado de Applications Tracker: la librería `limits` con **venta
 | Ver una invitación | 60 por hora por IP |
 | Aceptar una invitación | 5 cada 15 minutos por enlace; 20 por hora por IP. Aceptar con una cuenta existente exige su contraseña (RF-07): sin límite, un enlace serviría para probarlas |
 | Cambiar la contraseña | 5 cada 15 minutos por usuario, contados **antes** de comprobar la actual |
-| Pedir un enlace mágico | Llega con el portal, en F4 |
+| Pedir un enlace mágico (F4) | 5 por hora por email (normalizado) y 20 por hora por IP. Responde igual exista o no el cliente (RF-41) |
+| Consumir un enlace mágico (F4) | 30 por hora por IP |
 
 - Las rutas de SuperTokens no admiten dependencias de FastAPI: las limita un middleware colocado **por fuera** del suyo, que reconoce todas sus formas equivalentes (`/api/auth/signin/`, `/api/auth/public/signin`, `;x`) para que cambiar la URL no salte el límite.
 - La IP es la de la conexión; `X-Forwarded-For` solo cuenta si viene de un proxy de `TRUSTED_PROXIES`, leído por la derecha.
@@ -177,6 +179,7 @@ erDiagram
 | `workshops` | El taller: datos legales, registro industrial, zona horaria, ajustes (IVA por defecto, validez del presupuesto ≥ 12 días hábiles, plazo de conservación de firmas, si el mecánico ve importes, aforo por franja), estado y límites ajustados. *Límites (F2, migración `0010limits`):* una columna `max_*` por recurso con su CHECK y el valor del plan básico por defecto (`domain/limits.py`); solo los escribe la plataforma. *Datos del taller (F3, migración `0012settings`):* `axtton_app` puede actualizar solo los datos legales y los ajustes que edita su administrador (RF-02): nombre, razón social, NIF, dirección, teléfono, email de respuesta, registro industrial, IVA por defecto, validez del presupuesto, el plazo de entrega por defecto (`default_delivery_business_days`, migración `0014quotepdf`, puede quedar vacío) y si el mecánico ve importes. El estado, la zona horaria, los límites y el plazo de las firmas siguen siendo de la plataforma. Cada alta llama antes que a nada a `services/limits.py::ensure_room`, que pone en fila el recuento con un bloqueo consultivo por taller y recurso: sin él, dos altas a la vez cabrían en el último hueco (`test_concurrency.py`) | Raíz del aislamiento |
 | `employees` | Ficha del personal con su rol | `user_id` opcional; `UNIQUE (workshop_id, user_id)` |
 | `invitations` | Invitaciones de acceso (RF-04, RF-112) | Token guardado como hash, caducidad, un solo uso |
+| `portal_links` | Enlaces mágicos del portal (RF-40, RF-45) | **Existe (F4, migración `0016portallinks`, [decisión 0006](../decisiones/0006-enlaces-magicos-propios-ligados-al-taller.md)).** Uno por taller y cliente cada vez que se pide: el hash del token, la caducidad (15 minutos) y cómo se cerró (`used_at` o `revoked_at`, nunca las dos). No guarda el email. `axtton_app` solo puede escribir esas dos columnas, y el trigger `portal_links_closed_frozen` impide tocar uno cerrado con cualquier rol |
 | `superadmin_invitations` | Invitaciones para ser superadministrador (RF-110) | Igual que `invitations`, pero de plataforma: sin taller ni RLS, y `axtton_app` no tiene ningún permiso sobre ella. Una invitación nueva anula las pendientes del mismo email; aceptar con el email de una cuenta de personal se rechaza (§2) |
 | `labor_rates` | Tarifas de mano de obra con nombre | **Existe (F3, migración `0012settings`).** Precio por hora en céntimos, sin IVA. Como mucho una por defecto (índice único parcial; la primera lo es sola, y para quitar la marca se pone en otra), nombre único entre las vigentes y 20 vigentes como mucho. No se borran: se archivan. Los cambios en conjunto (cuál es la de por defecto, cuántas hay) se ponen en fila con un bloqueo consultivo por taller (`lock_labor_rates`). Una línea de presupuesto copia su nombre y su precio, nunca la referencia (RF-38) |
 | `workshop_logos` | El logotipo del taller ([decisión 0005](../decisiones/0005-logotipo-del-taller-como-unica-imagen-subida.md)) | **Existe (F3).** El PNG que dibuja el servidor, nunca lo subido. Su clave es el taller, sin `id` (otra excepción a `UNIQUE (id, workshop_id)`, como `work_order_counters`); aparte de `workshops` para que no viaje en cada petición |
@@ -395,14 +398,13 @@ La tabla `workshops` tiene la misma política sobre su `id`, para que el persona
 
 ### Las vías que cruzan talleres
 
-Son exactamente cinco, y todas usan `axtton_platform` desde un único módulo (`app/platform/`). Ningún endpoint de `/workshop` ni de `/portal` lo importa, salvo **dos excepciones con nombre**: el selector de talleres (F1) y la petición de enlace mágico (§7.2, F4). Se escriben, con su fichero y su módulo, en la propia prueba R8 (`R8_EXCEPTIONS`), así que añadir otra es una decisión visible, no un descuido. Hoy `R8_EXCEPTIONS` solo contiene la primera; la segunda se añadirá con el portal.
+Son exactamente cuatro, y todas usan `axtton_platform` desde un único módulo (`app/platform/`). Ningún endpoint de `/workshop` ni de `/portal` lo importa, salvo **una excepción con nombre**: el selector de talleres (F1). Se escribe, con su fichero y su módulo, en la propia prueba R8 (`R8_EXCEPTIONS`), así que añadir otra es una decisión visible, no un descuido. El diseño preveía una quinta, la petición de enlace mágico, que buscaba el email en todos los talleres; desde F4 se pide desde la entrada de un taller y va por la política normal ([decisión 0006](../decisiones/0006-enlaces-magicos-propios-ligados-al-taller.md)).
 
 | Vía | Qué lee | Por qué no puede ir por la política normal |
 |---|---|---|
 | Endpoints de `/admin` | `workshops`, `users`, `invitations`, `superadmin_invitations`, el `audit_log` de plataforma y **recuentos** por taller (uso respecto a los límites) | El superadministrador no pertenece a ningún taller, y nunca recibe filas operativas (RNF-08), solo números. La aceptación de una invitación de superadministrador (`/api/v1/superadmin-invitations`, pública porque quien acepta aún no tiene cuenta) es parte de esta misma vía: no cruza talleres, solo toca tablas de plataforma |
 | Planificador del `worker` | Qué hay pendiente en todos los talleres: avisos por enviar, presupuestos por caducar, firmas por borrar | Tiene que encontrar trabajo sin saber de antemano de qué taller es |
 | Comandos de servidor | Crear el primer superadministrador (RF-110), restaurar copias | Operación |
-| Petición de enlace mágico (`POST /portal/auth/request-link`, §7.2) | Los pares (taller, cliente) activos con un email | Hay que buscar en todos los talleres antes de saber de cuál es el cliente. Devuelve solo esos pares, que nunca salen en la respuesta |
 | Selector de talleres (`GET /workshop/me`, RF-08; añadida en F1) | Los talleres en los que la persona de la sesión es empleada activa, con su nombre y su rol | Hay que saber cuáles son antes de poder fijar ninguno para RLS. Solo devuelve los de la propia persona (`app/platform/memberships.py`) |
 
 El planificador **solo busca** (devuelve ids y su `workshop_id`). Cada trabajo concreto se procesa después **en el contexto de su taller**, con `axtton_app` y la política normal. Así, un fallo en el código que procesa un aviso no puede tocar otro taller.
@@ -471,7 +473,7 @@ axtton-core/
 │       │   ├── deps.py · rate_limit.py   dependencias comunes (emisor de correo) y límite de peticiones (§2)
 │       │   └── v1/
 │       │       ├── workshop/        endpoints del personal; el router exige actor staff y valida el taller activo en cada petición (§2)
-│       │       ├── portal/          endpoints del cliente; el router exige actor client (marcador hasta F4)
+│       │       ├── portal/          endpoints del cliente; el router exige actor client. auth.py, aparte: la entrada del taller, pedir y consumir el enlace mágico (F4)
 │       │       ├── admin/           endpoints del superadministrador; solo llaman a platform/
 │       │       ├── invitations/     rutas sin sesión: aceptar una invitación de empleado o de superadministrador (A5b)
 │       │       ├── account.py       contraseña y sesiones; subrouter de /workshop y de /admin
@@ -497,7 +499,7 @@ axtton-core/
 ├── frontend/
 │   └── src/
 │       ├── workshop/            la aplicación del personal (features/ por área, lib/ con la sesión y los borradores)
-│       ├── portal/              la aplicación del cliente (marcador hasta F4)
+│       ├── portal/              la aplicación del cliente: desde F4, la entrada de cada taller, abrir el enlace y el inicio
 │       └── shared/              components/ (shadcn y formularios), lib/ (apiClient, errores, queryClient),
 │                                i18n/, styles/
 ├── .github/workflows/           la CI con el despliegue, el título del PR y release-please (A13)
@@ -517,7 +519,7 @@ axtton-core/
 | `api/v1/{workshop,portal,admin}/` | Validar con schemas, `Depends`, llamar a **un** service | Consultar la BD, decidir permisos, `commit`, importar de otro prefijo |
 | `services/` | Reglas, `domain/`, repositories, `commit`/`rollback`, escribir en la bandeja de avisos | Importar FastAPI, construir SQL, importar `platform/` |
 | `repositories/` | Consultas con la sesión de `axtton_app` | `commit`, reglas de negocio, usar `axtton_platform` |
-| `platform/` | Usar `axtton_platform`, leer varios talleres | Devolver filas operativas al superadministrador; ser importado desde `api/v1/workshop` o `api/v1/portal`, salvo la petición de enlace mágico (R8) |
+| `platform/` | Usar `axtton_platform`, leer varios talleres | Devolver filas operativas al superadministrador; ser importado desde `api/v1/workshop` o `api/v1/portal`, salvo el selector de talleres del personal (R8) |
 | `domain/` | Enums, transiciones, cálculos | Cualquier I/O |
 
 **Regla única:** *si habla con la BD, vive en `repositories/`; si decide, en `services/` o `domain/`; si cruza talleres, en `platform/` y en ningún otro sitio.*
@@ -587,29 +589,31 @@ sequenceDiagram
     participant ST as SuperTokens
     participant DB
 
-    Cl->>PO: escribe su email
-    PO->>API: POST /portal/auth/request-link {email}
-    API->>DB: ¿clientes activos con ese email? (vía de plataforma: busca en todos los talleres)
-    API->>ST: un código passwordless por cada taller encontrado
-    API-->>Cl: un único email con un enlace por taller (si no hay ninguno, no se envía nada)
-    API-->>PO: siempre la misma respuesta (RF-41)
-    Cl->>PO: abre el enlace del taller A
-    PO->>API: POST /portal/auth/consume {código, taller A}
-    API->>ST: consume el código (un solo uso)
-    API->>DB: fija el taller A · ¿el email es cliente activo de A?
+    Cl->>PO: abre /portal/login/{taller A} (de su web, su resguardo o sus correos) y escribe su email
+    PO->>API: POST /portal/auth/request-link {taller A, email}
+    API-->>PO: 202, siempre la misma respuesta (RF-41)
+    Note over API: el resto, después de responder
+    API->>DB: fija el taller A · ¿cliente activo con ese email? · token nuevo, guarda su hash en portal_links
+    API-->>Cl: un email con el enlace de ese taller (si no es cliente activo, no se envía nada)
+    Cl->>PO: abre /portal/access/{taller A}#token y pulsa "Entrar"
+    PO->>API: POST /portal/auth/consume {taller A, token}
+    API->>DB: fija el taller A · cierra el enlace si vale (una sola sentencia) · ¿cliente activo?
+    API->>ST: signinup(email): el usuario passwordless de ese email
     API->>ST: crea la sesión con actor client, taller A y client_id
     API-->>PO: cookies httpOnly
 ```
 
 | Paso | Cómo falla | Qué pasa |
 |---|---|---|
-| Pedir enlace | El email no es cliente de ningún taller | Misma respuesta, mismo tiempo de respuesta aproximado y ningún email |
+| Pedir enlace | El email no es cliente de ese taller, o el taller no existe o está desactivado | Misma respuesta, mismo tiempo de respuesta aproximado y ningún email |
+| Pedir enlace | El email es cliente de varios talleres | Solo recibe el del taller de la entrada: a cada uno se entra desde su dirección |
 | Pedir enlace | Alguien pide enlaces en bucle | Límite por email y por IP (§10 de la especificación) |
-| Consumir | Se cambia el taller en la URL (T5) | El código se emitió para el taller A: el backend lo comprueba contra lo que guardó al emitirlo y no crea sesión |
+| Consumir | Se cambia el taller en la URL (T5) | El enlace es una fila del taller A, y la transacción fija el taller de la URL: RLS no la deja ver, así que no hay sesión, y el enlace sigue sin usar |
 | Consumir | El enlace ya se usó o caducó | Error, y el portal ofrece pedir otro |
-| Consumir | El cliente fue anonimizado entre pedir y consumir | Ya no es cliente activo: no hay sesión |
+| Consumir | El cliente fue anonimizado o cambió de email entre pedir y consumir | Las dos cosas revocan sus enlaces pendientes en la misma transacción: no hay sesión. Emitir bloquea al cliente, así que un cambio a la vez también ve el enlace recién emitido |
+| Consumir | Dos usos del mismo enlace a la vez (T6) | Comprobar y cerrar es un solo `UPDATE … WHERE used_at IS NULL … RETURNING`: el segundo espera al bloqueo de la fila y la encuentra cerrada. Además, el trigger `portal_links_closed_frozen` impide reabrirla con cualquier rol |
 
-**La búsqueda de clientes por email es la única consulta del portal que cruza talleres**, y va por `platform/`. Hay que hacerla antes de saber de qué taller es el cliente. Solo devuelve pares (taller, cliente) y nunca se expone tal cual.
+*Al construirlo (F4 paso 1, [decisión 0006](../decisiones/0006-enlaces-magicos-propios-ligados-al-taller.md)):* el diseño original pedía solo el email, lo buscaba en todos los talleres por la vía de plataforma y enviaba un único email con un enlace por taller. Se cambió por dos motivos. Los códigos de la receta `passwordless` no servían, porque consumir uno borra todos los del mismo email y el enlace del otro taller dejaba de valer. Y un email de muchos talleres habría recibido un correo inutilizable. Ahora se entra desde la dirección de cada taller (`/portal/login/{taller}`, que enseña su nombre gracias a la ruta pública `GET /api/v1/portal/workshops/{id}`), y **ninguna consulta del portal cruza talleres**. El enlace es nuestro: un token de `core/tokens.py` cuyo hash se guarda en `portal_links`, con RLS, una caducidad de 15 minutos y un solo uso. La receta solo da el usuario (`signinup`), y sus rutas públicas están cerradas. El token va en el fragmento de la URL, que no llega al servidor, y la página pide pulsar "Entrar" para que un correo que revisa los enlaces no gaste uno. Sin SMTP no se emite nada.
 
 ### 7.3 Firmar la hoja de recepción
 
@@ -776,7 +780,7 @@ Como en Applications Tracker (su decisión 0023). Construido en F2 ([decisión 0
 |---|---|
 | **RLS mal configurada que no falla, sino que deja pasar todo** (la aplicación conectada como dueña, una tabla sin `FORCE`) | R1, R4 y R7 en CI desde F1. Si RLS se desactiva por error, las pruebas lo detectan aunque ninguna funcionalidad falle |
 | **Rendimiento de RLS**: la política se evalúa por fila | La función `app_current_workshops()` es `STABLE` y todos los índices empiezan por `workshop_id`. Se mide con el volumen de referencia (§10) | *Descubierto en F2 (búsqueda, RF-14):* bajo RLS, Postgres solo usa un índice para una condición cuyo operador es `LEAKPROOF`. `=` lo es, así que el índice por `workshop_id` siempre lleva a las filas del taller; `LIKE` no lo es, así que un "contiene" recorre las filas del taller y ningún índice trigram lo acelera. Medido con 20.000 clientes en un taller: 28 ms (0,36 ms con trigram y sin RLS). Cumple RNF-51 de sobra; si algún día no bastara, la salida no es marcar `LIKE` como `LEAKPROOF` (necesita superusuario y es una decisión de seguridad), sino otra estructura de búsqueda. `test_search.py` vigila que nunca se recorran filas de otros talleres.
-| **Personalizar la receta passwordless** para ligar el enlace a un taller (§7.2) es lo menos conocido del diseño | Se prueba al principio de F4 con un esqueleto de esa parte antes de construir el portal. Si SuperTokens no lo permite limpiamente, el plan B es guardar el taller junto al código emitido en nuestra propia tabla |
+| **Personalizar la receta passwordless** para ligar el enlace a un taller (§7.2) es lo menos conocido del diseño | Se prueba al principio de F4 con un esqueleto de esa parte antes de construir el portal. Si SuperTokens no lo permite limpiamente, el plan B es guardar el taller junto al código emitido en nuestra propia tabla. *Resuelto en F4 paso 1:* la prueba demostró que consumir un código borra los demás del email, así que se aplicó el plan B con enlaces propios ([decisión 0006](../decisiones/0006-enlaces-magicos-propios-ligados-al-taller.md)) |
 | **Borradores en una tablet compartida**: el borrador de un mecánico lo vería el siguiente | Los borradores se guardan por usuario y taller, y se borran al cerrar sesión. *Al construirlo en F2:* se borran **antes** de cerrar la sesión, no en el evento de SuperTokens (la navegación al login podría cortar el borrado); si la sesión solo caduca, se conservan para quien vuelva a entrar, y al iniciar sesión se borran los de cualquier otra persona |
 | **Reenviar un borrador duplica lo anotado**: la nota llegó, pero la respuesta se perdió con la conexión | *Descubierto al construirlo en F2:* la nota y el trabajo llevan un id que genera el navegador al empezar el borrador. El reenvío encuentra la fila ya guardada y responde como si la guardara (misma orden y mismo autor; si no, 409 `id_in_use`); dos reenvíos a la vez los para la clave primaria (409 `already_saved`, que el navegador toma por guardado). Si se edita lo pendiente, lleva otro id: con el mismo, el cambio se perdería en silencio. El diagnóstico no lo necesita: su bloqueo optimista ya convierte el reenvío en el aviso de RNF-15 |
 | **WeasyPrint en la API** consume memoria y CPU en cada descarga | Generación en un hilo con un tope de simultáneas (A14); si no basta, se pasa al `worker` sin cambiar la API |

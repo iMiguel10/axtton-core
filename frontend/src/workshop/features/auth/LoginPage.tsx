@@ -6,11 +6,10 @@ import { Link, useNavigate } from "react-router-dom";
 import EmailPassword from "supertokens-web-js/recipe/emailpassword";
 import { z } from "zod";
 
+import { AuthLayout } from "@/shared/components/AuthLayout";
 import { Field } from "@/shared/components/form/Field";
 import { Button } from "@/shared/components/ui/button";
 import { errorMessage } from "@/shared/lib/errors";
-
-import { AuthLayout } from "./AuthLayout";
 
 // Los mensajes son claves de i18n: el esquema no sabe de idiomas.
 const schema = z.object({

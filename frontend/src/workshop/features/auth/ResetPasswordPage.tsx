@@ -5,10 +5,10 @@ import { useTranslation } from "react-i18next";
 import { Link } from "react-router-dom";
 import EmailPassword from "supertokens-web-js/recipe/emailpassword";
 
+import { AuthLayout } from "@/shared/components/AuthLayout";
 import { Field } from "@/shared/components/form/Field";
 import { Button } from "@/shared/components/ui/button";
 
-import { AuthLayout } from "./AuthLayout";
 import { newPasswordSchema, type NewPasswordForm } from "./passwordSchema";
 
 export function ResetPasswordPage() {

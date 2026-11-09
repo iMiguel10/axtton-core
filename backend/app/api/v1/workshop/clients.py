@@ -4,9 +4,10 @@ quien puede gestionarlos (especificación §3: el mecánico solo los ve)."""
 from typing import Annotated
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, Query, status
+from fastapi import APIRouter, BackgroundTasks, Depends, Query, status
 
 from app.api.v1.workshop.deps import WorkshopContext, require
+from app.core.sessions import revoke_client_sessions
 from app.domain.permissions import Action
 from app.schemas.clients import (
     ClientCreate,
@@ -53,13 +54,23 @@ async def create_client(body: ClientCreate, workshop: Manager) -> ClientCreated:
 
 
 @router.patch("/{client_id}", status_code=status.HTTP_204_NO_CONTENT)
-async def update_client(client_id: UUID, body: ClientUpdate, workshop: Manager) -> None:
-    await client_service.update_client(
+async def update_client(
+    client_id: UUID,
+    body: ClientUpdate,
+    workshop: Manager,
+    background: BackgroundTasks,
+) -> None:
+    previous_email = await client_service.update_client(
         workshop.session,
         client_id,
         expected_version=body.version,
         changes=body.model_dump(mode="json", exclude_unset=True, exclude={"version"}),
     )
+    if previous_email:
+        # Después del commit, como un email (RF-47, T7).
+        background.add_task(
+            revoke_client_sessions, previous_email, workshop.workshop_id, client_id
+        )
 
 
 @router.post("/{client_id}/archive", status_code=status.HTTP_204_NO_CONTENT)
@@ -80,13 +91,20 @@ async def unarchive_client(
 
 @router.post("/{client_id}/anonymize", status_code=status.HTTP_204_NO_CONTENT)
 async def anonymize_client(
-    client_id: UUID, body: VersionOnly, workshop: Anonymizer
+    client_id: UUID,
+    body: VersionOnly,
+    workshop: Anonymizer,
+    background: BackgroundTasks,
 ) -> None:
     """Borrar a un cliente que lo pide (RF-15). Irreversible."""
-    await client_service.anonymize_client(
+    previous_email = await client_service.anonymize_client(
         workshop.session,
         workshop.workshop_id,
         workshop.user_id,
         client_id,
         expected_version=body.version,
     )
+    if previous_email:
+        background.add_task(
+            revoke_client_sessions, previous_email, workshop.workshop_id, client_id
+        )

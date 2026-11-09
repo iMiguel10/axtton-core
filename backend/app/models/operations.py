@@ -52,6 +52,7 @@ class Client(IdMixin, CreatedAtMixin, UpdatedAtMixin, Base):
         UniqueConstraint("id", "workshop_id"),
         CheckConstraint("kind IN ('individual', 'company')", name="kind"),
         CheckConstraint("language IN ('es', 'en')", name="language"),
+        CheckConstraint("portal_epoch > 0", name="portal_epoch"),
         # El email es la llave del portal: dos clientes del mismo taller con el
         # mismo email harían ambiguo a quién da acceso un enlace mágico (§7.2).
         # Se guarda ya en minúsculas, así que basta un índice sobre la columna.
@@ -104,6 +105,9 @@ class Client(IdMixin, CreatedAtMixin, UpdatedAtMixin, Base):
     phone_digits: Mapped[str] = mapped_column(
         Text, Computed("regexp_replace(phone, '[^0-9]', '', 'g')", persisted=True)
     )
+    # La cerradura del portal (RF-47): sube al cambiar el email o anonimizar, y una
+    # sesión con otro valor deja de valer al instante (services/portal_auth.py).
+    portal_epoch: Mapped[int] = mapped_column(server_default="1")
     version: Mapped[int] = mapped_column(server_default="1")
 
     __mapper_args__ = {"version_id_col": version}  # noqa: RUF012

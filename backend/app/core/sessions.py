@@ -11,9 +11,13 @@ La sesión de un cliente (F4) solo nace de `create_client_session`, con el
 enlace guardado, nunca de la petición (T10).
 """
 
+import logging
+from datetime import UTC, datetime
 from typing import Any
+from uuid import UUID
 
 from fastapi import Request
+from supertokens_python.asyncio import delete_user, list_users_by_account_info
 from supertokens_python.recipe.emailpassword.interfaces import (
     RecipeInterface as EmailPasswordRecipe,
 )
@@ -22,17 +26,44 @@ from supertokens_python.recipe.emailpassword.interfaces import (
     WrongCredentialsError,
 )
 from supertokens_python.recipe.passwordless.asyncio import signinup
-from supertokens_python.recipe.session.asyncio import create_new_session as new_session
+from supertokens_python.recipe.session.asyncio import (
+    create_new_session as new_session,
+)
+from supertokens_python.recipe.session.asyncio import (
+    get_all_session_handles_for_user,
+    get_session_information,
+    revoke_multiple_sessions,
+    revoke_session,
+)
 from supertokens_python.recipe.session.interfaces import (
     RecipeInterface as SessionRecipe,
 )
 from supertokens_python.recipe.session.interfaces import SessionContainer
 from supertokens_python.types import RecipeUserId
+from supertokens_python.types.base import AccountInfoInput
 
 from app.core.db import SessionFactory
-from app.domain.actors import ACTOR_CLAIM, CLIENT_CLAIM, WORKSHOP_CLAIM, Actor
-from app.domain.portal import PortalLogin
+from app.domain.actors import (
+    ACTOR_CLAIM,
+    CLIENT_CLAIM,
+    PORTAL_EPOCH_CLAIM,
+    PORTAL_EXPIRES_CLAIM,
+    WORKSHOP_CLAIM,
+    Actor,
+)
+from app.domain.portal import SESSION_LIFETIME, PortalLogin
 from app.repositories import users as user_repo
+
+logger = logging.getLogger(__name__)
+
+# Lo que dice quién es una sesión: solo lo escribe este módulo.
+IDENTITY_CLAIMS = (
+    ACTOR_CLAIM,
+    WORKSHOP_CLAIM,
+    CLIENT_CLAIM,
+    PORTAL_EPOCH_CLAIM,
+    PORTAL_EXPIRES_CLAIM,
+)
 
 # Marca que el backend pone en user_context cuando solo quiere comprobar una
 # contraseña (al aceptar una invitación), no iniciar sesión: en ese caso la
@@ -78,7 +109,7 @@ def session_override(original: SessionRecipe) -> SessionRecipe:
         payload = {
             key: value
             for key, value in (access_token_payload or {}).items()
-            if key not in (ACTOR_CLAIM, WORKSHOP_CLAIM, CLIENT_CLAIM)
+            if key not in IDENTITY_CLAIMS
         }
         login = user_context.get(PORTAL_LOGIN)
         if isinstance(login, PortalLogin):
@@ -86,6 +117,10 @@ def session_override(original: SessionRecipe) -> SessionRecipe:
                 ACTOR_CLAIM: Actor.CLIENT,
                 WORKSHOP_CLAIM: str(login.workshop_id),
                 CLIENT_CLAIM: str(login.client_id),
+                PORTAL_EPOCH_CLAIM: login.portal_epoch,
+                PORTAL_EXPIRES_CLAIM: int(
+                    (datetime.now(UTC) + SESSION_LIFETIME).timestamp()
+                ),
             }
         else:
             payload[ACTOR_CLAIM] = await actor_for(user_id)
@@ -124,6 +159,54 @@ async def create_client_session(request: Request, login: PortalLogin) -> None:
         result.user.login_methods[0].recipe_user_id,
         user_context={PORTAL_LOGIN: login},
     )
+
+
+async def revoke_client_sessions(
+    email: str, workshop_id: UUID, client_id: UUID
+) -> None:
+    """Cierra las sesiones de un cliente de un taller, y solo esas (T7, RF-47).
+
+    Nunca `revoke_all_sessions_for_user`: el usuario passwordless es uno por email,
+    y cerraría también sus sesiones en otros talleres. Solo se mira el de la receta
+    passwordless: el mismo email puede ser además una cuenta de personal, que es
+    otro usuario y no tiene nada que ver.
+
+    **Si al usuario no le queda ninguna sesión, se borra**: es lo único que guarda
+    su email en SuperTokens, y este email ya no debe estar ahí (RF-15, RNF-40). No
+    hace falta saber si es cliente de otro taller, que sería cruzar talleres: nada
+    nuestro guarda el id del usuario, y `signinup` lo vuelve a crear al entrar.
+
+    Va después del commit y no es lo que corta el acceso (eso lo hace la cerradura
+    al instante); evita que esas sesiones se sigan renovando. Si falla, queda en el
+    registro: esas sesiones ya no sirven para nada.
+    """
+    try:
+        users = await list_users_by_account_info(
+            "public", AccountInfoInput(email=email)
+        )
+        for user in users:
+            if not any(m.recipe_id == "passwordless" for m in user.login_methods):
+                continue
+            handles = await get_all_session_handles_for_user(user.id)
+            closing: list[str] = []
+            for handle in handles:
+                info = await get_session_information(handle)
+                claims = info.custom_claims_in_access_token_payload if info else {}
+                if claims.get(WORKSHOP_CLAIM) == str(workshop_id) and claims.get(
+                    CLIENT_CLAIM
+                ) == str(client_id):
+                    closing.append(handle)
+            if closing:
+                await revoke_multiple_sessions(closing)
+            if len(closing) == len(handles):
+                await delete_user(user.id)
+    except Exception:
+        logger.exception("No se pudieron cerrar las sesiones de un cliente")
+
+
+async def end_session(session_handle: str) -> None:
+    """Cierra una sesión del portal que ya no vale, para que no se siga renovando."""
+    await revoke_session(session_handle)
 
 
 def emailpassword_override(original: EmailPasswordRecipe) -> EmailPasswordRecipe:

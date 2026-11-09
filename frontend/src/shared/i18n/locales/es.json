@@ -686,7 +686,8 @@
     "quote_delivery_missing": "Indica el plazo de entrega antes de enviarlo: la normativa exige que conste en el presupuesto.",
     "quote_prices_hidden": "El taller no deja ver los importes a los mecánicos, así que tampoco el PDF del presupuesto.",
     "portal_link_invalid": "Este enlace ya no sirve: puede que ya lo hayas usado, que haya caducado o que tu acceso haya cambiado. Pide otro.",
-    "portal_access_revoked": "Tu acceso a este portal ya no está activo. Si crees que es un error, habla con el taller."
+    "portal_access_revoked": "Tu acceso a este portal ya no está activo. Si crees que es un error, habla con el taller.",
+    "portal_session_ended": "Tu sesión ha terminado. Vuelve a entrar con un enlace nuevo."
   },
   "palette": {
     "open": "Buscar en el taller",

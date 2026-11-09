@@ -14,6 +14,7 @@ del portal cruza talleres.
 """
 
 from dataclasses import dataclass
+from datetime import UTC, datetime
 from uuid import UUID
 
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -52,6 +53,16 @@ def _has_access(client: Client | None) -> bool:
     así que tampoco entra.
     """
     return client is not None and client.archived_at is None and bool(client.email)
+
+
+class PortalSessionEndedError(AppError):
+    """La sesión ya no vale y no volverá a valer: caducó (30 días) o la cerradura
+    del cliente cambió. Un 401: el navegador lleva a la entrada del taller."""
+
+    status_code = 401
+
+    def __init__(self) -> None:
+        super().__init__("portal_session_ended")
 
 
 @dataclass(frozen=True)
@@ -131,7 +142,10 @@ async def consume(workshop_id: UUID, token: str) -> PortalLogin:
             # porque sin acceso tampoco servirá en otro intento.
             raise PortalLinkInvalidError
         return PortalLogin(
-            workshop_id=workshop_id, client_id=client.id, email=client.email
+            workshop_id=workshop_id,
+            client_id=client.id,
+            email=client.email,
+            portal_epoch=client.portal_epoch,
         )
 
 
@@ -146,16 +160,31 @@ class PortalClient:
 
 
 async def current_client(
-    session: AsyncSession, workshop_id: UUID, client_id: UUID
+    session: AsyncSession,
+    workshop_id: UUID,
+    client_id: UUID,
+    *,
+    portal_epoch: int | None,
+    expires_at: int | None,
 ) -> PortalClient:
     """Comprueba en cada petición que la sesión sigue dando acceso (RNF-02).
 
-    La sesión dice de qué taller y de qué cliente es, pero no que sigan activos:
-    un taller desactivado (RF-113) o un cliente archivado o anonimizado (RF-15)
-    ya no entran, aunque su sesión no haya caducado.
+    La sesión dice de qué taller y de qué cliente es, pero no que sigan activos.
+    Dos casos distintos:
+
+    - **Ya no valdrá nunca** (401): pasaron sus 30 días (RF-47), o cambió la
+      cerradura del cliente (otro email, o anonimizado). La cerradura la corta al
+      instante, sin esperar a que caduque el token de acceso, y también si la
+      sesión se creó justo después de cambiarla.
+    - **Ahora no hay acceso** (403): un taller desactivado (RF-113) o un cliente
+      archivado. Si los reactivan, la misma sesión vuelve a valer.
     """
+    if expires_at is None or datetime.now(UTC).timestamp() >= expires_at:
+        raise PortalSessionEndedError
     workshop = await session.get(Workshop, workshop_id)
     client = await client_repo.get(session, client_id)
+    if client is not None and client.portal_epoch != portal_epoch:
+        raise PortalSessionEndedError
     if (
         workshop is None
         or not _active(workshop)

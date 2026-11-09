@@ -15,7 +15,14 @@ from supertokens_python.recipe.session import SessionContainer
 from supertokens_python.recipe.session.framework.fastapi import verify_session
 
 from app.core.errors import ForbiddenError
-from app.domain.actors import ACTOR_CLAIM, CLIENT_CLAIM, WORKSHOP_CLAIM, Actor
+from app.domain.actors import (
+    ACTOR_CLAIM,
+    CLIENT_CLAIM,
+    PORTAL_EPOCH_CLAIM,
+    PORTAL_EXPIRES_CLAIM,
+    WORKSHOP_CLAIM,
+    Actor,
+)
 
 
 @dataclass(frozen=True)
@@ -26,6 +33,11 @@ class CurrentUser:
     # entró (core/sessions.py). El personal elige taller en cada petición (A6).
     workshop_id: UUID | None = None
     client_id: UUID | None = None
+    # La cerradura y la caducidad con las que se creó, y la sesión, para cerrarla
+    # si ya no vale. Se comprueban en la dependencia del portal.
+    portal_epoch: int | None = None
+    portal_expires_at: int | None = None
+    session_handle: str | None = None
 
 
 def _require(actor: Actor) -> Callable[..., Awaitable[CurrentUser]]:
@@ -47,6 +59,9 @@ def _require(actor: Actor) -> Callable[..., Awaitable[CurrentUser]]:
                 actor=actor,
                 workshop_id=UUID(payload[WORKSHOP_CLAIM]),
                 client_id=UUID(payload[CLIENT_CLAIM]),
+                portal_epoch=payload.get(PORTAL_EPOCH_CLAIM),
+                portal_expires_at=payload.get(PORTAL_EXPIRES_CLAIM),
+                session_handle=session.get_handle(),
             )
         return user
 

@@ -8,6 +8,10 @@ from uuid import UUID
 # correo un rato después, pero un enlace olvidado en un buzón no debe valer.
 LINK_LIFETIME = timedelta(minutes=15)
 
+# Cuánto dura una sesión del portal (RF-47), desde que se entra. SuperTokens solo
+# tiene una duración, la misma para el personal, así que esta se comprueba aquí.
+SESSION_LIFETIME = timedelta(days=30)
+
 
 @dataclass(frozen=True)
 class PortalLogin:
@@ -20,6 +24,9 @@ class PortalLogin:
     workshop_id: UUID
     client_id: UUID
     email: str
+    # La cerradura del cliente al consumir el enlace: si sube después, esta sesión
+    # no vale, aunque se cree más tarde.
+    portal_epoch: int
 
 
 def access_link(app_url: str, workshop_id: UUID, token: str) -> str:

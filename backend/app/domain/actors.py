@@ -20,3 +20,6 @@ class Actor(StrEnum):
 # enlace mágico con el que entró. Una sesión de cliente vale para un solo taller.
 WORKSHOP_CLAIM = "workshop_id"
 CLIENT_CLAIM = "client_id"
+# La cerradura del cliente cuando se creó la sesión, y hasta cuándo vale (RF-47).
+PORTAL_EPOCH_CLAIM = "portal_epoch"
+PORTAL_EXPIRES_CLAIM = "portal_expires_at"

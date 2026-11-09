@@ -109,7 +109,9 @@ async def update_client(
     *,
     expected_version: int,
     changes: dict[str, Any],
-) -> None:
+) -> str | None:
+    """Devuelve el email anterior si cambió y había uno: el endpoint cierra, ya
+    confirmado esto, las sesiones del portal de quien lo usaba (T7)."""
     client = await _get_editable(session, client_id)
     _check_version(client, expected_version)
     values = _normalized(changes)
@@ -120,16 +122,22 @@ async def update_client(
         and await client_repo.email_taken(session, email, except_id=client_id)
     ):
         raise ConflictError("client_email_taken")
-    email_changed = "email" in values and values["email"] != client.email
+    previous_email = client.email
+    email_changed = "email" in values and values["email"] != previous_email
     for field in EDITABLE:
         if field in values:
             setattr(client, field, values[field])
-    await flush_or_conflict(session, UNIQUE)
     if email_changed:
-        # Un enlace mágico pendiente se envió al email anterior: ya no es de este
-        # cliente (RF-47). Después del flush, que bloquea la fila del cliente: el
-        # mismo orden que al consumir un enlace (services/portal_auth.py).
-        await link_repo.revoke_open_for_client(session, client_id)
+        # Quien tenga una sesión la consiguió con el email anterior: ya no es de
+        # este cliente (RF-47). Se cambia la cerradura en este mismo UPDATE.
+        client.portal_epoch += 1
+    await flush_or_conflict(session, UNIQUE)
+    if not email_changed:
+        return None
+    # Lo mismo con los enlaces pendientes. Después del flush, que bloquea la fila
+    # del cliente: emitir un enlace la bloquea antes (services/portal_auth.py).
+    await link_repo.revoke_open_for_client(session, client_id)
+    return previous_email
 
 
 async def set_archived(
@@ -164,12 +172,15 @@ async def anonymize_client(
     client_id: UUID,
     *,
     expected_version: int,
-) -> None:
+) -> str | None:
     """Borrar a un cliente que lo pide (RF-15, RNF-40): se vacían sus datos
     personales y se conserva la fila, con sus órdenes y vehículos ligados a un
     "cliente eliminado". Es irreversible y queda en la auditoría.
 
     Con alguna orden abierta no se puede: esa orden aún necesita a quién avisar.
+
+    Devuelve el email que tenía, si tenía: el endpoint cierra, ya confirmado esto,
+    las sesiones del portal de este cliente (T7). No se guarda en ningún sitio.
     """
     # Exclusivo y antes de contar: abrir una orden pide el compartido, así que
     # una apertura a la vez espera, y luego ve al cliente anonimizado.
@@ -182,11 +193,13 @@ async def anonymize_client(
     if await order_repo.count_open_for_client(session, client_id):
         raise ConflictError("client_has_open_orders")
 
+    previous_email = client.email
     now = await vehicle_repo.db_now(session)
     for field, value in ANONYMIZED.items():
         setattr(client, field, value)
     client.archived_at = client.archived_at or now
     client.anonymized_at = now
+    client.portal_epoch += 1
     await order_repo.forget_dropped_off_by(session, client_id)
     # Sin email no hay portal: ningún enlace pendiente vale ya (RF-15, RF-47).
     await link_repo.revoke_open_for_client(session, client_id)
@@ -202,3 +215,4 @@ async def anonymize_client(
         )
     )
     await session.flush()
+    return previous_email

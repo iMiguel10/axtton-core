@@ -686,7 +686,8 @@
     "quote_delivery_missing": "Set the delivery time before sending it: the regulation requires it on the quote.",
     "quote_prices_hidden": "The workshop does not let mechanics see amounts, so the quote PDF is not available either.",
     "portal_link_invalid": "This link no longer works: you may have used it already, it may have expired or your access may have changed. Request another one.",
-    "portal_access_revoked": "Your access to this portal is no longer active. If you think this is a mistake, contact the workshop."
+    "portal_access_revoked": "Your access to this portal is no longer active. If you think this is a mistake, contact the workshop.",
+    "portal_session_ended": "Your session has ended. Sign in again with a new link."
   },
   "palette": {
     "open": "Search the workshop",

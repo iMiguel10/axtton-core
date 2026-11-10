@@ -594,6 +594,20 @@
       "staffSession": "Este navegador tiene abierta una sesión del personal del taller. Para entrar como cliente, ciérrala primero desde la aplicación del taller.",
       "goToWorkshop": "Ir a la aplicación del taller"
     },
+    "progress": {
+      "statuses": {
+        "in_review": "En revisión",
+        "awaiting_response": "Presupuesto pendiente de tu respuesta",
+        "in_repair": "En reparación",
+        "waiting_parts": "En reparación · esperando piezas",
+        "ready": "Listo para recoger",
+        "ready_unrepaired": "Listo para recoger · sin reparar",
+        "delivered": "Entregado"
+      },
+      "updated": "Actualizado",
+      "expected": "Entrega prevista",
+      "overdue": "La fecha prevista era el {{date}}; el taller aún no la ha actualizado."
+    },
     "noWorkshop": {
       "title": "Entra desde tu taller",
       "description": "Cada taller tiene su propia dirección para entrar en su portal.",

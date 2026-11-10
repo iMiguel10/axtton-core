@@ -367,7 +367,7 @@ stateDiagram-v2
 | entregada | Entregado |
 | cancelada | No aparece |
 
-"Esperando piezas" se muestra como subestado de "En reparación": explica un retraso antes de que el cliente llame, que es justo lo que el portal quiere evitar.
+"Esperando piezas" se muestra como subestado de "En reparación": explica un retraso antes de que el cliente llame, que es justo lo que el portal quiere evitar. La API del portal solo envía estos estados, nunca los internos.
 
 ### Presupuesto (cada versión)
 
@@ -428,7 +428,7 @@ El sistema **solo sabe lo que el taller registra**. El portal es tan fiel como e
 | "¿Qué órdenes tengo pendientes de cobro?" | "¿Cuánto he facturado este trimestre?": el cobro es una marca operativa, no contabilidad (RF-28) |
 | "¿Qué se le hizo a este coche en este taller?" (RF-18) | "¿Qué se le ha hecho a este coche en su vida?": solo conoce lo que pasó por este taller |
 
-**RF-80** Para que el cliente no lea un estado viejo como si fuera actual, el portal muestra siempre **cuándo se actualizó por última vez**, y si la fecha prevista de entrega ha pasado sin que la orden esté lista, lo dice ("La fecha prevista era el 14 de octubre; el taller aún no la ha actualizado") en lugar de seguir mostrándola como si fuera válida.
+**RF-80** Para que el cliente no lea un estado viejo como si fuera actual, el portal muestra siempre **cuándo se actualizó por última vez**, y si la fecha prevista de entrega ha pasado sin que la orden esté lista, lo dice ("La fecha prevista era el 14 de octubre; el taller aún no la ha actualizado") en lugar de seguir mostrándola como si fuera válida. *Precisado al construirlo (F4):* la última actualización son los cambios de estado y los trabajos registrados (`last_activity_at`), lo que el cliente puede ver; una nota interna no la mueve. Con el vehículo listo o entregado, la fecha prevista deja de enviarse: ya no promete nada, y una pasada se leería como si siguiera valiendo.
 
 ## 9. Requisitos no funcionales
 

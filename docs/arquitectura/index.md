@@ -98,7 +98,7 @@ Cada prefijo es un router con su dependencia. Esa dependencia, además de compro
 | T10 | Consumir un enlace mágico, también con un email que es a la vez de personal en otro taller | La sesión creada es siempre `actor: client`, con el taller del enlace |
 | T11 | Buscar en el código llamadas que modifiquen el contenido de una sesión ya creada | Ninguna fuera de `app/core/sessions.py`; la prueba revisa el código, como R8 revisa los imports |
 
-F1 cubre T1, T2, T3, T8, T9 y T11. T4, T5, T6, T7 y T10 hablan del cliente y llegan con el portal (F4): el paso 1 cubre T5, T6 y T10 (`test_portal_auth.py`) y T2 también para el actor cliente; el paso 2, T7 (`test_portal_sessions.py`); T4 llega con el 4. T1 deja fuera, con nombre (`PUBLIC_ROUTES` en `test_auth.py`), las tres rutas de entrada al portal (el nombre del taller, pedir y consumir el enlace), que no pueden exigir una sesión que aún no existe.
+F1 cubre T1, T2, T3, T8, T9 y T11. T4, T5, T6, T7 y T10 hablan del cliente y llegan con el portal (F4): el paso 1 cubre T5, T6 y T10 (`test_portal_auth.py`) y T2 también para el actor cliente; el paso 2, T7 (`test_portal_sessions.py`); y el paso 4, T4 (`test_portal_orders.py`). T1 deja fuera, con nombre (`PUBLIC_ROUTES` en `test_auth.py`), las tres rutas de entrada al portal (el nombre del taller, pedir y consumir el enlace), que no pueden exigir una sesión que aún no existe.
 
 ### Límite de peticiones (RNF-06)
 
@@ -395,7 +395,7 @@ La tabla `workshops` tiene la misma política sobre su `id`, para que el persona
 
 ### Lo que RLS no cubre
 
-- **RLS separa talleres, no clientes.** Dentro de un taller, que un cliente vea solo sus órdenes lo garantizan los repositorios del portal, que filtran siempre por el `client_id` de la sesión, y las pruebas adversas T4. Llevar el cliente también a RLS obligaría a políticas con joins en cada tabla hija; se registra como riesgo y no se hace.
+- **RLS separa talleres, no clientes.** Dentro de un taller, que un cliente vea solo sus órdenes lo garantiza `repositories/portal.py`, cuyas dos consultas de entrada (`orders_of` y `order_of`) exigen el `client_id` de la sesión, y las pruebas adversas T4. Llevar el cliente también a RLS obligaría a políticas con joins en cada tabla hija; se registra como riesgo y no se hace.
 - **RLS no sustituye a los permisos por rol.** Que un mecánico no envíe presupuestos lo decide la función de permisos (RNF-03).
 
 ### Las vías que cruzan talleres

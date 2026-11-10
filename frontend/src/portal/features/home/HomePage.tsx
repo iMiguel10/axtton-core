@@ -1,84 +1,74 @@
 import { useQuery } from "@tanstack/react-query";
-import { useEffect } from "react";
+import { Car } from "lucide-react";
 import { useTranslation } from "react-i18next";
-import Session from "supertokens-web-js/recipe/session";
+import { Link } from "react-router-dom";
 
-import { Brand } from "@/shared/components/Brand";
-import { AppSplash } from "@/shared/components/Loading";
-import { LanguageSwitcher, ThemeToggle } from "@/shared/components/Preferences";
-import { Button } from "@/shared/components/ui/button";
-import { ApiError } from "@/shared/lib/apiClient";
+import { EmptyState } from "@/shared/components/EmptyState";
+import { LinesSkeleton } from "@/shared/components/Loading";
 import { errorMessage } from "@/shared/lib/errors";
 
-import { loginPath, rememberWorkshop } from "../../lib/lastWorkshop";
-import { fetchMe } from "../auth/api";
+import { ClientStatusBadge, ProgressDetails } from "../orders/ClientProgress";
+import { fetchVehicles, makeAndModel, type OrderSummary } from "../orders/api";
+import { usePortalMe } from "./PortalLayout";
 
-/** Al salir, a la entrada del mismo taller: es por donde se vuelve a entrar. */
-async function signOut(): Promise<void> {
-  await Session.signOut();
-  window.location.assign(loginPath());
-}
-
-/**
- * El inicio del portal. En este paso, solo dice en qué taller se ha entrado y
- * como quién; los vehículos y las órdenes del cliente llegan en el paso 4.
- */
+/** El inicio: los vehículos del cliente y sus órdenes (RF-42). */
 export function HomePage() {
   const { t } = useTranslation();
-  const me = useQuery({ queryKey: ["portal", "me"], queryFn: fetchMe });
-  const workshopId = me.data?.workshop_id;
-
-  useEffect(() => {
-    if (workshopId) rememberWorkshop(workshopId);
-  }, [workshopId]);
-
-  if (me.isPending) return <AppSplash />;
+  const me = usePortalMe();
+  const vehicles = useQuery({ queryKey: ["portal", "vehicles"], queryFn: fetchVehicles });
 
   return (
-    <div className="mx-auto flex min-h-svh max-w-2xl flex-col gap-6 p-4 sm:p-6">
-      <header className="flex items-center justify-between gap-2">
-        <Brand className="h-8" />
-        <div className="flex gap-1">
-          <LanguageSwitcher />
-          <ThemeToggle />
-        </div>
-      </header>
-      <main className="grid gap-4">
-        {me.isError ? (
-          <NoAccess error={me.error} />
-        ) : (
-          <>
-            <div className="grid gap-1">
-              <p className="text-muted-foreground text-sm">{me.data.workshop_name}</p>
-              <h1 className="text-2xl font-semibold">
-                {t("portal.home.greeting", { name: me.data.client_name })}
-              </h1>
-            </div>
-            <p>{t("portal.home.soon")}</p>
-          </>
-        )}
-        <div>
-          <Button variant="outline" onClick={() => void signOut()}>
-            {t("portal.home.signOut")}
-          </Button>
-        </div>
-      </main>
-    </div>
+    <>
+      <div className="grid gap-1">
+        <p className="text-muted-foreground text-sm">{me.data?.workshop_name}</p>
+        <h1 className="text-2xl font-semibold">
+          {t("portal.home.greeting", { name: me.data?.client_name })}
+        </h1>
+      </div>
+      {vehicles.isPending ? (
+        <LinesSkeleton />
+      ) : vehicles.isError ? (
+        <p role="alert">{errorMessage(t, vehicles.error)}</p>
+      ) : vehicles.data.length === 0 ? (
+        <EmptyState
+          icon={Car}
+          title={t("portal.home.emptyTitle")}
+          description={t("portal.home.emptyDescription")}
+        />
+      ) : (
+        vehicles.data.map((vehicle) => (
+          <section key={vehicle.plate} className="grid gap-2">
+            <h2 className="font-medium">
+              <span className="tabular-nums">{vehicle.plate}</span>
+              {makeAndModel(vehicle) && (
+                <span className="text-muted-foreground font-normal"> · {makeAndModel(vehicle)}</span>
+              )}
+            </h2>
+            <ul className="grid gap-2">
+              {vehicle.orders.map((order) => (
+                <li key={order.id}>
+                  <OrderCard order={order} />
+                </li>
+              ))}
+            </ul>
+          </section>
+        ))
+      )}
+    </>
   );
 }
 
-/** La sesión existe pero no da acceso: es del personal, o el taller la cortó. */
-function NoAccess({ error }: { error: unknown }) {
-  const { t } = useTranslation();
-  if (error instanceof ApiError && error.code === "wrong_actor") {
-    return (
-      <div className="grid gap-3">
-        <p role="alert">{t("portal.home.staffSession")}</p>
-        <a href="/" className="link">
-          {t("portal.home.goToWorkshop")}
-        </a>
+function OrderCard({ order }: { order: OrderSummary }) {
+  return (
+    <Link
+      to={`/orders/${order.id}`}
+      className="bg-card hover:bg-muted/50 grid gap-2 rounded-lg border p-4 transition-colors"
+    >
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <span className="text-sm font-medium tabular-nums">{order.code}</span>
+        <ClientStatusBadge status={order.progress.status} />
       </div>
-    );
-  }
-  return <p role="alert">{errorMessage(t, error)}</p>;
+      <ProgressDetails progress={order.progress} />
+    </Link>
+  );
 }

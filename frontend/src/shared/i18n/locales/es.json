@@ -589,7 +589,8 @@
     },
     "home": {
       "greeting": "Hola, {{name}}",
-      "soon": "Muy pronto verás aquí tus vehículos, el estado de cada reparación y sus presupuestos.",
+      "emptyTitle": "Todavía no tienes reparaciones",
+      "emptyDescription": "Cuando el taller abra una orden a tu nombre, la verás aquí.",
       "signOut": "Cerrar sesión",
       "staffSession": "Este navegador tiene abierta una sesión del personal del taller. Para entrar como cliente, ciérrala primero desde la aplicación del taller.",
       "goToWorkshop": "Ir a la aplicación del taller"
@@ -607,6 +608,55 @@
       "updated": "Actualizado",
       "expected": "Entrega prevista",
       "overdue": "La fecha prevista era el {{date}}; el taller aún no la ha actualizado."
+    },
+    "order": {
+      "back": "Mis vehículos",
+      "diagnosis": "Diagnóstico",
+      "noDiagnosis": "El taller todavía no ha escrito el diagnóstico.",
+      "quote": "Presupuesto",
+      "noQuote": "Todavía no hay ningún presupuesto.",
+      "version": "Versión {{number}}",
+      "previousVersions_one": "Ver {{count}} versión anterior",
+      "previousVersions_other": "Ver {{count}} versiones anteriores",
+      "quoteStatuses": {
+        "sent": "Pendiente de tu respuesta",
+        "approved": "Aceptado",
+        "rejected": "Rechazado",
+        "expired": "Caducado",
+        "superseded": "Sustituido por una versión posterior",
+        "cancelled": "Anulado por el taller"
+      },
+      "decided": {
+        "approved": "Aceptado el {{date}} {{channel}}.",
+        "rejected": "Rechazado el {{date}} {{channel}}."
+      },
+      "channels": {
+        "portal": "en el portal",
+        "phone": "por teléfono",
+        "in_person": "en persona, en el taller"
+      },
+      "expiredNote": "Este presupuesto ya no se puede aceptar. Pide al taller que te envíe uno nuevo.",
+      "validUntil": "Válido hasta el {{date}}.",
+      "deliveryDays_one": "Plazo de entrega: {{count}} día hábil desde la aceptación.",
+      "deliveryDays_other": "Plazo de entrega: {{count}} días hábiles desde la aceptación.",
+      "kinds": {
+        "labor": "Mano de obra",
+        "part": "Pieza",
+        "other": "Otros"
+      },
+      "conditions": {
+        "used": "Pieza usada",
+        "reconditioned": "Pieza reacondicionada",
+        "non_specific": "Pieza no específica del modelo"
+      },
+      "lineDiscount": "descuento {{rate}}",
+      "lineVat": "IVA {{rate}}",
+      "subtotal": "Subtotal",
+      "discount": "Descuento",
+      "vat": "IVA {{rate}} sobre {{base}}",
+      "total": "Total",
+      "work": "Trabajos realizados",
+      "noWork": "Todavía no hay trabajos registrados."
     },
     "noWorkshop": {
       "title": "Entra desde tu taller",

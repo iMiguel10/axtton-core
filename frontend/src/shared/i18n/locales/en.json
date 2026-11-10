@@ -589,7 +589,8 @@
     },
     "home": {
       "greeting": "Hello, {{name}}",
-      "soon": "Soon you’ll see your vehicles here, the status of each repair and its quotes.",
+      "emptyTitle": "You have no repairs yet",
+      "emptyDescription": "When the workshop opens an order in your name, you will see it here.",
       "signOut": "Sign out",
       "staffSession": "This browser has a workshop staff session open. To enter as a customer, sign out of it first from the workshop app.",
       "goToWorkshop": "Go to the workshop app"
@@ -607,6 +608,55 @@
       "updated": "Updated",
       "expected": "Expected delivery",
       "overdue": "The expected date was {{date}}; the workshop has not updated it yet."
+    },
+    "order": {
+      "back": "My vehicles",
+      "diagnosis": "Diagnosis",
+      "noDiagnosis": "The workshop has not written the diagnosis yet.",
+      "quote": "Quote",
+      "noQuote": "There is no quote yet.",
+      "version": "Version {{number}}",
+      "previousVersions_one": "See {{count}} previous version",
+      "previousVersions_other": "See {{count}} previous versions",
+      "quoteStatuses": {
+        "sent": "Awaiting your response",
+        "approved": "Accepted",
+        "rejected": "Rejected",
+        "expired": "Expired",
+        "superseded": "Replaced by a later version",
+        "cancelled": "Withdrawn by the workshop"
+      },
+      "decided": {
+        "approved": "Accepted on {{date}} {{channel}}.",
+        "rejected": "Rejected on {{date}} {{channel}}."
+      },
+      "channels": {
+        "portal": "in the portal",
+        "phone": "by phone",
+        "in_person": "in person at the workshop"
+      },
+      "expiredNote": "This quote can no longer be accepted. Ask the workshop to send you a new one.",
+      "validUntil": "Valid until {{date}}.",
+      "deliveryDays_one": "Delivery time: {{count}} working day from acceptance.",
+      "deliveryDays_other": "Delivery time: {{count}} working days from acceptance.",
+      "kinds": {
+        "labor": "Labour",
+        "part": "Part",
+        "other": "Other"
+      },
+      "conditions": {
+        "used": "Used part",
+        "reconditioned": "Reconditioned part",
+        "non_specific": "Part not specific to this model"
+      },
+      "lineDiscount": "{{rate}} discount",
+      "lineVat": "VAT {{rate}}",
+      "subtotal": "Subtotal",
+      "discount": "Discount",
+      "vat": "VAT {{rate}} on {{base}}",
+      "total": "Total",
+      "work": "Work done",
+      "noWork": "No work has been recorded yet."
     },
     "noWorkshop": {
       "title": "Sign in from your workshop",

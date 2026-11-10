@@ -5,12 +5,14 @@ import Session from "supertokens-web-js/recipe/session";
 
 import { AppSplash } from "@/shared/components/Loading";
 
+import { PortalLayout } from "./features/home/PortalLayout";
 import { loginPath } from "./lib/lastWorkshop";
 
 // Cada pantalla en su trozo, como en el taller: el portal se abre en el móvil
 // desde un email y tiene que cargar rápido (RNF-53).
 const AccessPage = lazy(() => import("./features/auth/AccessPage").then((m) => ({ default: m.AccessPage })));
 const HomePage = lazy(() => import("./features/home/HomePage").then((m) => ({ default: m.HomePage })));
+const OrderDetailPage = lazy(() => import("./features/orders/OrderDetailPage").then((m) => ({ default: m.OrderDetailPage })));
 const NoWorkshopPage = lazy(() => import("./features/auth/NoWorkshopPage").then((m) => ({ default: m.NoWorkshopPage })));
 const RequestLinkPage = lazy(() => import("./features/auth/RequestLinkPage").then((m) => ({ default: m.RequestLinkPage })));
 
@@ -44,7 +46,10 @@ function SessionGate() {
   if (!session.data) return <Navigate to={loginPath().replace(/^\/portal/, "")} replace />;
   return (
     <Routes>
-      <Route path="/" element={<HomePage />} />
+      <Route element={<PortalLayout />}>
+        <Route path="/" element={<HomePage />} />
+        <Route path="/orders/:orderId" element={<OrderDetailPage />} />
+      </Route>
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
   );

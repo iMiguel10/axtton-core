@@ -682,7 +682,8 @@
           "quote_not_decidable": "No se ha registrado tu respuesta: el taller ha cambiado este presupuesto o ya estaba respondido. Revisa la versión de arriba.",
           "quote_expired": "No se ha registrado tu respuesta: el presupuesto ha caducado. Pide al taller que te envíe uno nuevo."
         }
-      }
+      },
+      "pdf": "Descargar en PDF"
     },
     "noWorkshop": {
       "title": "Entra desde tu taller",

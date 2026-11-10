@@ -3,6 +3,7 @@ import { useTranslation } from "react-i18next";
 import { useParams } from "react-router-dom";
 
 import { DetailSkeleton } from "@/shared/components/Loading";
+import { PdfButton } from "@/shared/components/PdfButton";
 import { BackLink } from "@/shared/components/nav/BackLink";
 import { Card, CardContent, CardHeader, CardTitle } from "@/shared/components/ui/card";
 import { useDates } from "@/shared/lib/dates";
@@ -11,7 +12,7 @@ import { formatEur, formatPercentBp } from "@/shared/money";
 
 import { ClientStatusBadge, ProgressDetails } from "./ClientProgress";
 import { DecisionPanel } from "./DecisionPanel";
-import { fetchOrder, makeAndModel, type PortalQuote, type QuoteLine } from "./api";
+import { fetchOrder, fetchQuotePdf, makeAndModel, type PortalQuote, type QuoteLine } from "./api";
 
 /** El detalle de una orden: diagnóstico, presupuesto y trabajos. Nunca las notas (RF-43). */
 export function OrderDetailPage() {
@@ -151,6 +152,9 @@ function QuoteVersion({ quote }: { quote: PortalQuote }) {
         ))}
         <Amount label={t("portal.order.total")} cents={quote.total_cents} strong />
       </dl>
+      <div className="flex flex-wrap gap-2">
+        <PdfButton load={() => fetchQuotePdf(quote.id)} label={t("portal.order.pdf")} />
+      </div>
     </div>
   );
 }

@@ -79,6 +79,34 @@ async def maria_with_history(client: AsyncClient, shop: Shop) -> tuple[Any, Any]
     return await read(client, shop.headers, shop.maria["id"]), order
 
 
+async def dump_of_every_table() -> str:
+    """Cada fila de cada tabla convertida en texto, en minúsculas (RNF-40)."""
+    engine = create_async_engine(os.environ["PLATFORM_DATABASE_URL"])
+    try:
+        async with engine.connect() as conn:
+            tables = (
+                await conn.scalars(
+                    text(
+                        "SELECT tablename FROM pg_tables WHERE schemaname = 'public'"
+                        # alembic_version no es de nadie más que del dueño.
+                        " AND has_table_privilege("
+                        "quote_ident(schemaname) || '.' || quote_ident(tablename), 'SELECT')"
+                    )
+                )
+            ).all()
+            return "\n".join(
+                [
+                    row
+                    for table in tables
+                    for row in (
+                        await conn.scalars(text(f'SELECT t::text FROM "{table}" t'))
+                    ).all()
+                ]
+            ).lower()
+    finally:
+        await engine.dispose()
+
+
 @pytest.mark.asyncio
 async def test_anonymizing_empties_the_client_and_keeps_its_orders(
     client: AsyncClient, shop: Shop
@@ -126,30 +154,7 @@ async def test_nothing_of_the_client_is_left_in_any_table(
     maria, _ = await maria_with_history(client, shop)
     assert (await anonymize(client, shop.headers, maria)).status_code == 204
 
-    engine = create_async_engine(os.environ["PLATFORM_DATABASE_URL"])
-    try:
-        async with engine.connect() as conn:
-            tables = (
-                await conn.scalars(
-                    text(
-                        "SELECT tablename FROM pg_tables WHERE schemaname = 'public'"
-                        # alembic_version no es de nadie más que del dueño.
-                        " AND has_table_privilege("
-                        "quote_ident(schemaname) || '.' || quote_ident(tablename), 'SELECT')"
-                    )
-                )
-            ).all()
-            dump = "\n".join(
-                [
-                    row
-                    for table in tables
-                    for row in (
-                        await conn.scalars(text(f'SELECT t::text FROM "{table}" t'))
-                    ).all()
-                ]
-            ).lower()
-    finally:
-        await engine.dispose()
+    dump = await dump_of_every_table()
     searched = [
         *PERSONAL.values(),
         *DROPPED_OFF.values(),

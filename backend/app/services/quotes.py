@@ -1,5 +1,6 @@
 """Presupuestos de una orden: el borrador (F3 paso 4, RF-30 a RF-32, RF-38), el
-envío y la anulación (paso 5, arquitectura §7.1). Decidir llega en el paso 6.
+envío y la anulación (paso 5, arquitectura §7.1), la decisión registrada por el
+taller (paso 6) y la del cliente desde el portal (F4 paso 5).
 
 Un borrador se edita libremente (RF-31): guardar es reemplazar sus líneas y su
 descuento global de una vez, con su `version` como bloqueo optimista (RNF-15).
@@ -20,6 +21,7 @@ from uuid import UUID
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.client_ip import valid_ip
 from app.core.errors import ConflictError, NotFoundError, ValidationFailedError
 from app.domain.business_days import delivery_date, quote_valid_until
 from app.domain.quotes import (
@@ -47,12 +49,16 @@ from app.models import (
     WorkOrder,
     Workshop,
 )
+from app.repositories import portal as portal_repo
 from app.repositories import quotes as quote_repo
 from app.repositories import vehicles as vehicle_repo
 from app.repositories import work_orders as order_repo
 from app.services.integrity import flush_or_conflict
 from app.services.settings import prices_hidden
 from app.services.work_orders import record_status_change
+
+# El tamaño de la columna: un navegador puede mandar más.
+USER_AGENT_LENGTH = 500
 
 # Dos borradores a la vez para la misma orden: el segundo choca con uno de los
 # dos índices (un solo borrador, número de versión único).
@@ -436,12 +442,15 @@ SEND_FROM = frozenset(
 
 
 async def _locked_for_status_change(
-    session: AsyncSession, quote_id: UUID, expected_version: int
+    session: AsyncSession, quote_id: UUID, expected_version: int | None
 ) -> tuple[WorkOrder, Quote]:
     """La orden con FOR UPDATE (enviar o anular le cambian el estado) y después
     la versión con FOR UPDATE, siempre en ese orden. Un borrador que se esté
     guardando a la vez tiene la orden con FOR SHARE: el envío espera, luego ve
-    la versión nueva del borrador y la de quien envía ya no coincide (409)."""
+    la versión nueva del borrador y la de quien envía ya no coincide (409).
+
+    Sin `expected_version` (el portal), la que cuenta es la propia versión: cada
+    una tiene su id y, enviada, no cambia."""
     found = await quote_repo.get(session, quote_id)
     if found is None:
         raise NotFoundError("quote_not_found")
@@ -452,7 +461,7 @@ async def _locked_for_status_change(
     quote = await quote_repo.get_for_update(session, quote_id)
     if quote is None:  # otro la descartó mientras esperábamos a la orden
         raise NotFoundError("quote_not_found")
-    if quote.version != expected_version:
+    if expected_version is not None and quote.version != expected_version:
         raise ConflictError("modified_by_someone_else")
     return order, quote
 
@@ -711,12 +720,76 @@ async def record_decision(
         # El portal decide por su propia vía, con la sesión del cliente (F4).
         raise ConflictError("quote_decision_channel_not_allowed")
     order, quote = await _locked_for_status_change(session, quote_id, expected_version)
+    await _decide(
+        session,
+        workshop_id,
+        order,
+        quote,
+        outcome=outcome,
+        channel=channel,
+        note=note,
+        user_id=user_id,
+        employee_id=employee_id,
+    )
+
+
+async def decide_from_portal(
+    session: AsyncSession,
+    workshop_id: UUID,
+    client_id: UUID,
+    quote_id: UUID,
+    *,
+    outcome: Outcome,
+    reason: str | None,
+    ip: str | None,
+    user_agent: str | None,
+) -> None:
+    """El cliente aprueba o rechaza desde el portal (RF-34, RF-36). El cliente
+    sale de la sesión, y una versión que no sea suya no existe (T4, RF-44).
+
+    Lo que aprueba es esa versión y ninguna otra: si el taller la corrigió o la
+    anuló mientras la miraba, da 409 y nunca vale para la siguiente.
+    """
+    if await portal_repo.quote_of(session, client_id, quote_id) is None:
+        raise NotFoundError("quote_not_found")
+    order, quote = await _locked_for_status_change(session, quote_id, None)
+    await _decide(
+        session,
+        workshop_id,
+        order,
+        quote,
+        outcome=outcome,
+        channel=DecisionChannel.PORTAL,
+        note=reason or None,
+        user_id=None,
+        employee_id=None,
+        ip=valid_ip(ip),
+        user_agent=user_agent[:USER_AGENT_LENGTH] if user_agent else None,
+    )
+
+
+async def _decide(
+    session: AsyncSession,
+    workshop_id: UUID,
+    order: WorkOrder,
+    quote: Quote,
+    *,
+    outcome: Outcome,
+    channel: DecisionChannel,
+    note: str | None,
+    user_id: UUID | None,
+    employee_id: UUID | None,
+    ip: str | None = None,
+    user_agent: str | None = None,
+) -> None:
+    """Lo mismo decida quien decida. Sin empleado, ha decidido el cliente."""
     if quote.status != QuoteStatus.SENT:
         raise ConflictError("quote_not_decidable")
     now = await vehicle_repo.db_now(session)
     if is_expired(quote, now):
         raise ConflictError("quote_expired")
     assert quote.origin_status is not None  # toda versión enviada lo tiene
+    by_client = employee_id is None
     session.add(
         QuoteDecision(
             workshop_id=workshop_id,
@@ -724,6 +797,8 @@ async def record_decision(
             outcome=outcome,
             channel=channel,
             recorded_by_employee_id=employee_id,
+            ip=ip,
+            user_agent=user_agent,
             note=note,
         )
     )
@@ -737,7 +812,10 @@ async def record_decision(
             order_after_decision(outcome, quote.origin_status),
             cause=StatusChangeCause.QUOTE_DECIDED,
             employee_id=employee_id,
-            note=note,
+            by_client=by_client,
+            # El motivo del cliente vive solo en la decisión, de donde se borra
+            # al anonimizarlo; el historial no se puede tocar (RNF-40).
+            note=None if by_client else note,
         )
     session.add(
         AuditEntry(

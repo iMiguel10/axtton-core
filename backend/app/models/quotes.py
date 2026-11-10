@@ -254,7 +254,9 @@ class QuoteLine(IdMixin, CreatedAtMixin, UpdatedAtMixin, Base):
 
 class QuoteDecision(IdMixin, CreatedAtMixin, Base):
     """La aprobación o el rechazo de una versión enviada (RF-34 a RF-36).
-    Append-only: ni la aplicación ni la plataforma pueden cambiarla o borrarla."""
+    Append-only: ni la aplicación ni la plataforma pueden cambiarla o borrarla. La
+    única excepción es vaciar la IP, el navegador y el motivo de una decisión del
+    portal cuyo cliente se anonimizó (0018decisionerase, RNF-40)."""
 
     __tablename__ = "quote_decisions"
     __table_args__ = (

@@ -5,11 +5,11 @@ from dataclasses import dataclass
 from typing import Literal
 from uuid import UUID
 
-from sqlalchemy import and_, delete, func, or_, select
+from sqlalchemy import and_, delete, func, or_, select, update
 from sqlalchemy.dialects.postgresql import distinct_on
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.domain.quotes import QuoteStatus
+from app.domain.quotes import DecisionChannel, QuoteStatus
 from app.domain.work_orders import CLOSED
 from app.models import (
     Client,
@@ -212,3 +212,22 @@ async def decisions_of(
         decision.quote_id: (decision, name)
         for decision, name in await session.execute(query)
     }
+
+
+async def erase_portal_decision_details(session: AsyncSession, client_id: UUID) -> None:
+    """Vacía la IP, el navegador y el motivo de las decisiones que este cliente
+    tomó en el portal (RF-15, RNF-40). Lo que decidió se queda. El trigger
+    `quote_decisions_frozen` solo lo admite con el cliente ya anonimizado."""
+    await session.execute(
+        update(QuoteDecision)
+        .where(
+            QuoteDecision.channel == DecisionChannel.PORTAL,
+            QuoteDecision.quote_id.in_(
+                select(Quote.id)
+                .join(WorkOrder, WorkOrder.id == Quote.work_order_id)
+                .where(WorkOrder.client_id == client_id)
+            ),
+        )
+        .values(ip=None, user_agent=None, note=None)
+        .execution_options(synchronize_session=False)
+    )

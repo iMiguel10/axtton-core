@@ -24,6 +24,17 @@ def _is_trusted(address: str, trusted: tuple[IPNetwork, ...]) -> bool:
     return any(ip in network for network in trusted)
 
 
+def valid_ip(value: str | None) -> str | None:
+    """La IP si lo es: `client_ip` puede dar "unknown" o lo que traía la cabecera,
+    y una columna INET lo rechazaría con un 500."""
+    if value is None:
+        return None
+    try:
+        return str(ipaddress.ip_address(value))
+    except ValueError:
+        return None
+
+
 def client_ip(
     peer: str | None, forwarded_for: str | None, trusted: tuple[IPNetwork, ...]
 ) -> str:

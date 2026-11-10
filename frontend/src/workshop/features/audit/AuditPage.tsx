@@ -62,7 +62,11 @@ export function AuditPage({ scope }: { scope: AuditScope }) {
                     <TableCell className="whitespace-nowrap">
                       {format.format(new Date(entry.created_at))}
                     </TableCell>
-                    <TableCell>{entry.actor ?? "—"}</TableCell>
+                    <TableCell>
+                      {/* Sin actor y desde el portal: decidió el propio cliente (RF-34). */}
+                      {entry.actor ??
+                        (entry.details.decision_channel === "portal" ? t("orders.byClient") : "—")}
+                    </TableCell>
                     <TableCell>
                       {t(`audit.actions.${entry.action}`, { defaultValue: entry.action })}
                     </TableCell>

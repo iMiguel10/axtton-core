@@ -18,6 +18,7 @@ from app.domain.limits import Resource
 from app.models import AuditEntry, Client
 from app.repositories import clients as client_repo
 from app.repositories import portal_links as link_repo
+from app.repositories import quotes as quote_repo
 from app.repositories import vehicles as vehicle_repo
 from app.repositories import work_orders as order_repo
 from app.services import limits as limit_service
@@ -201,6 +202,10 @@ async def anonymize_client(
     client.anonymized_at = now
     client.portal_epoch += 1
     await order_repo.forget_dropped_off_by(session, client_id)
+    # Antes, escrito en la base de datos: el trigger de las decisiones comprueba
+    # que el cliente ya esté anonimizado.
+    await session.flush()
+    await quote_repo.erase_portal_decision_details(session, client_id)
     # Sin email no hay portal: ningún enlace pendiente vale ya (RF-15, RF-47).
     await link_repo.revoke_open_for_client(session, client_id)
     session.add(

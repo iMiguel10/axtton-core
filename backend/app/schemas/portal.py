@@ -2,7 +2,7 @@ from datetime import date, datetime
 from decimal import Decimal
 from uuid import UUID
 
-from pydantic import BaseModel, ConfigDict, EmailStr, Field
+from pydantic import BaseModel, ConfigDict, EmailStr, Field, model_validator
 
 from app.domain.portal import ClientOrderStatus
 from app.domain.quotes import (
@@ -13,6 +13,24 @@ from app.domain.quotes import (
     QuoteStatus,
 )
 from app.schemas.session import WhoAmI
+
+
+class PortalDecisionCreate(BaseModel):
+    """Aprobar o rechazar una versión. El motivo, solo al rechazar (RF-34)."""
+
+    model_config = ConfigDict(str_strip_whitespace=True)
+
+    outcome: Outcome
+    reason: str | None = Field(default=None, max_length=2000)
+
+    @model_validator(mode="after")
+    def check_reason(self) -> "PortalDecisionCreate":
+        if self.reason and self.outcome is Outcome.APPROVED:
+            raise ValueError("only a rejection has a reason")
+        # Postgres no guarda este carácter: sin esto, un 500.
+        if self.reason and "\x00" in self.reason:
+            raise ValueError("invalid character")
+        return self
 
 
 class PortalEntryRead(BaseModel):

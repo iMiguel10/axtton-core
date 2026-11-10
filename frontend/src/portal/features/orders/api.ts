@@ -41,7 +41,7 @@ export type PortalQuote = {
   vat_breakdown: { vat_bp: number; base_cents: number; vat_cents: number }[];
   total_cents: number;
   decision: {
-    outcome: "approved" | "rejected";
+    outcome: DecisionOutcome;
     channel: "portal" | "phone" | "in_person";
     decided_at: string;
   } | null;
@@ -65,6 +65,16 @@ export function fetchVehicles(): Promise<PortalVehicle[]> {
 
 export function fetchOrder(orderId: string): Promise<PortalOrderDetail> {
   return apiRequest(`/portal/orders/${encodeURIComponent(orderId)}`);
+}
+
+export type DecisionOutcome = "approved" | "rejected";
+
+/** Aceptar o rechazar una versión (RF-34). El motivo, solo al rechazar. */
+export function decideQuote(
+  quoteId: string,
+  body: { outcome: DecisionOutcome; reason: string | null },
+): Promise<void> {
+  return apiRequest(`/portal/quotes/${encodeURIComponent(quoteId)}/decision`, { method: "POST", body });
 }
 
 /** "Seat Ibiza", o nada si el taller no apuntó marca ni modelo. */

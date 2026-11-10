@@ -10,6 +10,7 @@ import { errorMessage } from "@/shared/lib/errors";
 import { formatEur, formatPercentBp } from "@/shared/money";
 
 import { ClientStatusBadge, ProgressDetails } from "./ClientProgress";
+import { DecisionPanel } from "./DecisionPanel";
 import { fetchOrder, makeAndModel, type PortalQuote, type QuoteLine } from "./api";
 
 /** El detalle de una orden: diagnóstico, presupuesto y trabajos. Nunca las notas (RF-43). */
@@ -64,6 +65,7 @@ export function OrderDetailPage() {
         {current ? (
           <div className="grid gap-4">
             <QuoteVersion quote={current} />
+            <DecisionPanel orderId={orderId} quote={current} />
             {previous.length > 0 && (
               <details className="border-t pt-3">
                 <summary className="cursor-pointer text-sm font-medium">

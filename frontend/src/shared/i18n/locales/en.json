@@ -656,7 +656,33 @@
       "vat": "VAT {{rate}} on {{base}}",
       "total": "Total",
       "work": "Work done",
-      "noWork": "No work has been recorded yet."
+      "noWork": "No work has been recorded yet.",
+      "decision": {
+        "prompt": "Do you approve this quote?",
+        "approve": "Approve",
+        "reject": "Reject",
+        "title": {
+          "approved": "Approve version {{number}}",
+          "rejected": "Reject version {{number}}"
+        },
+        "approveText": "You authorise the workshop to carry out this work for a total of {{total}}, within the stated delivery time.",
+        "specialParts": "It includes used, reconditioned or non-model-specific parts: by approving it you agree to their use.",
+        "reason": "Reason (optional)",
+        "reasonHint": "The workshop will read it. If you like, they can prepare another quote for you.",
+        "final": "Your answer is recorded with its date and cannot be changed here. If you change your mind, call the workshop.",
+        "confirm": {
+          "approved": "Approve the quote",
+          "rejected": "Reject the quote"
+        },
+        "done": {
+          "approved": "Done: you have approved the quote. The workshop can already see it.",
+          "rejected": "Done: you have rejected the quote. The workshop can already see it."
+        },
+        "errors": {
+          "quote_not_decidable": "Your answer was not recorded: the workshop has changed this quote or it had already been answered. Check the version above.",
+          "quote_expired": "Your answer was not recorded: the quote has expired. Ask the workshop to send you a new one."
+        }
+      }
     },
     "noWorkshop": {
       "title": "Sign in from your workshop",

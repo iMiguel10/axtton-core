@@ -315,12 +315,14 @@ async def record_status_change(
     to_status: str,
     *,
     cause: StatusChangeCause,
-    employee_id: UUID,
+    employee_id: UUID | None,
+    by_client: bool = False,
     note: str | None = None,
     undoes_seq: int | None = None,
 ) -> None:
     """Escribe el cambio en el historial y copia el estado en la orden, juntos
-    (invariante 5; el trigger diferido lo comprueba al confirmar)."""
+    (invariante 5; el trigger diferido lo comprueba al confirmar). Sin empleado,
+    solo cuando lo provocó el cliente desde el portal."""
     now = await vehicle_repo.db_now(session)
     session.add(
         WorkOrderStatusChange(
@@ -330,6 +332,7 @@ async def record_status_change(
             to_status=to_status,
             cause=cause,
             employee_id=employee_id,
+            by_client=by_client,
             note=note,
             undoes_seq=undoes_seq,
         )

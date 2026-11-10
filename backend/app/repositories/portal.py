@@ -1,8 +1,8 @@
 """Lo que lee el portal de las órdenes de un cliente (F4 paso 4, RF-42 a RF-44).
 
 RLS separa talleres, no clientes: dentro de un taller, que un cliente solo vea lo
-suyo lo garantiza este módulo (arquitectura §4, T4). Por eso las dos consultas
-que abren la puerta exigen `client_id`, que sale siempre de la sesión. El acceso
+suyo lo garantiza este módulo (arquitectura §4, T4). Por eso las consultas
+que abren la puerta (`orders_of`, `order_of` y `quote_of`) exigen `client_id`, que sale siempre de la sesión. El acceso
 va por la orden, nunca por el vehículo (invariante 7): quien compra un coche de
 segunda mano no ve las reparaciones del dueño anterior (RF-44).
 
@@ -78,3 +78,20 @@ async def work_done(session: AsyncSession, order_id: UUID) -> list[WorkEntry]:
         .order_by(WorkEntry.worked_on, WorkEntry.created_at)
     )
     return list(await session.scalars(query))
+
+
+async def quote_of(
+    session: AsyncSession, client_id: UUID, quote_id: UUID
+) -> Quote | None:
+    """Una versión enviada alguna vez de una orden de este cliente (T4, RF-44).
+    La de otro cliente, igual que un borrador suyo, para él no existe."""
+    query = (
+        select(Quote)
+        .join(WorkOrder, WorkOrder.id == Quote.work_order_id)
+        .where(
+            Quote.id == quote_id,
+            WorkOrder.client_id == client_id,
+            Quote.status != QuoteStatus.DRAFT,
+        )
+    )
+    return (await session.scalars(query)).one_or_none()

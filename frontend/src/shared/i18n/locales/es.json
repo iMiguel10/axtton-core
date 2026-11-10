@@ -656,7 +656,33 @@
       "vat": "IVA {{rate}} sobre {{base}}",
       "total": "Total",
       "work": "Trabajos realizados",
-      "noWork": "Todavía no hay trabajos registrados."
+      "noWork": "Todavía no hay trabajos registrados.",
+      "decision": {
+        "prompt": "¿Das el visto bueno a este presupuesto?",
+        "approve": "Aceptar",
+        "reject": "Rechazar",
+        "title": {
+          "approved": "Aceptar la versión {{number}}",
+          "rejected": "Rechazar la versión {{number}}"
+        },
+        "approveText": "Autorizas al taller a hacer estos trabajos por un total de {{total}}, con el plazo de entrega indicado.",
+        "specialParts": "Incluye piezas usadas, reacondicionadas o no específicas del modelo: al aceptarlo das tu conformidad a que se usen.",
+        "reason": "Motivo (opcional)",
+        "reasonHint": "Lo leerá el taller. Si quieres, puede prepararte otro presupuesto.",
+        "final": "Tu respuesta queda registrada con la fecha y no se puede cambiar desde aquí. Si cambias de idea, llama al taller.",
+        "confirm": {
+          "approved": "Aceptar el presupuesto",
+          "rejected": "Rechazar el presupuesto"
+        },
+        "done": {
+          "approved": "Hecho: has aceptado el presupuesto. El taller ya lo ve.",
+          "rejected": "Hecho: has rechazado el presupuesto. El taller ya lo ve."
+        },
+        "errors": {
+          "quote_not_decidable": "No se ha registrado tu respuesta: el taller ha cambiado este presupuesto o ya estaba respondido. Revisa la versión de arriba.",
+          "quote_expired": "No se ha registrado tu respuesta: el presupuesto ha caducado. Pide al taller que te envíe uno nuevo."
+        }
+      }
     },
     "noWorkshop": {
       "title": "Entra desde tu taller",

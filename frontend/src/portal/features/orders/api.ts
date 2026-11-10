@@ -1,4 +1,4 @@
-import { apiRequest } from "@/shared/lib/apiClient";
+import { apiBlob, apiRequest } from "@/shared/lib/apiClient";
 
 import type { ClientProgressData } from "./ClientProgress";
 
@@ -65,6 +65,11 @@ export function fetchVehicles(): Promise<PortalVehicle[]> {
 
 export function fetchOrder(orderId: string): Promise<PortalOrderDetail> {
   return apiRequest(`/portal/orders/${encodeURIComponent(orderId)}`);
+}
+
+/** El PDF de una versión enviada (RF-54): se genera al pedirlo. */
+export function fetchQuotePdf(quoteId: string): Promise<Blob> {
+  return apiBlob(`/portal/quotes/${encodeURIComponent(quoteId)}/pdf`);
 }
 
 export type DecisionOutcome = "approved" | "rejected";

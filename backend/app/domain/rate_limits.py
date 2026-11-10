@@ -56,6 +56,11 @@ PORTAL_LINK_PER_EMAIL = RateRule("portal_link", "5/hour", RateKey.EMAIL)
 PORTAL_LINK_PER_IP = RateRule("portal_link", "20/hour", RateKey.IP)
 PORTAL_CONSUME_PER_IP = RateRule("portal_consume", "30/hour", RateKey.IP)
 
+# El PDF del portal (RF-54): maquetarlo es caro y solo hay dos a la vez por proceso
+# (infra/pdf.py), compartidos con el taller. Un cliente no debe poder ocuparlos.
+# Por cliente: la clave es su taller y su ficha, que salen de la sesión.
+PORTAL_PDF_PER_CLIENT = RateRule("portal_pdf", "20/10minutes", RateKey.USER)
+
 # Rutas de SuperTokens (POST, bajo /api/auth) y sus reglas. Las atiende su
 # middleware, no nuestros endpoints: las limita app/api/auth_rate_limit.py.
 AUTH_RULES: dict[str, tuple[RateRule, ...]] = {

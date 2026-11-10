@@ -682,7 +682,8 @@
           "quote_not_decidable": "Your answer was not recorded: the workshop has changed this quote or it had already been answered. Check the version above.",
           "quote_expired": "Your answer was not recorded: the quote has expired. Ask the workshop to send you a new one."
         }
-      }
+      },
+      "pdf": "Download as PDF"
     },
     "noWorkshop": {
       "title": "Sign in from your workshop",

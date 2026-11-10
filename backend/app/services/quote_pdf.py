@@ -13,6 +13,10 @@ de agua "Borrador, no válido".
 
 El documento va en español, el idioma de la normativa que lo exige (RD
 1457/1986).
+
+El cliente descarga el de sus versiones enviadas desde el portal (F4 paso 6,
+RF-54): el mismo documento, sin lo que el portal tampoco le enseña, el motivo
+de una anulación y quién del taller anotó su decisión (decidido por el usuario).
 """
 
 from dataclasses import dataclass
@@ -29,6 +33,7 @@ from app.domain.quotes import DecisionChannel, LineKind, PartCondition, QuoteSta
 from app.domain.work_orders import order_code
 from app.infra.pdf import Resource, render_pdf
 from app.models import Quote, Workshop
+from app.repositories import portal as portal_repo
 from app.repositories import quotes as quote_repo
 from app.repositories import settings as settings_repo
 from app.repositories import work_orders as order_repo
@@ -96,6 +101,7 @@ def _missing_legal_data(workshop: Workshop) -> list[str]:
 async def quote_pdf(
     session: AsyncSession, workshop_id: UUID, role: str, quote_id: UUID
 ) -> QuotePdf:
+    """El del taller: cualquier versión, también la vista previa del borrador."""
     quote = await quote_repo.get(session, quote_id)
     if quote is None:
         raise NotFoundError("quote_not_found")
@@ -103,6 +109,23 @@ async def quote_pdf(
     # (el mecánico, si el taller lo desactiva) tampoco descarga el PDF.
     if await prices_hidden(session, workshop_id, role):
         raise ForbiddenError("quote_prices_hidden")
+    return await _render(session, workshop_id, quote, for_client=False)
+
+
+async def client_quote_pdf(
+    session: AsyncSession, workshop_id: UUID, client_id: UUID, quote_id: UUID
+) -> QuotePdf:
+    """El del cliente (RF-54): solo de una versión enviada alguna vez de una orden
+    suya. Otra cualquiera, también un borrador suyo, no existe (T4, RF-44)."""
+    quote = await portal_repo.quote_of(session, client_id, quote_id)
+    if quote is None:
+        raise NotFoundError("quote_not_found")
+    return await _render(session, workshop_id, quote, for_client=True)
+
+
+async def _render(
+    session: AsyncSession, workshop_id: UUID, quote: Quote, *, for_client: bool
+) -> QuotePdf:
     row = await order_repo.get_row(session, quote.work_order_id)
     assert row is not None  # FK: la versión no existe sin su orden
     workshop = await settings_repo.get_workshop(session, workshop_id)
@@ -213,12 +236,14 @@ async def quote_pdf(
                     "%d/%m/%Y a las %H:%M"
                 ),
                 "channel": CHANNEL[DecisionChannel(decision.channel)],
-                "recorded_by": recorded_by,
+                # El nombre de un empleado no sale por el portal (RF-43).
+                "recorded_by": None if for_client else recorded_by,
             }
             if decision
             else None
         ),
-        "cancel_reason": quote.cancel_reason,
+        # Lo escribió el taller para sí; el cliente ve que se anuló.
+        "cancel_reason": None if for_client else quote.cancel_reason,
     }
     resources = (
         {"logo": Resource(logo.content, logo.media_type)} if logo is not None else {}

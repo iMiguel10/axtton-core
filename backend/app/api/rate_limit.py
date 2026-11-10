@@ -9,6 +9,7 @@ coloca por fuera del de SuperTokens y las alcanza primero.
 import json
 import logging
 from typing import Any
+from uuid import UUID
 
 from fastapi import Request
 from starlette.datastructures import Headers
@@ -26,6 +27,7 @@ from app.domain.rate_limits import (
     PORTAL_CONSUME_PER_IP,
     PORTAL_LINK_PER_EMAIL,
     PORTAL_LINK_PER_IP,
+    PORTAL_PDF_PER_CLIENT,
     RateRule,
 )
 from app.infra.rate_limit import RateLimitResult, current_rate_limiter
@@ -95,6 +97,10 @@ async def limit_portal_link(request: Request, email: str) -> None:
 
 async def limit_portal_consume(request: Request) -> None:
     await enforce(PORTAL_CONSUME_PER_IP, request_ip(request))
+
+
+async def limit_portal_pdf(workshop_id: UUID, client_id: UUID) -> None:
+    await enforce(PORTAL_PDF_PER_CLIENT, f"{workshop_id}:{client_id}")
 
 
 # --- Rutas de SuperTokens ----------------------------------------------------

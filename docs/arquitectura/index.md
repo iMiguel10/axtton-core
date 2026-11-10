@@ -483,7 +483,7 @@ axtton-core/
 │       ├── core/                configuración, SuperTokens, la sesión (sessions.py), BD con el taller fijado, errores
 │       ├── domain/              reglas puras: matriz de permisos (can), actores, límite de peticiones, invitaciones;
 │       │                        F2 añadió work_orders (transiciones, deshacer), limits, clients, vehicles, search y emails;
-│       │                        F3 añadió settings, quotes (la regla única de los totales y las transiciones de versión) y business_days; los estados que ve el cliente llegan con el portal (F4). money.py es de F0
+│       │                        F3 añadió settings, quotes (la regla única de los totales y las transiciones de versión) y business_days; F4 añadió portal (lo que ve el cliente de una orden, RF-80). money.py es de F0
 │       ├── models/              SQLAlchemy
 │       ├── repositories/        consultas con axtton_app; siempre bajo RLS
 │       ├── schemas/             Pydantic, separados por actor cuando lo que se expone difiere

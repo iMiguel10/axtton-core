@@ -594,6 +594,20 @@
       "staffSession": "This browser has a workshop staff session open. To enter as a customer, sign out of it first from the workshop app.",
       "goToWorkshop": "Go to the workshop app"
     },
+    "progress": {
+      "statuses": {
+        "in_review": "Under review",
+        "awaiting_response": "Quote awaiting your response",
+        "in_repair": "In repair",
+        "waiting_parts": "In repair · waiting for parts",
+        "ready": "Ready for pickup",
+        "ready_unrepaired": "Ready for pickup · not repaired",
+        "delivered": "Delivered"
+      },
+      "updated": "Updated",
+      "expected": "Expected delivery",
+      "overdue": "The expected date was {{date}}; the workshop has not updated it yet."
+    },
     "noWorkshop": {
       "title": "Sign in from your workshop",
       "description": "Each workshop has its own address to sign in to its portal.",

@@ -20,7 +20,7 @@ Con los códigos de SuperTokens, abrir el enlace del taller A dejaba inservible 
 
 **Se entra en el portal desde la dirección de cada taller, y el enlace es nuestro.**
 
-- **La página de entrada es de un taller**: `/portal/login/{taller}`. El taller la da en su web, en el resguardo o en sus correos, y la página enseña su nombre (y, desde el paso 7 de F4, su logotipo). `/portal/login` sin taller no pide nada: explica que se entra desde la dirección del taller o desde sus correos. Por ahora el taller va por su id. Un nombre corto y legible lo elegirá el administrador en el paso 7 (ver abajo).
+- **La página de entrada es de un taller**: `/portal/login/{taller}`. El taller la da en su web, en el resguardo o en sus correos, y la página enseña su nombre (y, desde el paso 7 de F4, su logotipo). `/portal/login` sin taller no pide nada: explica que se entra desde la dirección del taller o desde sus correos. Al principio el taller iba solo por su id. *Hecho en el paso 7 ([0007](0007-nombre-corto-del-taller-en-el-portal.md)):* además, `/portal/{nombre}`, con un nombre corto y legible que elige el administrador.
 - **Pedir el enlace** (`POST /api/v1/portal/auth/request-link`, con el taller y el email) fija ese taller y busca al cliente por su email **bajo RLS**, como cualquier petición. Si existe y está activo, se le envía **un** enlace. La respuesta es siempre un 202 vacío, se haga o no, y todo ocurre después de responder (RF-41).
 - **El token lo genera el backend** (`core/tokens.py`, como las invitaciones) y se guarda **solo su hash** en `portal_links` (migración `0016portallinks`), una tabla del taller con RLS forzada, con su cliente, su caducidad (15 minutos) y cómo se cerró (`used_at` o `revoked_at`).
 - **Consumir** (`POST /api/v1/portal/auth/consume`) fija el taller que dice la URL y cierra el enlace con una sola sentencia que comprueba y escribe a la vez. Un enlace de otro taller no se ve (RLS, T5), y uno usado o caducado no se actualiza (T6). Después, `signinup(email)` da el usuario de la receta, y `core/sessions.py` crea la sesión con `actor: client`, el taller y el cliente **del enlace guardado** (T10).
@@ -28,7 +28,7 @@ Con los códigos de SuperTokens, abrir el enlace del taller A dejaba inservible 
 - **El token viaja en el fragmento** (`/portal/access/{taller}#{token}`): el navegador no lo envía al servidor, así que no queda en los registros del proxy ni en la cabecera Referer. La página no entra sola al abrirse: pide pulsar un botón, porque algunos correos abren los enlaces para revisarlos y gastarían uno que solo sirve una vez.
 - **No se guarda el email en el enlace.** Al consumirlo se lee el del cliente. Cambiar el email o anonimizar al cliente revoca sus enlaces pendientes en la misma transacción. Emitir bloquea al cliente (`FOR SHARE`), y así un cambio de email a la vez también ve el enlace recién emitido.
 
-**El nombre corto del taller en la dirección** (paso 7 de F4) tendrá que ser:
+**El nombre corto del taller en la dirección** (paso 7 de F4, hecho: [0007](0007-nombre-corto-del-taller-en-el-portal.md)) tenía que ser:
 - **único en toda la instalación**, sin distinguir mayúsculas;
 - una dirección válida: minúsculas sin tildes, dígitos y guiones, sin guion al principio ni al final ni dos seguidos, y de 3 a 40 caracteres;
 - distinto de las rutas del propio portal (`login`, `access`…).

@@ -15,6 +15,7 @@ const HomePage = lazy(() => import("./features/home/HomePage").then((m) => ({ de
 const OrderDetailPage = lazy(() => import("./features/orders/OrderDetailPage").then((m) => ({ default: m.OrderDetailPage })));
 const NoWorkshopPage = lazy(() => import("./features/auth/NoWorkshopPage").then((m) => ({ default: m.NoWorkshopPage })));
 const RequestLinkPage = lazy(() => import("./features/auth/RequestLinkPage").then((m) => ({ default: m.RequestLinkPage })));
+const SlugEntryPage = lazy(() => import("./features/auth/SlugEntryPage").then((m) => ({ default: m.SlugEntryPage })));
 
 /**
  * Portal del cliente (F4), en /portal. Se entra desde la página de un taller
@@ -28,6 +29,9 @@ export function PortalApp() {
         <Route path="/login" element={<NoWorkshopPage />} />
         <Route path="/login/:workshopId" element={<RequestLinkPage />} />
         <Route path="/access/:workshopId" element={<AccessPage />} />
+        {/* /portal/{nombre} (decisión 0007). Las páginas del portal de una sola parte
+            (/login…) son palabras reservadas: ningún taller puede llamarse así. */}
+        <Route path="/:slug" element={<SlugEntryPage />} />
         <Route path="/*" element={<SessionGate />} />
       </Routes>
     </Suspense>

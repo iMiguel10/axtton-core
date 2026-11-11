@@ -578,7 +578,8 @@
       "sendAnother": "Pedir otro enlace",
       "titleLoading": "Entra en tu portal",
       "unknownTitle": "Esta dirección no lleva a ningún portal",
-      "unknownDescription": "Puede que el taller haya cambiado su dirección o que ya no use el portal. Pídele la dirección actual o entra desde uno de sus correos."
+      "unknownDescription": "Puede que el taller haya cambiado su dirección o que ya no use el portal. Pídele la dirección actual o entra desde uno de sus correos.",
+      "logoAlt": "Logotipo de {{workshop}}"
     },
     "access": {
       "title": "Entrar en el portal",
@@ -778,7 +779,10 @@
     "quote_prices_hidden": "El taller no deja ver los importes a los mecánicos, así que tampoco el PDF del presupuesto.",
     "portal_link_invalid": "Este enlace ya no sirve: puede que ya lo hayas usado, que haya caducado o que tu acceso haya cambiado. Pide otro.",
     "portal_access_revoked": "Tu acceso a este portal ya no está activo. Si crees que es un error, habla con el taller.",
-    "portal_session_ended": "Tu sesión ha terminado. Vuelve a entrar con un enlace nuevo."
+    "portal_session_ended": "Tu sesión ha terminado. Vuelve a entrar con un enlace nuevo.",
+    "portal_slug_invalid": "El nombre tiene que tener de 3 a 40 caracteres: letras sin tildes, números y guiones, sin guion al principio ni al final ni dos seguidos.",
+    "portal_slug_reserved": "Ese nombre lo usa el propio portal. Elige otro.",
+    "portal_slug_taken": "Ese nombre ya lo usa otro taller. Elige otro."
   },
   "palette": {
     "open": "Buscar en el taller",
@@ -821,7 +825,7 @@
     "timezone": "Zona horaria: {{timezone}}. La fija quien administra la plataforma.",
     "saved": "Datos del taller guardados",
     "logoTitle": "Logotipo",
-    "logoHint": "Sale en la cabecera de los presupuestos. PNG o JPEG de hasta 300 KB; se guarda reducido.",
+    "logoHint": "Sale en la cabecera de los presupuestos y en la entrada de tu portal. PNG o JPEG de hasta 300 KB; se guarda reducido.",
     "logoAlt": "Logotipo del taller",
     "noLogo": "Sin logotipo",
     "uploadLogo": "Subir logotipo",
@@ -829,7 +833,16 @@
     "removeLogo": "Quitar logotipo",
     "confirmRemoveLogo": "Los presupuestos que se generen a partir de ahora saldrán sin logotipo.",
     "logoSaved": "Logotipo guardado",
-    "logoRemoved": "Logotipo quitado"
+    "logoRemoved": "Logotipo quitado",
+    "portalTitle": "Portal del cliente",
+    "portalHint": "La dirección que das a tus clientes para que sigan la reparación y respondan a los presupuestos. Ponla en tu web o en el resguardo.",
+    "portalAddress": "Dirección del portal",
+    "portalAddressById": "También vale siempre esta, aunque cambies el nombre",
+    "portalSlug": "Nombre en la dirección",
+    "portalSlugHint": "De 3 a 40 letras sin tildes, números y guiones, por ejemplo talleres-martinez. Si lo cambias, la dirección anterior deja de funcionar.",
+    "portalSaved": "Dirección del portal guardada",
+    "copyAddress": "Copiar la dirección",
+    "addressCopied": "Dirección copiada"
   },
   "rates": {
     "title": "Tarifas de mano de obra",
@@ -994,7 +1007,8 @@
         "approved": "Aprobado {{channel}} el {{when}}",
         "rejected": "Rechazado {{channel}} el {{when}}"
       },
-      "recordedBy": "lo registró {{name}}"
+      "recordedBy": "lo registró {{name}}",
+      "evidence": "IP {{ip}} · navegador: {{browser}}"
     }
   }
 }

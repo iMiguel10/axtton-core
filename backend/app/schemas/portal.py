@@ -35,6 +35,13 @@ class PortalDecisionCreate(BaseModel):
 
 class PortalEntryRead(BaseModel):
     workshop_name: str
+    has_logo: bool
+
+
+class PortalSlugRead(BaseModel):
+    """Solo el id: el nombre lo da la entrada, ya con el taller fijado."""
+
+    workshop_id: UUID
 
 
 class PortalLinkRequest(BaseModel):

@@ -14,6 +14,8 @@ export type WorkshopSettings = {
   /** El plazo de entrega con el que empieza un presupuesto (RF-37); nulo si no hay. */
   default_delivery_business_days: number | null;
   mechanics_see_sale_prices: boolean;
+  /** La dirección del portal, /portal/{nombre} (decisión 0007); nulo si no tiene. */
+  portal_slug: string | null;
   /** Solo lectura: la fija la plataforma. */
   timezone: string;
   has_logo: boolean;
@@ -21,7 +23,7 @@ export type WorkshopSettings = {
   version: number;
 };
 
-export type WorkshopSettingsInput = Omit<WorkshopSettings, "timezone" | "has_logo" | "version">;
+export type WorkshopSettingsInput = Omit<WorkshopSettings, "timezone" | "has_logo" | "version" | "portal_slug">;
 
 export type LaborRate = {
   id: string;
@@ -39,7 +41,7 @@ export function settingsApi(workshopId: string) {
     apiRequest<T>(path, { method, body, workshopId });
   return {
     get: () => request<WorkshopSettings>("/workshop/settings", "GET"),
-    update: (settings: WorkshopSettings, changes: Partial<WorkshopSettingsInput>) =>
+    update: (settings: WorkshopSettings, changes: Partial<WorkshopSettingsInput & { portal_slug: string | null }>) =>
       request<void>("/workshop/settings", "PATCH", { version: settings.version, ...changes }),
     logo: () => apiBlob("/workshop/settings/logo", { workshopId }),
     uploadLogo: (file: File) => request<void>("/workshop/settings/logo", "PUT", file),

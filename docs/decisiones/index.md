@@ -16,6 +16,7 @@ Ficheros con el formato `NNNN-titulo-corto.md`, añadidos también a la navegaci
 | [0004](0004-produccion-en-coolify.md) | Producción en Coolify, con un Nginx propio y la demo como primera instalación | F2 |
 | [0005](0005-logotipo-del-taller-como-unica-imagen-subida.md) | El logotipo del taller, la única imagen que se sube | F3 |
 | [0006](0006-enlaces-magicos-propios-ligados-al-taller.md) | Enlaces mágicos propios, ligados a un taller | F4 |
+| [0007](0007-nombre-corto-del-taller-en-el-portal.md) | El nombre corto del taller en la dirección del portal | F4 |
 
 ## Plantilla
 

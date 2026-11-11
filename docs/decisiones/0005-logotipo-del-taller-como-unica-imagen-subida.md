@@ -15,7 +15,7 @@ Una **excepción acotada a RF-50**, solo para el logotipo, y con condiciones:
 - **PNG o JPEG, como mucho 300 KB.** El tamaño se corta al leer el cuerpo de la petición, sin fiarse del `Content-Length`. Se envía tal cual (`PUT /workshop/settings/logo` con su `Content-Type`), sin `multipart`.
 - **No se guarda lo subido: se vuelve a dibujar.** Pillow lo decodifica solo con sus decodificadores de PNG y JPEG. El tamaño declarado se comprueba antes de descomprimir (como mucho 4.000 × 4.000 píxeles: una imagen pequeña puede declarar muchos y llenar la memoria). La imagen se reduce a una caja de 800 × 400 y se guarda como un PNG nuevo, sin metadatos. Lo que venga pegado detrás de la imagen, un perfil o un comentario no sobrevive. Decodificar va en un hilo aparte (`infra/images.py`), como el PDF.
 - **En la base de datos**, en `workshop_logos` (su clave es el taller, con RLS), y no en `workshops`, que se lee en cada petición. No hay almacén de ficheros.
-- **Se usa solo en los documentos generados** (el PDF del presupuesto, paso 7 de F3) y en su pantalla de configuración. El portal no lo enseña, y los correos siguen con la marca de la plataforma.
+- **Se usa solo en los documentos generados** (el PDF del presupuesto, paso 7 de F3) y en su pantalla de configuración. El portal no lo enseña, y los correos siguen con la marca de la plataforma. *Cambiado por la [0007](0007-nombre-corto-del-taller-en-el-portal.md) (paso 7 de F4):* sale también en la entrada del portal del taller, el mismo PNG dibujado por el servidor.
 - **Se audita** cambiarlo y quitarlo.
 
 ## Alternativas descartadas

@@ -356,6 +356,11 @@ function DecisionSummary({ decision }: { decision: QuoteDecision }) {
         {decision.recorded_by_name && ` · ${t("quotes.decision.recordedBy", { name: decision.recorded_by_name })}`}
       </p>
       {decision.note && <p className="text-muted-foreground whitespace-pre-line">{decision.note}</p>}
+      {(decision.ip || decision.user_agent) && (
+        <p className="text-muted-foreground text-xs break-all">
+          {t("quotes.decision.evidence", { ip: decision.ip ?? "—", browser: decision.user_agent ?? "—" })}
+        </p>
+      )}
     </div>
   );
 }

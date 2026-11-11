@@ -19,6 +19,8 @@ class WorkshopSettingsRead(BaseModel):
     quote_validity_business_days: int
     default_delivery_business_days: int | None
     mechanics_see_sale_prices: bool
+    # La dirección del portal, /portal/{nombre} (decisión 0007).
+    portal_slug: str | None
     # Solo lectura: los fija la plataforma.
     timezone: str
     has_logo: bool
@@ -48,6 +50,8 @@ class WorkshopSettingsUpdate(BaseModel):
         default=None, ge=1, le=MAX_DELIVERY_BUSINESS_DAYS
     )
     mechanics_see_sale_prices: bool | None = None
+    # Vacío o null lo quita; el formato lo comprueba el service (422 con código).
+    portal_slug: str | None = Field(default=None, max_length=100)
 
     @model_validator(mode="after")
     def required_fields_are_not_nulled(self) -> "WorkshopSettingsUpdate":

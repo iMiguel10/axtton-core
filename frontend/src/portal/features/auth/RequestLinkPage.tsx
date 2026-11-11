@@ -13,7 +13,7 @@ import { Button } from "@/shared/components/ui/button";
 import { errorMessage } from "@/shared/lib/errors";
 
 import { rememberWorkshop } from "../../lib/lastWorkshop";
-import { fetchEntry, requestLink } from "./api";
+import { fetchEntry, logoUrl, requestLink } from "./api";
 
 const schema = z.object({ email: z.email("validation.email") });
 type RequestForm = z.infer<typeof schema>;
@@ -24,8 +24,13 @@ type RequestForm = z.infer<typeof schema>;
  * llega solo abre ese taller.
  */
 export function RequestLinkPage() {
-  const { t } = useTranslation();
   const { workshopId = "" } = useParams();
+  return <WorkshopEntry workshopId={workshopId} />;
+}
+
+/** La página de entrada de un taller ya conocido, por su id o por su nombre corto. */
+export function WorkshopEntry({ workshopId }: { workshopId: string }) {
+  const { t } = useTranslation();
   const entry = useQuery({
     queryKey: ["portal", "entry", workshopId],
     queryFn: () => fetchEntry(workshopId),
@@ -35,18 +40,19 @@ export function RequestLinkPage() {
     if (entry.isSuccess) rememberWorkshop(workshopId);
   }, [entry.isSuccess, workshopId]);
 
-  if (entry.isError) {
-    return (
-      <AuthLayout title={t("portal.login.unknownTitle")} tagline={t("portal.tagline")}>
-        <p role="alert" className="text-muted-foreground text-center text-sm">
-          {t("portal.login.unknownDescription")}
-        </p>
-      </AuthLayout>
-    );
-  }
+  if (entry.isError) return <UnknownEntry />;
 
   return (
     <AuthLayout
+      logo={
+        entry.data?.has_logo && (
+          <img
+            src={logoUrl(workshopId)}
+            alt={t("portal.login.logoAlt", { workshop: entry.data.workshop_name })}
+            className="max-h-16 max-w-48 object-contain"
+          />
+        )
+      }
       title={
         entry.data
           ? t("portal.login.title", { workshop: entry.data.workshop_name })
@@ -56,6 +62,18 @@ export function RequestLinkPage() {
       tagline={t("portal.tagline")}
     >
       {entry.isPending ? <LinesSkeleton /> : <RequestForm workshopId={workshopId} />}
+    </AuthLayout>
+  );
+}
+
+/** Ni un taller ni un nombre corto que exista: lo mismo en los dos casos. */
+export function UnknownEntry() {
+  const { t } = useTranslation();
+  return (
+    <AuthLayout title={t("portal.login.unknownTitle")} tagline={t("portal.tagline")}>
+      <p role="alert" className="text-muted-foreground text-center text-sm">
+        {t("portal.login.unknownDescription")}
+      </p>
     </AuthLayout>
   );
 }

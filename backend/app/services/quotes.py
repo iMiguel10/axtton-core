@@ -24,6 +24,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.client_ip import valid_ip
 from app.core.errors import ConflictError, NotFoundError, ValidationFailedError
 from app.domain.business_days import delivery_date, quote_valid_until
+from app.domain.permissions import Action, can
 from app.domain.quotes import (
     MAX_VERSIONS_PER_ORDER,
     DecisionChannel,
@@ -108,6 +109,8 @@ class QuoteView:
     decision: tuple[QuoteDecision, str | None] | None = None
     # La fecha prevista de entrega, aprobado el presupuesto (RF-37).
     delivery_on: date | None = None
+    # Si quien mira ve la IP y el navegador de una decisión del portal (RF-36).
+    evidence_visible: bool = False
 
 
 def is_expired(quote: Quote, now: datetime) -> bool:
@@ -215,6 +218,7 @@ async def list_quotes(
     lines = await quote_repo.lines_of(session, [q.id for q in quotes])
     decisions = await quote_repo.decisions_of(session, [q.id for q in quotes])
     hidden = await prices_hidden(session, workshop_id, role)
+    evidence_visible = can(role, Action.VIEW_PORTAL_EVIDENCE)
     workshop = await session.get(Workshop, workshop_id)
     assert workshop is not None
     views = []
@@ -233,6 +237,7 @@ async def list_quotes(
                 delivery_on(
                     quote, decision[0] if decision else None, workshop.timezone
                 ),
+                evidence_visible=evidence_visible,
             )
         )
     return views

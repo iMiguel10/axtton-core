@@ -55,6 +55,10 @@ class Action(StrEnum):
     # Preparar, enviar y anular presupuestos (especificación §3): solo el
     # administrador. Verlos es de VIEW_ORDERS, sin importes si el taller lo dice.
     MANAGE_QUOTES = "manage_quotes"
+    # Ver la IP y el navegador con que el cliente decidió en el portal (RF-36):
+    # son la prueba ante una disputa y datos personales, solo el administrador
+    # (F4 paso 7, decidido por el usuario).
+    VIEW_PORTAL_EVIDENCE = "view_portal_evidence"
 
 
 ROLE_PERMISSIONS: dict[Role, frozenset[Action]] = {

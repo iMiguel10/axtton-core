@@ -578,7 +578,8 @@
       "sendAnother": "Request another link",
       "titleLoading": "Sign in to your portal",
       "unknownTitle": "This address doesn’t lead to any portal",
-      "unknownDescription": "The workshop may have changed its address or no longer uses the portal. Ask them for the current address or sign in from one of their emails."
+      "unknownDescription": "The workshop may have changed its address or no longer uses the portal. Ask them for the current address or sign in from one of their emails.",
+      "logoAlt": "{{workshop}} logo"
     },
     "access": {
       "title": "Enter the portal",
@@ -778,7 +779,10 @@
     "quote_prices_hidden": "The workshop does not let mechanics see amounts, so the quote PDF is not available either.",
     "portal_link_invalid": "This link no longer works: you may have used it already, it may have expired or your access may have changed. Request another one.",
     "portal_access_revoked": "Your access to this portal is no longer active. If you think this is a mistake, contact the workshop.",
-    "portal_session_ended": "Your session has ended. Sign in again with a new link."
+    "portal_session_ended": "Your session has ended. Sign in again with a new link.",
+    "portal_slug_invalid": "The name must be 3 to 40 characters: unaccented letters, numbers and hyphens, with no hyphen at the start or end and no two in a row.",
+    "portal_slug_reserved": "The portal itself uses that name. Choose another.",
+    "portal_slug_taken": "Another workshop already uses that name. Choose another."
   },
   "palette": {
     "open": "Search the workshop",
@@ -821,7 +825,7 @@
     "timezone": "Time zone: {{timezone}}. Set by the platform administrator.",
     "saved": "Workshop details saved",
     "logoTitle": "Logo",
-    "logoHint": "Shown in the header of quotes. PNG or JPEG up to 300 KB; it is stored scaled down.",
+    "logoHint": "It appears in the header of your quotes and on your portal's entry page. PNG or JPEG up to 300 KB; it is stored reduced.",
     "logoAlt": "Workshop logo",
     "noLogo": "No logo",
     "uploadLogo": "Upload logo",
@@ -829,7 +833,16 @@
     "removeLogo": "Remove logo",
     "confirmRemoveLogo": "Quotes generated from now on will have no logo.",
     "logoSaved": "Logo saved",
-    "logoRemoved": "Logo removed"
+    "logoRemoved": "Logo removed",
+    "portalTitle": "Customer portal",
+    "portalHint": "The address you give your customers so they can follow the repair and reply to quotes. Put it on your website or on the drop-off receipt.",
+    "portalAddress": "Portal address",
+    "portalAddressById": "This one always works too, even if you change the name",
+    "portalSlug": "Name in the address",
+    "portalSlugHint": "3 to 40 unaccented letters, numbers and hyphens, for example martinez-garage. If you change it, the old address stops working.",
+    "portalSaved": "Portal address saved",
+    "copyAddress": "Copy the address",
+    "addressCopied": "Address copied"
   },
   "rates": {
     "title": "Labour rates",
@@ -994,7 +1007,8 @@
         "approved": "Approved {{channel}} on {{when}}",
         "rejected": "Rejected {{channel}} on {{when}}"
       },
-      "recordedBy": "recorded by {{name}}"
+      "recordedBy": "recorded by {{name}}",
+      "evidence": "IP {{ip}} · browser: {{browser}}"
     }
   }
 }

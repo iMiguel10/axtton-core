@@ -1,5 +1,6 @@
 """Reglas puras del portal del cliente (F4). Sin I/O."""
 
+import re
 from dataclasses import dataclass
 from datetime import datetime, timedelta
 from enum import StrEnum
@@ -10,6 +11,53 @@ from app.domain.work_orders import CLOSED, WorkOrderStatus
 # Validez de un enlace mágico (especificación §10): el cliente puede abrir el
 # correo un rato después, pero un enlace olvidado en un buzón no debe valer.
 LINK_LIFETIME = timedelta(minutes=15)
+
+# El nombre corto del taller en la dirección del portal (decisión 0007).
+SLUG_MIN_LENGTH = 3
+SLUG_MAX_LENGTH = 40
+_SLUG = re.compile(r"[a-z0-9]+(?:-[a-z0-9]+)*")
+# /portal/{nombre} comparte la raíz con las páginas del portal: un nombre que
+# fuera una de ellas la taparía. También las que puedan llegar (documentos,
+# cuenta, citas en F8) y lo que se confundiría con la aplicación.
+RESERVED_SLUGS = frozenset(
+    {
+        "access",
+        "account",
+        "admin",
+        "api",
+        "appointments",
+        "assets",
+        "documents",
+        "help",
+        "login",
+        "logout",
+        "orders",
+        "portal",
+        "quotes",
+        "settings",
+        "static",
+        "vehicles",
+        "workshop",
+        "workshops",
+    }
+)
+
+
+def normalize_slug(value: str) -> str:
+    """Sin distinguir mayúsculas: "Talleres-Martinez" es "talleres-martinez"."""
+    return value.strip().lower()
+
+
+def slug_problem(slug: str) -> str | None:
+    """El código de error de un nombre corto ya normalizado, o nada si vale."""
+    if not (SLUG_MIN_LENGTH <= len(slug) <= SLUG_MAX_LENGTH):
+        return "portal_slug_invalid"
+    if not _SLUG.fullmatch(slug):
+        return "portal_slug_invalid"
+    if slug in RESERVED_SLUGS:
+        return "portal_slug_reserved"
+    return None
+
 
 # Cuánto dura una sesión del portal (RF-47), desde que se entra. SuperTokens solo
 # tiene una duración, la misma para el personal, así que esta se comprueba aquí.

@@ -142,7 +142,7 @@ async def test_the_entry_page_shows_the_workshop_name(
 ) -> None:
     response = await client.get(f"/api/v1/portal/workshops/{two_workshops.a}")
     assert response.status_code == 200
-    assert response.json() == {"workshop_name": "Taller A"}
+    assert response.json() == {"workshop_name": "Taller A", "has_logo": False}
 
     # Uno que no existe y uno desactivado (RF-113) responden igual.
     async with engines.platform.begin() as conn:

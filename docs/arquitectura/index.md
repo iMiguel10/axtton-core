@@ -400,7 +400,7 @@ La tabla `workshops` tiene la misma política sobre su `id`, para que el persona
 
 ### Las vías que cruzan talleres
 
-Son exactamente cuatro, y todas usan `axtton_platform` desde un único módulo (`app/platform/`). Ningún endpoint de `/workshop` ni de `/portal` lo importa, salvo **una excepción con nombre**: el selector de talleres (F1). Se escribe, con su fichero y su módulo, en la propia prueba R8 (`R8_EXCEPTIONS`), así que añadir otra es una decisión visible, no un descuido. El diseño preveía una quinta, la petición de enlace mágico, que buscaba el email en todos los talleres; desde F4 se pide desde la entrada de un taller y va por la política normal ([decisión 0006](../decisiones/0006-enlaces-magicos-propios-ligados-al-taller.md)).
+Son exactamente cinco, y todas usan `axtton_platform` desde un único módulo (`app/platform/`). Ningún endpoint de `/workshop` ni de `/portal` lo importa, salvo **dos excepciones con nombre**: el selector de talleres (F1) y el taller de la dirección del portal por su nombre corto (F4, [decisión 0007](../decisiones/0007-nombre-corto-del-taller-en-el-portal.md)). Se escribe, con su fichero y su módulo, en la propia prueba R8 (`R8_EXCEPTIONS`), así que añadir otra es una decisión visible, no un descuido. El diseño preveía una quinta, la petición de enlace mágico, que buscaba el email en todos los talleres; desde F4 se pide desde la entrada de un taller y va por la política normal ([decisión 0006](../decisiones/0006-enlaces-magicos-propios-ligados-al-taller.md)).
 
 | Vía | Qué lee | Por qué no puede ir por la política normal |
 |---|---|---|
@@ -408,6 +408,7 @@ Son exactamente cuatro, y todas usan `axtton_platform` desde un único módulo (
 | Planificador del `worker` | Qué hay pendiente en todos los talleres: avisos por enviar, presupuestos por caducar, firmas por borrar | Tiene que encontrar trabajo sin saber de antemano de qué taller es |
 | Comandos de servidor | Crear el primer superadministrador (RF-110), restaurar copias | Operación |
 | Selector de talleres (`GET /workshop/me`, RF-08; añadida en F1) | Los talleres en los que la persona de la sesión es empleada activa, con su nombre y su rol | Hay que saber cuáles son antes de poder fijar ninguno para RLS. Solo devuelve los de la propia persona (`app/platform/memberships.py`) |
+| Dirección del portal por nombre (`GET /portal/workshops/by-slug/{nombre}`; añadida en F4, decisión 0007) | El id del taller activo con ese nombre corto exacto | `/portal/{nombre}` no dice de qué taller es hasta buscarlo. Solo devuelve el id, nunca una lista ni nada parecido; es pública y lleva un límite por IP (`app/platform/portal_entry.py`) |
 
 El planificador **solo busca** (devuelve ids y su `workshop_id`). Cada trabajo concreto se procesa después **en el contexto de su taller**, con `axtton_app` y la política normal. Así, un fallo en el código que procesa un aviso no puede tocar otro taller.
 

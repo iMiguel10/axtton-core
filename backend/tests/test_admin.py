@@ -256,6 +256,9 @@ def _imports(path: Path) -> set[str]:
 R8_EXCEPTIONS = {
     # Selector de taller: saber en qué talleres trabaja la persona (RF-08).
     ("workshop/router.py", "app.platform.memberships"),
+    # La dirección del portal por el nombre corto del taller (decisión 0007):
+    # solo el id de un taller activo con ese nombre exacto.
+    ("portal/auth.py", "app.platform.portal_entry"),
 }
 
 

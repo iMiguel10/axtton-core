@@ -27,6 +27,7 @@ from app.domain.portal import LINK_LIFETIME, PortalLogin, access_link
 from app.models import Client, Workshop
 from app.repositories import clients as client_repo
 from app.repositories import portal_links as link_repo
+from app.repositories import settings as settings_repo
 from app.repositories import vehicles as vehicle_repo
 
 
@@ -70,6 +71,13 @@ class PortalEntry:
     """Lo que enseña la página de entrada de un taller, sin sesión."""
 
     workshop_name: str
+    has_logo: bool
+
+
+@dataclass(frozen=True)
+class EntryLogo:
+    content: bytes
+    media_type: str
 
 
 async def entry(workshop_id: UUID) -> PortalEntry:
@@ -82,7 +90,24 @@ async def entry(workshop_id: UUID) -> PortalEntry:
         workshop = await session.get(Workshop, workshop_id)
         if workshop is None or not _active(workshop):
             raise NotFoundError("workshop_not_found")
-        return PortalEntry(workshop_name=workshop.name)
+        return PortalEntry(
+            workshop_name=workshop.name,
+            has_logo=await settings_repo.has_logo(session, workshop_id),
+        )
+
+
+async def entry_logo(workshop_id: UUID) -> EntryLogo:
+    """El logotipo de la entrada (decisión 0007, que amplía la 0005): el PNG que
+    el servidor volvió a dibujar al subirlo, nunca lo que se subió. Es la marca
+    del taller, pública como su nombre."""
+    async with workshop_transaction([workshop_id]) as session:
+        workshop = await session.get(Workshop, workshop_id)
+        if workshop is None or not _active(workshop):
+            raise NotFoundError("workshop_not_found")
+        logo = await settings_repo.get_logo(session, workshop_id)
+        if logo is None:
+            raise NotFoundError("logo_not_found")
+        return EntryLogo(logo.content, logo.media_type)
 
 
 async def _issue(

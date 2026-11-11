@@ -55,6 +55,9 @@ class QuoteDecisionRead(BaseModel):
     # Quién la registró si la registró el taller; nulo si decidió el cliente.
     recorded_by_name: str | None
     note: str | None
+    # De una decisión del portal, y solo para el administrador (RF-36).
+    ip: str | None = None
+    user_agent: str | None = None
 
 
 class QuoteRead(BaseModel):

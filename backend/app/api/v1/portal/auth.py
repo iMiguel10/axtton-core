@@ -5,23 +5,36 @@ Son las únicas rutas de /api/v1/portal sin sesión: quien las usa todavía no l
 tiene. Por eso no cuelgan del router del portal, que exige el actor cliente, y
 la prueba T1 las nombra como excepción (`PUBLIC_ROUTES` en test_auth.py).
 
-Todas llevan el taller, así que van por la política normal: fijan ese taller y
-buscan bajo RLS. Ninguna cruza talleres.
+Casi todas llevan el taller, así que van por la política normal: fijan ese taller
+y buscan bajo RLS. La única que cruza talleres es buscar uno por su nombre corto,
+por la vía de plataforma con nombre (decisión 0007, R8_EXCEPTIONS).
 """
 
 import logging
 from typing import Annotated
 from uuid import UUID
 
-from fastapi import APIRouter, BackgroundTasks, Depends, Request, status
+from fastapi import APIRouter, BackgroundTasks, Depends, Request, Response, status
 
 from app.api.deps import get_email_sender
-from app.api.rate_limit import limit_portal_consume, limit_portal_link
+from app.api.rate_limit import (
+    limit_portal_consume,
+    limit_portal_entry,
+    limit_portal_link,
+)
 from app.core.config import get_settings
+from app.core.errors import NotFoundError
 from app.core.sessions import create_client_session
 from app.domain.clients import normalize_email
+from app.domain.portal import normalize_slug, slug_problem
 from app.infra.email import EmailSender, compose
-from app.schemas.portal import PortalEntryRead, PortalLinkConsume, PortalLinkRequest
+from app.platform.portal_entry import workshop_id_by_slug
+from app.schemas.portal import (
+    PortalEntryRead,
+    PortalLinkConsume,
+    PortalLinkRequest,
+    PortalSlugRead,
+)
 from app.services import portal_auth as portal_auth_service
 
 logger = logging.getLogger(__name__)
@@ -29,12 +42,43 @@ logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/api/v1/portal", tags=["portal"])
 
 
+@router.get("/workshops/by-slug/{slug}")
+async def workshop_by_slug(slug: str, request: Request) -> PortalSlugRead:
+    """El taller de `/portal/{nombre}` (decisión 0007). 404 si no hay ningún taller
+    activo con ese nombre; uno que no es un nombre válido, ni se busca."""
+    await limit_portal_entry(request)
+    normalized = normalize_slug(slug)
+    found = None if slug_problem(normalized) else await workshop_id_by_slug(normalized)
+    if found is None:
+        raise NotFoundError("workshop_not_found")
+    return PortalSlugRead(workshop_id=found)
+
+
 @router.get("/workshops/{workshop_id}")
-async def workshop_entry(workshop_id: UUID) -> PortalEntryRead:
+async def workshop_entry(workshop_id: UUID, request: Request) -> PortalEntryRead:
     """El taller de una página de entrada (`/portal/login/{taller}`). 404 si no
     existe o está desactivado."""
+    await limit_portal_entry(request)
     entry = await portal_auth_service.entry(workshop_id)
-    return PortalEntryRead(workshop_name=entry.workshop_name)
+    return PortalEntryRead(workshop_name=entry.workshop_name, has_logo=entry.has_logo)
+
+
+@router.get("/workshops/{workshop_id}/logo")
+async def workshop_logo(workshop_id: UUID, request: Request) -> Response:
+    """El logotipo de la entrada, el PNG que volvió a dibujar el servidor."""
+    await limit_portal_entry(request)
+    logo = await portal_auth_service.entry_logo(workshop_id)
+    return Response(
+        content=logo.content,
+        media_type=logo.media_type,
+        headers={
+            # Es público, como el nombre del taller; si lo cambia, se ve en minutos.
+            "Cache-Control": "public, max-age=300",
+            "X-Content-Type-Options": "nosniff",
+            # Abierto suelto en el navegador, que no ejecute nada.
+            "Content-Security-Policy": "default-src 'none'",
+        },
+    )
 
 
 async def _send_link(workshop_id: UUID, email: str, email_sender: EmailSender) -> None:

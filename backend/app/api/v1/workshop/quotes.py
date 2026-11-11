@@ -127,6 +127,14 @@ def _read(view: QuoteView) -> QuoteRead:
                 decided_at=view.decision[0].decided_at,
                 recorded_by_name=view.decision[1],
                 note=view.decision[0].note,
+                ip=(
+                    str(view.decision[0].ip)
+                    if view.evidence_visible and view.decision[0].ip
+                    else None
+                ),
+                user_agent=(
+                    view.decision[0].user_agent if view.evidence_visible else None
+                ),
             )
             if view.decision
             else None

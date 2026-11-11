@@ -56,6 +56,11 @@ PORTAL_LINK_PER_EMAIL = RateRule("portal_link", "5/hour", RateKey.EMAIL)
 PORTAL_LINK_PER_IP = RateRule("portal_link", "20/hour", RateKey.IP)
 PORTAL_CONSUME_PER_IP = RateRule("portal_consume", "30/hour", RateKey.IP)
 
+# Las páginas de entrada del portal, sin sesión (decisión 0007): su nombre, su
+# logotipo y buscar un taller por su nombre corto. Una carga de la página son dos o
+# tres; el límite frena a quien prueba nombres para ver cuáles existen.
+PORTAL_ENTRY_PER_IP = RateRule("portal_entry", "60/minute", RateKey.IP)
+
 # El PDF del portal (RF-54): maquetarlo es caro y solo hay dos a la vez por proceso
 # (infra/pdf.py), compartidos con el taller. Un cliente no debe poder ocuparlos.
 # Por cliente: la clave es su taller y su ficha, que salen de la sesión.

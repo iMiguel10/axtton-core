@@ -74,6 +74,9 @@ export type QuoteDecision = {
   /** Quién la registró, si la registró el taller; nulo si decidió el cliente. */
   recorded_by_name: string | null;
   note: string | null;
+  /** De una decisión del portal, y solo para el administrador (RF-36). */
+  ip: string | null;
+  user_agent: string | null;
 };
 
 export type QuoteLineInput = {

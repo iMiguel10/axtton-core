@@ -46,7 +46,7 @@ La dirección con el id del taller seguirá valiendo, también si el nombre camb
 
 ## Consecuencias
 
-- **Ninguna consulta del portal cruza talleres.** Las vías de plataforma (arquitectura §4) son cuatro, y `R8_EXCEPTIONS` solo contiene el selector de talleres del personal.
+- **Ninguna consulta del portal cruza talleres.** Las vías de plataforma (arquitectura §4) son cuatro, y `R8_EXCEPTIONS` solo contiene el selector de talleres del personal. *Cambiado por la [0007](0007-nombre-corto-del-taller-en-el-portal.md) (paso 7 de F4):* buscar un taller por su nombre corto cruza talleres, por una vía de plataforma con nombre que solo devuelve un id.
 - **Quien es cliente de varios talleres entra en cada uno desde su dirección**, y cada enlace abre una sesión que solo ve ese taller. En un mismo navegador, entrar en otro taller sustituye la sesión del anterior.
 - **El portal es de cada taller**, y su entrada se puede personalizar con la configuración del taller.
 - **Un solo usuario de SuperTokens por email de cliente**, como ya decía §2: revocar sus sesiones nunca puede ser `revokeAllSessionsForUser` (paso 2 de F4).

@@ -16,6 +16,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.errors import ConflictError, NotFoundError, ValidationFailedError
 from app.domain.clients import normalize_email, normalize_tax_id
 from app.domain.permissions import Role
+from app.domain.portal import normalize_slug, slug_problem
 from app.domain.settings import MAX_ACTIVE_LABOR_RATES
 from app.infra.images import InvalidImageError, normalize_logo
 from app.models import AuditEntry, LaborRate, Workshop, WorkshopLogo
@@ -37,6 +38,8 @@ EDITABLE = (
     "quote_validity_business_days",
     "default_delivery_business_days",
     "mechanics_see_sale_prices",
+    # 0019portalslug: la dirección del portal (decisión 0007).
+    "portal_slug",
 )
 OPTIONAL_TEXT = (
     "legal_name",
@@ -45,7 +48,11 @@ OPTIONAL_TEXT = (
     "phone",
     "reply_to_email",
     "industrial_registry_number",
+    "portal_slug",
 )
+
+# Dos talleres que eligen el mismo nombre a la vez: el índice rechaza al segundo.
+SLUG_UNIQUE = {"uq_workshops_portal_slug": "portal_slug_taken"}
 
 RATE_UNIQUE = {
     "uq_labor_rates_workshop_id_name": "labor_rate_name_taken",
@@ -109,6 +116,12 @@ def _normalized(changes: dict[str, Any]) -> dict[str, Any]:
         result["tax_id"] = normalize_tax_id(result["tax_id"]) or None
     if result.get("reply_to_email") is not None:
         result["reply_to_email"] = normalize_email(result["reply_to_email"])
+    if result.get("portal_slug") is not None:
+        slug = normalize_slug(result["portal_slug"])
+        problem = slug_problem(slug)
+        if problem:
+            raise ValidationFailedError(problem)
+        result["portal_slug"] = slug
     return result
 
 
@@ -142,7 +155,9 @@ async def update_workshop(
         workshop_id,
         changed,
     )
-    await session.flush()
+    # Único en toda la instalación: no se puede comprobar antes sin mirar los
+    # otros talleres, así que lo dice el índice.
+    await flush_or_conflict(session, SLUG_UNIQUE)
 
 
 # --- Logotipo (decisión 0005) -------------------------------------------------

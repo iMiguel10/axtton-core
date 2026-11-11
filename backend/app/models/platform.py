@@ -64,9 +64,19 @@ class Workshop(IdMixin, CreatedAtMixin, UpdatedAtMixin, Base):
         CheckConstraint("max_clients > 0", name="max_clients"),
         CheckConstraint("max_vehicles > 0", name="max_vehicles"),
         CheckConstraint("max_orders_per_month > 0", name="max_orders_per_month"),
+        # El nombre corto del portal (decisión 0007): una dirección válida, en
+        # minúsculas. Las palabras reservadas, en domain/portal.py.
+        CheckConstraint(
+            "portal_slug ~ '^[a-z0-9]+(-[a-z0-9]+)*$'"
+            " AND length(portal_slug) BETWEEN 3 AND 40",
+            name="portal_slug",
+        ),
     )
 
     name: Mapped[str] = mapped_column(String(200))
+    # La dirección del portal, /portal/{nombre} (F4 paso 7). Única en la
+    # instalación; vacía, el portal del taller va solo por su id.
+    portal_slug: Mapped[str | None] = mapped_column(String(40), unique=True)
     legal_name: Mapped[str | None] = mapped_column(String(200))
     tax_id: Mapped[str | None] = mapped_column(String(20))
     address: Mapped[str | None] = mapped_column(String(300))

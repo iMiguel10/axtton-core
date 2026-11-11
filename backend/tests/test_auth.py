@@ -29,6 +29,9 @@ ALLOWED_PREFIX = {
 # excepciones de R8, para que añadir otra sea una decisión visible.
 PUBLIC_ROUTES = {
     ("GET", "/api/v1/portal/workshops/{workshop_id}"),
+    # Decisión 0007: el taller por su nombre corto y su logotipo, en la entrada.
+    ("GET", "/api/v1/portal/workshops/by-slug/{slug}"),
+    ("GET", "/api/v1/portal/workshops/{workshop_id}/logo"),
     ("POST", "/api/v1/portal/auth/request-link"),
     ("POST", "/api/v1/portal/auth/consume"),
 }

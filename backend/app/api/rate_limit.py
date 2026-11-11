@@ -25,6 +25,7 @@ from app.domain.rate_limits import (
     INVITATION_ACCEPT_PER_TOKEN,
     INVITATION_VIEW_PER_IP,
     PORTAL_CONSUME_PER_IP,
+    PORTAL_ENTRY_PER_IP,
     PORTAL_LINK_PER_EMAIL,
     PORTAL_LINK_PER_IP,
     PORTAL_PDF_PER_CLIENT,
@@ -97,6 +98,10 @@ async def limit_portal_link(request: Request, email: str) -> None:
 
 async def limit_portal_consume(request: Request) -> None:
     await enforce(PORTAL_CONSUME_PER_IP, request_ip(request))
+
+
+async def limit_portal_entry(request: Request) -> None:
+    await enforce(PORTAL_ENTRY_PER_IP, request_ip(request))
 
 
 async def limit_portal_pdf(workshop_id: UUID, client_id: UUID) -> None:

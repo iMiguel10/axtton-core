@@ -13,12 +13,15 @@ import { LanguageSwitcher, ThemeToggle } from "@/shared/components/Preferences";
  */
 export function AuthLayout({
   title,
+  logo,
   description,
   footer,
   tagline,
   children,
 }: {
   title: string;
+  /** Sobre el título: el logotipo del taller en la entrada de su portal. */
+  logo?: ReactNode;
   /** El texto del panel de marca; por defecto, el del taller. */
   tagline?: string;
   description?: ReactNode;
@@ -39,6 +42,7 @@ export function AuthLayout({
         <main className="flex flex-1 items-center justify-center">
           <div className="flex w-full max-w-sm flex-col gap-6">
             <div className="flex flex-col items-center gap-2 text-center">
+              {logo}
               <h1 className="text-2xl font-semibold">{title}</h1>
               {description && <p className="text-muted-foreground text-sm text-balance">{description}</p>}
             </div>

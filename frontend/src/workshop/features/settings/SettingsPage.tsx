@@ -19,6 +19,7 @@ import { bpToInput, parsePercentToBp } from "@/shared/money";
 
 import { useActiveWorkshop } from "../session/ActiveWorkshop";
 import { LaborRatesCard } from "./LaborRatesCard";
+import { PortalAddressCard } from "./PortalAddressCard";
 import { settingsApi, type WorkshopSettings, type WorkshopSettingsInput } from "./api";
 
 // Los mismos límites que el backend (schemas/settings.py); él vuelve a comprobarlos.
@@ -119,6 +120,7 @@ export function SettingsPage() {
         </CardContent>
       </Card>
       <div className="grid gap-6">
+        <PortalAddressCard settings={settings.data} />
         <LogoCard hasLogo={settings.data.has_logo} />
         <LaborRatesCard />
       </div>

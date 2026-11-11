@@ -13,6 +13,7 @@ import { Button } from "@/shared/components/ui/button";
 import { errorMessage } from "@/shared/lib/errors";
 
 import { rememberWorkshop } from "../../lib/lastWorkshop";
+import { DemoEntry } from "./DemoEntry";
 import { fetchEntry, logoUrl, requestLink } from "./api";
 
 const schema = z.object({ email: z.email("validation.email") });
@@ -61,7 +62,14 @@ export function WorkshopEntry({ workshopId }: { workshopId: string }) {
       description={t("portal.login.description")}
       tagline={t("portal.tagline")}
     >
-      {entry.isPending ? <LinesSkeleton /> : <RequestForm workshopId={workshopId} />}
+      {entry.isPending ? (
+        <LinesSkeleton />
+      ) : (
+        <>
+          <RequestForm workshopId={workshopId} />
+          <DemoEntry workshopId={workshopId} />
+        </>
+      )}
     </AuthLayout>
   );
 }

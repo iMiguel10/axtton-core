@@ -12,6 +12,13 @@ from app.domain.work_orders import CLOSED, WorkOrderStatus
 # correo un rato después, pero un enlace olvidado en un buzón no debe valer.
 LINK_LIFETIME = timedelta(minutes=15)
 
+# Los clientes de la demo (app/scripts/seed_demo.py): solo a ellos se puede
+# entrar sin correo, y solo con DEMO_PORTAL_ENTRY (F4 paso 8). Un dominio
+# reservado para ejemplos (RFC 2606): ningún cliente de verdad lo tiene.
+DEMO_CLIENT_DOMAIN = "@demo.example.com"
+# Cuántos se ofrecen en la entrada del taller.
+DEMO_CLIENTS_SHOWN = 4
+
 # El nombre corto del taller en la dirección del portal (decisión 0007).
 SLUG_MIN_LENGTH = 3
 SLUG_MAX_LENGTH = 40

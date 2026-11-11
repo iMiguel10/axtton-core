@@ -71,7 +71,7 @@ from app.core.supertokens import init_supertokens
 from app.domain.business_days import quote_valid_until
 from app.domain.limits import DEMO_PLAN, limit_column
 from app.domain.quotes import DecisionChannel, LineKind, Outcome
-from app.models import Quote
+from app.models import Quote, WorkOrder
 from app.platform.db import platform_engine
 from app.repositories import quotes as quote_repo
 from app.repositories import work_orders as order_repo
@@ -212,15 +212,19 @@ async def _platform_rows(
                 {"s": user_id},
             )
 
-        async def workshop(name: str, delivery: int | None, **legal: str) -> Shop:
-            # Con todo lo que el PDF del presupuesto pide del taller (RF-37).
+        async def workshop(
+            name: str, slug: str, delivery: int | None, **legal: str
+        ) -> Shop:
+            # Con todo lo que el PDF del presupuesto pide del taller (RF-37) y la
+            # dirección corta de su portal (decisión 0007).
             workshop_id = await conn.scalar(
                 text(
                     "INSERT INTO workshops (name, legal_name, tax_id, address, phone,"
-                    " industrial_registry_number, default_delivery_business_days)"
-                    " VALUES (:n, :ln, :t, :a, :p, :r, :d) RETURNING id"
+                    " industrial_registry_number, default_delivery_business_days,"
+                    " portal_slug)"
+                    " VALUES (:n, :ln, :t, :a, :p, :r, :d, :slug) RETURNING id"
                 ),
-                {"n": name, "d": delivery, **legal},
+                {"n": name, "d": delivery, "slug": slug, **legal},
             )
             # Los límites de la demo (domain/limits.py::DEMO_PLAN): bastan para
             # probarlo todo y no dejan llenar la base de datos en un día.
@@ -272,6 +276,7 @@ async def _platform_rows(
 
         main = await workshop(
             "Talleres Martínez",
+            "talleres-martinez",
             3,
             r="02-001234",
             ln="Talleres Martínez e Hijos, S.L.",
@@ -313,6 +318,7 @@ async def _platform_rows(
 
         small = await workshop(
             "Taller Rápido Levante",
+            "rapido-levante",
             None,
             r="46-009876",
             ln="Rápido Levante, S.L.U.",
@@ -579,6 +585,32 @@ class Builder:
                 outcome=Outcome(outcome),
                 channel=DecisionChannel(channel),
                 note=note,
+            )
+            await self._event(sent.id, "decided", order_id)
+
+        return step
+
+    def decide_in_portal(self, outcome: str) -> Step:
+        """El cliente decide en el portal (RF-34): sin empleado, con su IP y su
+        navegador, que en la ficha ve el administrador (RF-36)."""
+
+        async def step(session: AsyncSession, order_id: UUID) -> None:
+            sent = await self._latest(order_id)
+            order = await session.get(WorkOrder, order_id)
+            assert order is not None
+            await quote_service.decide_from_portal(
+                session,
+                self.shop.id,
+                order.client_id,
+                sent.id,
+                outcome=Outcome(outcome),
+                reason=None,
+                # Una dirección de las reservadas para ejemplos (RFC 5737).
+                ip="203.0.113.24",
+                user_agent=(
+                    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"
+                    " (KHTML, like Gecko) Chrome/130.0 Safari/537.36"
+                ),
             )
             await self._event(sent.id, "decided", order_id)
 
@@ -1042,7 +1074,8 @@ async def _main_workshop(b: Builder) -> None:
                 delivery=1,
             ),
             b.send(),
-            b.decide("approved", "phone", "Confirmado con la oficina de la flota."),
+            # La flota lo aprueba desde el portal (F4).
+            b.decide_in_portal("approved"),
             b.move("in_repair", by="javier"),
             b.work("javier", "Revisión completa, filtros y aceite", 21, "2.5"),
             b.move("ready", by="javier"),

@@ -34,6 +34,21 @@ export function requestLink(workshopId: string, email: string): Promise<void> {
   });
 }
 
+export type DemoClient = { name: string; email: string };
+
+/** Solo en la demo: los clientes como los que se puede entrar sin correo. 404 fuera de ella. */
+export function fetchDemoClients(workshopId: string): Promise<DemoClient[]> {
+  return apiRequest(`/portal/workshops/${encodeURIComponent(workshopId)}/demo-clients`);
+}
+
+/** Solo en la demo: entra como uno de sus clientes, como si abriera su enlace. */
+export function demoEnter(workshopId: string, email: string): Promise<void> {
+  return apiRequest("/portal/auth/demo-enter", {
+    method: "POST",
+    body: { workshop_id: workshopId, email },
+  });
+}
+
 /** Cambia el enlace por una sesión: las cookies las pone la respuesta. */
 export function consumeLink(workshopId: string, token: string): Promise<void> {
   return apiRequest("/portal/auth/consume", {

@@ -55,6 +55,14 @@ Los talleres de la demo tienen **límites más bajos** que el plan básico (`DEM
 
 **Taller Rápido Levante** (Valencia) es pequeño, con dos clientes, dos órdenes y una tarifa: sirve para ver el cambio de taller.
 
+## El portal del cliente
+
+Cada taller tiene su dirección corta ([decisión 0007](../decisiones/0007-nombre-corto-del-taller-en-el-portal.md)): `/portal/talleres-martinez` y `/portal/rapido-levante`. Los clientes de la demo tienen emails del dominio `@demo.example.com`, reservado para ejemplos.
+
+La demo desplegada **no tiene correo**, así que nadie recibiría el enlace mágico. Con `DEMO_PORTAL_ENTRY=true` (en desarrollo lo trae `.env.example`), la entrada de cada taller ofrece, debajo del formulario, entrar como hasta cuatro de sus clientes de la demo. Por dentro se emite un enlace de verdad y se consume en el acto: la sesión es la misma que la del correo, con sus 30 días y su cerradura. Sin la variable, esas dos rutas responden 404, y nunca sirven para un cliente con otro dominio. **No la actives en una instalación de verdad.**
+
+En Talleres Martínez, la revisión de la flota de Transportes Navarro (pendiente de cobro) se **aprobó desde el portal**: en su ficha, el administrador ve la IP (una de ejemplo, `203.0.113.24`) y el navegador. Los presupuestos que esperan respuesta se pueden aceptar o rechazar entrando como su cliente.
+
 ## Cómo está hecho
 
 - Los datos del taller se crean con **los services de verdad**, en transacciones del taller con RLS. Cumplen todas las reglas: el historial de estados, la numeración, los permisos de cada rol y la auditoría. Si una regla cambia y la demo deja de cumplirla, el script falla (y su prueba, `test_seed_demo.py`).

@@ -17,8 +17,10 @@ from supertokens_python.recipe.emailpassword.interfaces import SignUpOkResult
 from app.core.config import get_settings
 from app.scripts import seed_demo
 from tests.conftest import Account, Engines
+from tests.test_portal_demo import demo_entry
 
 MakeAccount = Callable[[str], Awaitable[Account]]
+__all__ = ["demo_entry"]
 from tests.test_invitations import bearer
 
 # La de la demo, no otra: el core de SuperTokens es el mismo en desarrollo y en
@@ -92,7 +94,7 @@ async def test_the_demo_has_no_superadmin_but_keeps_the_real_ones(
 
 @pytest.mark.asyncio
 async def test_it_can_run_every_night_and_leaves_a_working_demo(
-    client: AsyncClient, engines: Engines
+    client: AsyncClient, engines: Engines, demo_entry: None
 ) -> None:
     # Dos veces: la segunda reutiliza las cuentas de SuperTokens.
     for _ in range(2):
@@ -154,6 +156,39 @@ async def test_it_can_run_every_night_and_leaves_a_working_demo(
     assert pdf.status_code == 200
     rates = (await client.get("/api/v1/workshop/labor-rates", headers=main)).json()
     assert [r["is_default"] for r in rates].count(True) == 1
+
+    # F4: cada taller tiene su dirección corta, y la flota aprobó desde el portal:
+    # el administrador ve su IP y su navegador (RF-36).
+    for slug in ("talleres-martinez", "rapido-levante"):
+        found = await client.get(f"/api/v1/portal/workshops/by-slug/{slug}")
+        assert found.status_code == 200, slug
+    by_portal = [
+        q
+        for order in orders
+        for q in (
+            await client.get(
+                f"/api/v1/workshop/orders/{order['id']}/quotes", headers=main
+            )
+        ).json()
+        if q["decision"] and q["decision"]["channel"] == "portal"
+    ]
+    assert len(by_portal) == 1
+    assert by_portal[0]["decision"]["ip"] == "203.0.113.24"
+
+    # Y un visitante entra en el portal como un cliente de la demo, sin correo.
+    workshop_id = main["X-Workshop-Id"]
+    offered = (
+        await client.get(f"/api/v1/portal/workshops/{workshop_id}/demo-clients")
+    ).json()
+    assert offered, "la demo debería ofrecer clientes"
+    entered = await client.post(
+        "/api/v1/portal/auth/demo-enter",
+        headers={"st-auth-mode": "header"},
+        json={"workshop_id": workshop_id, "email": offered[0]["email"]},
+    )
+    assert entered.status_code == 204, entered.text
+    portal = {"Authorization": f"Bearer {entered.headers['st-access-token']}"}
+    assert (await client.get("/api/v1/portal/vehicles", headers=portal)).json()
 
     # La siguiente orden sigue la serie.
     car = next(o for o in orders if o["status"] == "received")["vehicle"]["id"]

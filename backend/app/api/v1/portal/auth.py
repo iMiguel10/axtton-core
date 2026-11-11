@@ -30,6 +30,8 @@ from app.domain.portal import normalize_slug, slug_problem
 from app.infra.email import EmailSender, compose
 from app.platform.portal_entry import workshop_id_by_slug
 from app.schemas.portal import (
+    PortalDemoClient,
+    PortalDemoEnter,
     PortalEntryRead,
     PortalLinkConsume,
     PortalLinkRequest,
@@ -111,6 +113,24 @@ async def request_link(
     # Sin SMTP no hay enlaces: se emitirían sin llegar a nadie.
     if email_sender.enabled:
         background.add_task(_send_link, body.workshop_id, email, email_sender)
+
+
+@router.get("/workshops/{workshop_id}/demo-clients")
+async def demo_clients(workshop_id: UUID, request: Request) -> list[PortalDemoClient]:
+    """Solo en la demo (DEMO_PORTAL_ENTRY): a quién se puede entrar sin correo."""
+    await limit_portal_entry(request)
+    clients = await portal_auth_service.demo_clients(workshop_id)
+    return [PortalDemoClient(name=c.name, email=c.email) for c in clients]
+
+
+@router.post("/auth/demo-enter", status_code=status.HTTP_204_NO_CONTENT)
+async def demo_enter(body: PortalDemoEnter, request: Request) -> None:
+    """Solo en la demo: entra como uno de sus clientes, que no tiene correo."""
+    await limit_portal_consume(request)
+    login = await portal_auth_service.demo_login(
+        body.workshop_id, normalize_email(str(body.email))
+    )
+    await create_client_session(request, login)
 
 
 @router.post("/auth/consume", status_code=status.HTTP_204_NO_CONTENT)

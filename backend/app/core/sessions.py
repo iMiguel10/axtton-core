@@ -198,7 +198,14 @@ async def revoke_client_sessions(
                     closing.append(handle)
             if closing:
                 await revoke_multiple_sessions(closing)
-            if len(closing) == len(handles):
+            # Se vuelve a mirar justo antes de borrar: el mismo email puede haber
+            # entrado en otro taller mientras se cerraban estas, y esa sesión no
+            # estaba en la lista (lo encontró qa-verifier al cerrar F4). La ventana
+            # que queda, entre esta lectura y el borrado, solo obliga a ese cliente
+            # a volver a entrar.
+            if len(closing) == len(handles) and not (
+                await get_all_session_handles_for_user(user.id)
+            ):
                 await delete_user(user.id)
     except Exception:
         logger.exception("No se pudieron cerrar las sesiones de un cliente")

@@ -4,6 +4,25 @@ Lo mantiene [release-please](https://github.com/googleapis/release-please) a par
 
 Las dos primeras versiones se escribieron a mano, resumidas por fase, al empezar a versionar.
 
+## [0.5.0](https://github.com/iMiguel10/axtton-core/compare/v0.4.0...v0.5.0) (2026-11-11)
+
+
+### Novedades
+
+* **portal:** el cliente aprueba o rechaza el presupuesto (F4 paso 5, RF-34, RF-36) ([#22](https://github.com/iMiguel10/axtton-core/issues/22)) ([365a472](https://github.com/iMiguel10/axtton-core/commit/365a47258a164746b35a6d60e89ca4d5510f9997))
+* **portal:** el PDF de cada versión del presupuesto para el cliente (F4 paso 6, RF-54) ([#23](https://github.com/iMiguel10/axtton-core/issues/23)) ([02fd85b](https://github.com/iMiguel10/axtton-core/commit/02fd85b2cd58f683430d579aa4faf77180e0e2e9))
+* **portal:** enlace mágico pedido desde la entrada de cada taller (F4 paso 1, RF-40) ([#17](https://github.com/iMiguel10/axtton-core/issues/17)) ([f1b03cc](https://github.com/iMiguel10/axtton-core/commit/f1b03cc7e9990f77f9a40e8cd3bc041badf4aca1))
+* **portal:** entrar en el portal de la demo sin correo, y el portal en sus datos (F4 paso 8) ([#25](https://github.com/iMiguel10/axtton-core/issues/25)) ([899a6ba](https://github.com/iMiguel10/axtton-core/commit/899a6badf158036ea77aacaacede77d8ee165d10))
+* **portal:** la dirección corta del taller, su logotipo en la entrada y la IP para el administrador (F4 paso 7) ([#24](https://github.com/iMiguel10/axtton-core/issues/24)) ([d022fe1](https://github.com/iMiguel10/axtton-core/commit/d022fe1233f4aa6f017f213fd266cbe6764e1805))
+* **portal:** la sesión del cliente, con revocación por taller y 30 días (F4 paso 2, RF-47, T7) ([#19](https://github.com/iMiguel10/axtton-core/issues/19)) ([c2f47c5](https://github.com/iMiguel10/axtton-core/commit/c2f47c5323e5111bc9868f0da45ce8f477813715))
+* **portal:** los estados que ve el cliente y el aviso de fecha pasada (F4 paso 3, RF-80) ([#20](https://github.com/iMiguel10/axtton-core/issues/20)) ([8b3b077](https://github.com/iMiguel10/axtton-core/commit/8b3b077119fa505873c3e8dcb0600c205b7c2c7e))
+* **portal:** los vehículos y las órdenes del cliente (F4 paso 4, RF-42 a RF-44, T4) ([#21](https://github.com/iMiguel10/axtton-core/issues/21)) ([6304a8c](https://github.com/iMiguel10/axtton-core/commit/6304a8c69a16cb40eeeb2efd125719a223159b71))
+
+
+### Correcciones
+
+* cierre de F4, sin cerrar la sesión de otro taller al revocar las de uno ([#26](https://github.com/iMiguel10/axtton-core/issues/26)) ([bd44edc](https://github.com/iMiguel10/axtton-core/commit/bd44edc2f7f8e9b2ce8f427365c03116e6b198a3))
+
 ## [0.4.0](https://github.com/iMiguel10/axtton-core/compare/v0.3.0...v0.4.0) (2026-11-03)
 
 

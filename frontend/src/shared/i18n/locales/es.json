@@ -690,6 +690,11 @@
       "title": "Entra desde tu taller",
       "description": "Cada taller tiene su propia dirección para entrar en su portal.",
       "hint": "Búscala en la web de tu taller, en el resguardo que te dieron al dejar el vehículo o en cualquiera de sus correos."
+    },
+    "demo": {
+      "title": "Demo: entra como un cliente",
+      "description": "Esta demo no envía correos. Elige un cliente y entra como si abrieras su enlace.",
+      "enterAs": "Entrar como {{name}}"
     }
   },
   "errors": {
@@ -782,7 +787,8 @@
     "portal_session_ended": "Tu sesión ha terminado. Vuelve a entrar con un enlace nuevo.",
     "portal_slug_invalid": "El nombre tiene que tener de 3 a 40 caracteres: letras sin tildes, números y guiones, sin guion al principio ni al final ni dos seguidos.",
     "portal_slug_reserved": "Ese nombre lo usa el propio portal. Elige otro.",
-    "portal_slug_taken": "Ese nombre ya lo usa otro taller. Elige otro."
+    "portal_slug_taken": "Ese nombre ya lo usa otro taller. Elige otro.",
+    "demo_client_not_found": "Ese cliente no está en la demo de este taller."
   },
   "palette": {
     "open": "Buscar en el taller",

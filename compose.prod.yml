@@ -36,6 +36,8 @@ x-api-env: &api-env
   # script que la carga se niega a correr.
   DEMO_SEED_ENABLED: ${DEMO_SEED_ENABLED:-false}
   DEMO_PASSWORD: ${DEMO_PASSWORD:-}
+  # Entrar en el portal como un cliente de la demo, sin correo (F4 paso 8).
+  DEMO_PORTAL_ENTRY: ${DEMO_PORTAL_ENTRY:-false}
 
 services:
   # Las dos aplicaciones compiladas y el reenvío de /api (deploy/web). En Coolify,

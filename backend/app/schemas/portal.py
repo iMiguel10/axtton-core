@@ -38,6 +38,16 @@ class PortalEntryRead(BaseModel):
     has_logo: bool
 
 
+class PortalDemoClient(BaseModel):
+    name: str
+    email: str
+
+
+class PortalDemoEnter(BaseModel):
+    workshop_id: UUID
+    email: EmailStr
+
+
 class PortalSlugRead(BaseModel):
     """Solo el id: el nombre lo da la entrada, ya con el taller fijado."""
 

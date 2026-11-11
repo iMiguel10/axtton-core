@@ -32,6 +32,10 @@ PUBLIC_ROUTES = {
     # Decisión 0007: el taller por su nombre corto y su logotipo, en la entrada.
     ("GET", "/api/v1/portal/workshops/by-slug/{slug}"),
     ("GET", "/api/v1/portal/workshops/{workshop_id}/logo"),
+    # Solo en la demo (DEMO_PORTAL_ENTRY, F4 paso 8): entrar sin correo como uno
+    # de sus clientes. Apagada, no existen (404).
+    ("GET", "/api/v1/portal/workshops/{workshop_id}/demo-clients"),
+    ("POST", "/api/v1/portal/auth/demo-enter"),
     ("POST", "/api/v1/portal/auth/request-link"),
     ("POST", "/api/v1/portal/auth/consume"),
 }

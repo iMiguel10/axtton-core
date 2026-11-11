@@ -18,6 +18,10 @@ for _var in ("DATABASE_URL", "PLATFORM_DATABASE_URL", "MIGRATIONS_DATABASE_URL")
 # Sin límite de peticiones: las pruebas inician sesión muchas veces seguidas desde
 # la misma "IP". Las que prueban el límite ponen el suyo (test_rate_limit.py).
 os.environ["RATE_LIMIT_ENABLED"] = "false"
+# La entrada del portal sin correo es solo de la demo: apagada, como en una
+# instalación de verdad, aunque el .env de desarrollo la encienda. La enciende
+# quien la prueba (test_portal_demo.py).
+os.environ["DEMO_PORTAL_ENTRY"] = "false"
 
 import pytest
 import pytest_asyncio

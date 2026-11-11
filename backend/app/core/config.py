@@ -50,6 +50,10 @@ class Settings(BaseSettings):
     demo_seed_enabled: bool = False
     # La contraseña de todas las cuentas de la demo; sin ella, la del script.
     demo_password: str | None = None
+    # La entrada del portal sin correo, solo en la demo (F4 paso 8): la página de
+    # un taller ofrece entrar como sus clientes del dominio de la demo. Apagada,
+    # sus dos rutas responden 404. Nunca en una instalación de verdad.
+    demo_portal_entry: bool = False
 
     # Versión desplegada: la etiqueta de git (vX.Y.Z) sin la "v" y el commit. No
     # se escriben a mano: la CI los pasa al construir la imagen (APP_VERSION y

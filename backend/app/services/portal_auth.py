@@ -19,11 +19,18 @@ from uuid import UUID
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.config import get_settings
 from app.core.db import workshop_transaction
 from app.core.errors import AppError, ForbiddenError, NotFoundError
 from app.core.tokens import hash_token, new_token
 from app.domain.emails import EmailContent, portal_access_email
-from app.domain.portal import LINK_LIFETIME, PortalLogin, access_link
+from app.domain.portal import (
+    DEMO_CLIENT_DOMAIN,
+    DEMO_CLIENTS_SHOWN,
+    LINK_LIFETIME,
+    PortalLogin,
+    access_link,
+)
 from app.models import Client, Workshop
 from app.repositories import clients as client_repo
 from app.repositories import portal_links as link_repo
@@ -111,8 +118,10 @@ async def entry_logo(workshop_id: UUID) -> EntryLogo:
 
 
 async def _issue(
-    session: AsyncSession, workshop_id: UUID, email: str, app_url: str
-) -> EmailContent | None:
+    session: AsyncSession, workshop_id: UUID, email: str
+) -> tuple[Workshop, str] | None:
+    """Guarda un enlace nuevo y devuelve su taller y su token, que no se guarda:
+    solo su hash."""
     workshop = await session.get(Workshop, workshop_id)
     if workshop is None or not _active(workshop):
         return None
@@ -126,9 +135,7 @@ async def _issue(
     token = new_token()
     expires_at = await vehicle_repo.db_now(session) + LINK_LIFETIME
     await link_repo.add(session, workshop_id, client.id, hash_token(token), expires_at)
-    return portal_access_email(
-        workshop_name=workshop.name, link=access_link(app_url, workshop_id, token)
-    )
+    return workshop, token
 
 
 async def issue_link(
@@ -141,7 +148,57 @@ async def issue_link(
     llegó a guardarse. El email llega ya normalizado, como se guarda.
     """
     async with workshop_transaction([workshop_id]) as session:
-        return await _issue(session, workshop_id, email, app_url)
+        issued = await _issue(session, workshop_id, email)
+    if issued is None:
+        return None
+    workshop, token = issued
+    return portal_access_email(
+        workshop_name=workshop.name, link=access_link(app_url, workshop_id, token)
+    )
+
+
+# --- La entrada de la demo (F4 paso 8) -----------------------------------------
+
+
+@dataclass(frozen=True)
+class DemoClient:
+    name: str
+    email: str
+
+
+def _demo_entry_enabled() -> None:
+    # Apagada, las dos rutas no existen: un 404, como cualquier ruta que no hay.
+    if not get_settings().demo_portal_entry:
+        raise NotFoundError("not_found")
+
+
+async def demo_clients(workshop_id: UUID) -> list[DemoClient]:
+    """Los clientes de la demo de un taller, para entrar sin correo. Solo los del
+    dominio de la demo: los que pone el script, nunca uno de verdad."""
+    _demo_entry_enabled()
+    async with workshop_transaction([workshop_id]) as session:
+        workshop = await session.get(Workshop, workshop_id)
+        if not _active(workshop):
+            raise NotFoundError("workshop_not_found")
+        clients = await client_repo.with_email_domain(
+            session, DEMO_CLIENT_DOMAIN, DEMO_CLIENTS_SHOWN
+        )
+        return [DemoClient(c.name, c.email) for c in clients if c.email]
+
+
+async def demo_login(workshop_id: UUID, email: str) -> PortalLogin:
+    """Entrar como un cliente de la demo, que no tiene correo. Emite un enlace de
+    verdad y lo consume en el acto: la sesión nace por el mismo camino que con el
+    correo (`consume` y después `create_client_session`, T10), y caduca, se
+    revoca y se cierra igual. El email llega normalizado."""
+    _demo_entry_enabled()
+    if not email.endswith(DEMO_CLIENT_DOMAIN):
+        raise NotFoundError("demo_client_not_found")
+    async with workshop_transaction([workshop_id]) as session:
+        issued = await _issue(session, workshop_id, email)
+    if issued is None:
+        raise NotFoundError("demo_client_not_found")
+    return await consume(workshop_id, issued[1])
 
 
 async def consume(workshop_id: UUID, token: str) -> PortalLogin:

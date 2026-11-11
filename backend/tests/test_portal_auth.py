@@ -523,9 +523,7 @@ async def test_an_email_change_while_a_link_is_issued_revokes_it_too(
         open_transaction(two_workshops.a) as issuing,
         open_transaction(two_workshops.a) as editing,
     ):
-        assert await portal_auth_service._issue(
-            issuing, two_workshops.a, email, "http://x"
-        )
+        assert await portal_auth_service._issue(issuing, two_workshops.a, email)
         work = asyncio.create_task(
             client_service.update_client(
                 editing, client_id, expected_version=1, changes={"email": new_email()}

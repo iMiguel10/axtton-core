@@ -690,6 +690,11 @@
       "title": "Sign in from your workshop",
       "description": "Each workshop has its own address to sign in to its portal.",
       "hint": "Look for it on your workshop’s website, on the receipt you got when you dropped off your vehicle or in any of their emails."
+    },
+    "demo": {
+      "title": "Demo: sign in as a customer",
+      "description": "This demo sends no email. Pick a customer and sign in as if you opened their link.",
+      "enterAs": "Sign in as {{name}}"
     }
   },
   "errors": {
@@ -782,7 +787,8 @@
     "portal_session_ended": "Your session has ended. Sign in again with a new link.",
     "portal_slug_invalid": "The name must be 3 to 40 characters: unaccented letters, numbers and hyphens, with no hyphen at the start or end and no two in a row.",
     "portal_slug_reserved": "The portal itself uses that name. Choose another.",
-    "portal_slug_taken": "Another workshop already uses that name. Choose another."
+    "portal_slug_taken": "Another workshop already uses that name. Choose another.",
+    "demo_client_not_found": "That customer is not in this workshop's demo."
   },
   "palette": {
     "open": "Search the workshop",

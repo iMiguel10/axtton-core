@@ -34,6 +34,23 @@ async def get_locked(
     return (await session.scalars(query)).one_or_none()
 
 
+async def with_email_domain(
+    session: AsyncSession, domain: str, limit: int
+) -> list[Client]:
+    """Los clientes activos del taller fijado con un email de ese dominio, por
+    nombre. Solo para la entrada de la demo (F4 paso 8)."""
+    query = (
+        select(Client)
+        .where(
+            Client.email.endswith(domain, autoescape=True),
+            Client.archived_at.is_(None),
+        )
+        .order_by(Client.name, Client.id)
+        .limit(limit)
+    )
+    return list((await session.scalars(query)).all())
+
+
 async def get_by_email_locked(session: AsyncSession, email: str) -> Client | None:
     """El cliente del taller fijado con ese email, bloqueado en compartido.
 

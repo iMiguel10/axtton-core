@@ -77,4 +77,5 @@ docker compose -p axtton-prod -f compose.prod.yml -f compose.prod.local.yml --en
 
 - **Las contraseñas de los roles solo valen la primera vez**: `deploy/postgres` crea los roles con el volumen vacío. Cambiarlas después en Coolify no cambia las de la base de datos: hay que hacer `ALTER ROLE … PASSWORD …` con el superusuario y después cambiar la variable.
 - **Compose lee solo el `.env` de la carpeta**: en local, sin `--env-file`, `compose.prod.yml` tomaría el `.env` de desarrollo.
+- **Coolify reescribe `compose.prod.yml`** antes de pasárselo a Docker Compose, y una lista vacía le llega como un mapa vacío: `entrypoint: []` hizo fallar el primer despliegue del worker (F5) con `services.worker.entrypoint must be a null`, aunque `docker compose config` en local y en la CI lo daba por bueno. En ese fichero no se escribe ninguna lista ni mapa vacío; el worker lleva su comando entero en `entrypoint`.
 - **La IP real pasa por dos proxies** (Coolify y Nginx). Si delante de Coolify se pone un túnel, hay que volver a comprobar que la API recibe la IP del visitante y no la del túnel (RNF-06).

@@ -87,8 +87,10 @@ services:
       args:
         APP_VERSION: ${APP_VERSION:-dev}
         APP_COMMIT: ${APP_COMMIT:-}
-    entrypoint: []
-    command: ["saq", "--verbose", "app.worker.settings"]
+    # El comando entero va en entrypoint, que sustituye al de la imagen. Nunca
+    # `entrypoint: []`: Coolify reescribe este fichero y la lista vacía le llega
+    # a Compose como un mapa vacío, que rechaza (falló el primer despliegue de F5).
+    entrypoint: ["saq", "--verbose", "app.worker.settings"]
     environment: *api-env
     restart: unless-stopped
     healthcheck:

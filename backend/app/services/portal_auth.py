@@ -28,6 +28,7 @@ from app.domain.portal import (
     DEMO_CLIENT_DOMAIN,
     DEMO_CLIENTS_SHOWN,
     LINK_LIFETIME,
+    LINK_RETENTION,
     PortalLogin,
     access_link,
 )
@@ -280,3 +281,11 @@ async def current_client(
         client_name=client.name,
         language=client.language,
     )
+
+
+async def purge_expired_links(workshop_id: UUID) -> int:
+    """Borra los enlaces de un taller caducados hace más de LINK_RETENTION (F5
+    paso 1). Lo llama el worker taller a taller, con ese taller fijado: el
+    planificador solo dice cuáles tienen algo que borrar (arquitectura §4)."""
+    async with workshop_transaction([workshop_id]) as session:
+        return await link_repo.delete_expired(session, LINK_RETENTION)

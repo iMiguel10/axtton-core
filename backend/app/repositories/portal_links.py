@@ -1,9 +1,9 @@
 """Enlaces mágicos del portal, siempre bajo RLS con el taller fijado."""
 
-from datetime import datetime
+from datetime import datetime, timedelta
 from uuid import UUID
 
-from sqlalchemy import func, update
+from sqlalchemy import delete, func, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models import PortalLink
@@ -65,3 +65,17 @@ async def revoke_open_for_client(session: AsyncSession, client_id: UUID) -> None
         )
         .values(revoked_at=func.clock_timestamp())
     )
+
+
+async def delete_expired(session: AsyncSession, retention: timedelta) -> int:
+    """Borra los enlaces del taller fijado que caducaron hace más de `retention`,
+    usados o no, y dice cuántos (F5 paso 1). La hora es la de la base de datos.
+
+    El trigger portal_links_delete_only_expired impide borrar uno que aún vale.
+    """
+    result = await session.execute(
+        delete(PortalLink).where(
+            PortalLink.expires_at < func.clock_timestamp() - retention
+        )
+    )
+    return int(result.rowcount)  # type: ignore[attr-defined]

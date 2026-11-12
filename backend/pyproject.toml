@@ -17,6 +17,7 @@ dependencies = [
     "email-validator>=2.3.0",
     "limits[async-valkey]>=5.8.0",
     "pillow>=13.0.0",
+    "saq[redis]>=0.26.5",
 ]
 
 [dependency-groups]

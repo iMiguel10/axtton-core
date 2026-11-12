@@ -10,6 +10,15 @@ export const QUOTE_STATUSES = [
   "cancelled",
 ] as const;
 export type QuoteStatus = (typeof QUOTE_STATUSES)[number];
+
+/**
+ * La versión espera la respuesta del cliente: enviada, en plazo o no. Desde F5
+ * el worker marca `expired` las que pasan su plazo, así que una caducada puede
+ * llegar con cualquiera de los dos estados; se sigue pudiendo anular y renovar
+ * (especificación §6). Como `awaiting_version` en la API.
+ */
+export const awaitsAnswer = (quote: { status: QuoteStatus }) =>
+  quote.status === "sent" || quote.status === "expired";
 export const LINE_KINDS = ["labor", "part", "other"] as const;
 export type LineKind = (typeof LINE_KINDS)[number];
 export const PART_CONDITIONS = ["new", "used", "reconditioned", "non_specific"] as const;

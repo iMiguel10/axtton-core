@@ -12,7 +12,8 @@ from uuid import UUID
 
 from sqlalchemy import func, select
 
-from app.models import PortalLink
+from app.domain.quotes import QuoteStatus
+from app.models import PortalLink, Quote
 from app.platform.db import platform_transaction
 
 
@@ -21,6 +22,20 @@ async def workshops_with_expired_links(retention: timedelta) -> list[UUID]:
     query = (
         select(PortalLink.workshop_id)
         .where(PortalLink.expires_at < func.clock_timestamp() - retention)
+        .distinct()
+    )
+    async with platform_transaction() as session:
+        return list(await session.scalars(query))
+
+
+async def workshops_with_overdue_quotes() -> list[UUID]:
+    """Los talleres con versiones enviadas cuya validez ya pasó (F5 paso 2)."""
+    query = (
+        select(Quote.workshop_id)
+        .where(
+            Quote.status == QuoteStatus.SENT,
+            Quote.valid_until <= func.clock_timestamp(),
+        )
         .distinct()
     )
     async with platform_transaction() as session:

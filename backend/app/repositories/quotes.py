@@ -132,8 +132,8 @@ async def list_page(
                 Quote.status == QuoteStatus.SENT, Quote.valid_until > now
             ).order_by(Quote.valid_until, Quote.id)
         case "expired":
-            # Pasado su plazo aunque nadie la haya marcado (hasta el worker, F5,
-            # nadie escribe `expired`): hay que reenviarla o anularla (§6).
+            # Pasado su plazo, la marque o no todavía el worker (F5 paso 2, cada
+            # hora): hay que reenviarla o anularla (§6).
             statement = statement.where(
                 or_(
                     Quote.status == QuoteStatus.EXPIRED,
@@ -231,3 +231,18 @@ async def erase_portal_decision_details(session: AsyncSession, client_id: UUID) 
         .values(ip=None, user_agent=None, note=None)
         .execution_options(synchronize_session=False)
     )
+
+
+async def overdue_ids(session: AsyncSession, limit: int) -> list[UUID]:
+    """Las versiones enviadas del taller fijado cuya validez ya pasó, con la hora
+    de la base de datos (F5 paso 2): las que el worker marca `expired`."""
+    query = (
+        select(Quote.id)
+        .where(
+            Quote.status == QuoteStatus.SENT,
+            Quote.valid_until <= func.clock_timestamp(),
+        )
+        .order_by(Quote.valid_until)
+        .limit(limit)
+    )
+    return list(await session.scalars(query))

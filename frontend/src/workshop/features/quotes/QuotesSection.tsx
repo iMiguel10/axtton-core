@@ -30,6 +30,7 @@ import { useActiveWorkshop } from "../session/ActiveWorkshop";
 import { settingsApi } from "../settings/api";
 import { PdfButton } from "./PdfButton";
 import {
+  awaitsAnswer,
   LINE_KINDS,
   PART_CONDITIONS,
   quotesApi,
@@ -112,10 +113,11 @@ export function QuotesSection({
               key={quote.id}
               quote={quote}
               // Anular es del administrador, con la orden abierta, y de una
-              // versión enviada (también si ya pasó su plazo).
-              canCancel={canManageQuotes && !closed && quote.status === "sent"}
+              // versión que espera respuesta (también si ya pasó su plazo, la
+              // haya marcado o no el worker).
+              canCancel={canManageQuotes && !closed && awaitsAnswer(quote)}
               // Renovar crea una versión nueva: no con una corrección a medias.
-              canRenew={canManageQuotes && !closed && quote.status === "sent" && !draft}
+              canRenew={canManageQuotes && !closed && awaitsAnswer(quote) && !draft}
               // Registrar la respuesta del cliente: enviada y en plazo (RF-33).
               canDecide={canManageQuotes && !closed && quote.status === "sent" && !quote.expired}
               queryKey={queryKey}
@@ -146,7 +148,7 @@ function QuoteHeader({ quote }: { quote: Quote }) {
       <CardTitle className="flex flex-wrap items-center gap-2">
         {t("quotes.version", { number: quote.version_no })}
         {/* Fuera de plazo se enseña caducada aunque su estado aún diga
-            "enviada": nadie la marca hasta el worker (F5). */}
+            "enviada": el worker la marca cada hora (F5). */}
         {quote.expired ? (
           <Badge variant="destructive">{t("quotes.statuses.expired")}</Badge>
         ) : (

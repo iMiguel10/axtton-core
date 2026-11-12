@@ -15,6 +15,7 @@ from saq.types import Context, SettingsDict
 from app.core.config import get_settings
 from app.core.db import engine
 from app.jobs.maintenance import maintenance_cron_jobs
+from app.jobs.quotes import quote_cron_jobs
 from app.platform.db import platform_engine
 
 _valkey_url = get_settings().valkey_url
@@ -39,7 +40,7 @@ settings: SettingsDict[Context] = {
     # SAQ encola cada pasada con la clave `cron:<función>`: aunque hubiera dos
     # workers, cada una se ejecuta una vez. Aun así, cada tarea es segura si se
     # ejecutara dos veces (borrar lo ya borrado no hace nada).
-    "cron_jobs": maintenance_cron_jobs(),
+    "cron_jobs": [*maintenance_cron_jobs(), *quote_cron_jobs()],
     "shutdown": shutdown,
     "concurrency": 10,
 }

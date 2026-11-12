@@ -22,6 +22,7 @@ from uuid import UUID
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.client_ip import valid_ip
+from app.core.db import workshop_transaction
 from app.core.errors import ConflictError, NotFoundError, ValidationFailedError
 from app.domain.business_days import delivery_date, quote_valid_until
 from app.domain.permissions import Action, can
@@ -115,9 +116,9 @@ class QuoteView:
 
 def is_expired(quote: Quote, now: datetime) -> bool:
     """Caducada (RF-33): marcada como tal, o enviada y pasado su plazo aunque
-    nadie la haya marcado todavía (hasta el worker, F5, nadie escribe
-    `expired`). Ya no se puede aprobar: el trigger de las decisiones lo mira
-    con la hora del servidor."""
+    el worker aún no la haya marcado (lo hace cada hora, `expire_overdue`). Ya
+    no se puede aprobar: el trigger de las decisiones lo mira con la hora del
+    servidor."""
     if quote.status == QuoteStatus.EXPIRED:
         return True
     return (
@@ -788,6 +789,9 @@ async def _decide(
     user_agent: str | None = None,
 ) -> None:
     """Lo mismo decida quien decida. Sin empleado, ha decidido el cliente."""
+    # Marcada o no por el worker, caducada es el mismo error (F5 paso 2).
+    if quote.status == QuoteStatus.EXPIRED:
+        raise ConflictError("quote_expired")
     if quote.status != QuoteStatus.SENT:
         raise ConflictError("quote_not_decidable")
     now = await vehicle_repo.db_now(session)
@@ -837,3 +841,45 @@ async def _decide(
         )
     )
     await session.flush()
+
+
+# Cuántas versiones caduca una pasada por taller: lo que no quepa, en la siguiente.
+EXPIRY_BATCH = 200
+
+
+async def _expire_one(workshop_id: UUID, quote_id: UUID) -> bool:
+    """Marca una versión como caducada si sigue enviada y fuera de plazo.
+
+    Caducar no cambia la orden (especificación §6), así que solo se bloquea la
+    versión, sin la orden: con un solo bloqueo no hay orden de bloqueos que
+    respetar. Se vuelve a mirar todo después de bloquearla, con la hora de la
+    base de datos: entre la búsqueda y aquí, el taller pudo sustituirla,
+    anularla o registrar su decisión, y el cliente aprobarla en el portal.
+    """
+    async with workshop_transaction([workshop_id]) as session:
+        quote = await quote_repo.get_for_update(session, quote_id)
+        if quote is None or quote.status != QuoteStatus.SENT:
+            return False
+        now = await vehicle_repo.db_now(session)
+        if not is_expired(quote, now):
+            return False
+        quote.status = QuoteStatus.EXPIRED
+        return True
+
+
+async def expire_overdue(workshop_id: UUID) -> int:
+    """Escribe `expired` en las versiones enviadas de un taller cuya validez ya
+    pasó (RF-33, F5 paso 2), y dice cuántas. Lo llama el worker taller a taller.
+
+    Hasta ahora la caducidad ya se decidía por `valid_until` al leer
+    (`is_expired`), así que marcarla no cambia lo que se ve ni lo que se puede
+    hacer: un presupuesto caducado solo se anula o se sustituye (§6), y la orden
+    se queda como estaba. Cada versión va en su propia transacción: una que
+    falle no deshace las demás.
+    """
+    async with workshop_transaction([workshop_id]) as session:
+        candidates = await quote_repo.overdue_ids(session, EXPIRY_BATCH)
+    expired = 0
+    for quote_id in candidates:
+        expired += await _expire_one(workshop_id, quote_id)
+    return expired

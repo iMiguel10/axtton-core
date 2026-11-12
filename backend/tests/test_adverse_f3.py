@@ -51,7 +51,7 @@ from tests.test_quote_send import (
     sendable_draft,
     version_of,
 )
-from tests.test_quotes import ORDERS, QUOTES, create, quotes_of, save
+from tests.test_quotes import ORDERS, QUOTES, create, expire_by_sql, quotes_of, save
 from tests.test_quotes_db import Quotes, as_role, engines_by_role, quotes
 from tests.test_rls import set_workshops
 from tests.test_settings import RATES, add_rate
@@ -777,6 +777,9 @@ async def test_cancelling_a_version_marked_expired_returns_the_order_to_its_orig
     de plazo que nadie ha marcado (test_a_quote_past_its_validity_says_so): de
     vuelta a su estado de origen."""
     order_id, quote_id = await sent_order(client, shop)
+    # Fuera de plazo, como la encuentra el worker; marcarla antes lo impide el
+    # trigger quotes_expire_only_when_overdue (F5 paso 2).
+    await expire_by_sql(quote_id)
     async with engines.platform.begin() as conn:
         await conn.execute(
             text("UPDATE quotes SET status = 'expired' WHERE id = :q"), {"q": quote_id}

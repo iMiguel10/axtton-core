@@ -91,8 +91,9 @@ services:
   worker:
     build:
       context: ./backend
-    entrypoint: []
-    command: watchfiles --filter python "saq --verbose app.worker.settings" app
+    # Como en compose.prod.yml, el comando en entrypoint (sustituye al de la
+    # imagen) y nunca `entrypoint: []`, que Coolify no acepta.
+    entrypoint: ["watchfiles", "--filter", "python", "saq --verbose app.worker.settings", "app"]
     volumes:
       - ./backend:/app
       - api_venv:/app/.venv

@@ -682,6 +682,16 @@ La clasificación de fallos es la de Applications Tracker:
 | Antes de entregar los datos | `failed` | Sí |
 | Después de entregarlos, o el proceso murió a medias | `unknown` | **No**: puede haber salido |
 
+*Construido en F5 paso 3* (`infra/email.py`, heredado de Applications Tracker): `SmtpEmailSender` no usa el envío de una sola llamada de `aiosmtplib`, sino la conversación paso a paso (conexión, cifrado y login, `MAIL`, `RCPT`, `DATA`), para saber en qué punto falló. Cualquier fallo antes de `DATA`, y cualquier **código de error** del servidor (también al final de `DATA`, que es un rechazo explícito), lanza `EmailNotSentError`. Un corte o un *timeout* con el mensaje en vuelo lanza `EmailDeliveryUnknownError`. Además:
+
+- **El cifrado no se rebaja**: `SMTP_SECURITY` es `starttls` (por defecto, el 587), `tls` (el 465) o `none` (solo Mailpit). Con cifrado, si el servidor no lo ofrece, no se envía en claro: es un "no enviado".
+- **Una dirección con caracteres no ASCII** (`josé@…`) solo sale si el servidor anuncia SMTPUTF8 (RFC 6531); si no, es un "no enviado", no un error sin clasificar.
+- **Un salto de línea en una cabecera** (el asunto, el destinatario, el nombre del taller o su email de respuesta, que escriben personas) lo rechaza la librería estándar, y se clasifica como "no enviado": no puede inyectar cabeceras ni destinatarios.
+- **El mensaje lleva `Date`, `Message-ID` y, si es de un taller, `Reply-To`** con su email (`EmailContent.reply_to`, RF-68): si el cliente contesta, le llega al taller.
+- **Ningún error lleva la contraseña del SMTP**: solo el tipo y lo que dijo el servidor.
+
+Las pruebas usan un servidor SMTP falso escrito a mano (`tests/fake_smtp.py`) que falla justo en cada uno de esos puntos (`tests/test_smtp.py`).
+
 El taller ve en la orden cada aviso y su estado (RF-69).
 
 ### Qué es "el mismo motivo" (`dedupe_key`)
@@ -786,7 +796,7 @@ Como en Applications Tracker (su decisión 0023). Construido en F2 ([decisión 0
 | **F2** ✔ | Clientes, vehículos, `vehicle_ownerships`, órdenes con su historial, número correlativo, deshacer, búsqueda, bloqueo optimista, borradores en IndexedDB. *Añadido al planificarla:* diagnóstico, notas internas y trabajos (RF-22, RF-23: lo que guardan los borradores), cobro (RF-28, RF-29) y anonimización (RF-15), y una revisión del diseño de la interfaz validada **antes** del despliegue. **Primer despliegue en Coolify** |
 | **F3** ✔ | **Hecha** ([cierre](f3-cierre.md)). Datos del taller y `labor_rates` editables por su administrador (RF-02; `axtton_app` recibe `UPDATE` solo sobre esas columnas de `workshops`, migración `0012settings`), presupuestos versionados con sus triggers (`0013quotes`; R6 desde aquí), totales y descuentos, envío, renovación y anulación, decisión registrada por el taller, PDF del presupuesto con los datos legales y vista previa del borrador (`0014quotepdf`) y, pendiente de F2, los filtros del listado de órdenes (RF-24) |
 | **F4** | **Hecha y cerrada** ([lo aprendido](f4-cierre.md)). Enlace propio por taller, `portal_links` (`0016portallinks`; la receta `passwordless` solo da el usuario, [decisión 0006](../decisiones/0006-enlaces-magicos-propios-ligados-al-taller.md)), la cerradura y la duración de la sesión (`0017portalepoch`), estados para el cliente, sus vehículos y órdenes, la decisión desde el portal (`0018decisionerase`), el PDF de cada versión, el nombre corto del taller (`0019portalslug`, [decisión 0007](../decisiones/0007-nombre-corto-del-taller-en-el-portal.md)) y la entrada de la demo; T4–T7 y T10 |
-| **F5** | **En marcha.** `worker`, bandeja de avisos, despachador, presupuesto enviado y vehículo listo; B1–B6. *Paso 1:* el `worker` (SAQ sobre Valkey, `app/worker.py`, `app/jobs/`), el planificador (`app/platform/scheduler.py`) y su primera tarea, borrar los enlaces del portal caducados (`0020linkpurge`). *Paso 2:* los presupuestos fuera de plazo se marcan `expired` cada hora (`0021quoteexpiry`) |
+| **F5** | **En marcha.** `worker`, bandeja de avisos, despachador, presupuesto enviado y vehículo listo; B1–B6. *Paso 1:* el `worker` (SAQ sobre Valkey, `app/worker.py`, `app/jobs/`), el planificador (`app/platform/scheduler.py`) y su primera tarea, borrar los enlaces del portal caducados (`0020linkpurge`). *Paso 2:* los presupuestos fuera de plazo se marcan `expired` cada hora (`0021quoteexpiry`). *Paso 3:* el envío SMTP paso a paso que clasifica dónde falla (§8) |
 | **F6** | Hoja de recepción con firma (§7.3), resumen de entrega, informe de actuaciones, descarga en el portal; prueba de punta a punta en CI |
 | **F7** | Catálogo, `stock_movements`, `used_parts`, líneas desde el catálogo, unidades comprometidas |
 | **F8** | Citas y su conversión en orden, recordatorios, vencimientos, borrado de firmas con su aviso; B7–B11. *Añadido en F3:* el calendario del taller (horario, festivos propios y días de cierre). Cada día se marca como *festivo*, que cuenta para la validez del presupuesto (`domain/business_days.py` lo recibirá como parámetro) y para las citas, o como *cierre*, que solo cuenta para las citas y las órdenes paradas: unas vacaciones no hacen inhábil un día a efectos legales |

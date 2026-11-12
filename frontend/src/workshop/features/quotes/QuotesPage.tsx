@@ -20,7 +20,14 @@ import { formatEur } from "@/shared/money";
 
 import { clientName } from "../clients/clientName";
 import { useActiveWorkshop } from "../session/ActiveWorkshop";
-import { QUOTE_VIEWS, QUOTES_PAGE_SIZE, quotesApi, type QuoteListItem, type QuoteView } from "./api";
+import {
+  awaitsAnswer,
+  QUOTE_VIEWS,
+  QUOTES_PAGE_SIZE,
+  quotesApi,
+  type QuoteListItem,
+  type QuoteView,
+} from "./api";
 
 /**
  * Los presupuestos del taller activo, para llegar a ellos sin buscar la orden:
@@ -92,7 +99,7 @@ const linkTo = (quote: QuoteListItem) => `/orders/${quote.order_id}?tab=quotes`;
 function QuoteStatusBadge({ quote }: { quote: QuoteListItem }) {
   const { t } = useTranslation();
   // Una enviada fuera de plazo se enseña caducada aunque su estado aún diga
-  // "enviada": nadie la marca hasta el worker (F5).
+  // "enviada": el worker la marca cada hora (F5).
   if (quote.expired) return <Badge variant="destructive">{t("quotes.statuses.expired")}</Badge>;
   return (
     <Badge variant={quote.status === "draft" ? "outline" : "secondary"}>
@@ -103,7 +110,9 @@ function QuoteStatusBadge({ quote }: { quote: QuoteListItem }) {
 
 function Deadline({ quote }: { quote: QuoteListItem }) {
   const { t } = useTranslation();
-  if (quote.valid_until && quote.status === "sent") {
+  // La validez, también de una caducada: la marca del worker cambia su
+  // updated_at, y "cambiado hace un minuto" no diría cuándo venció.
+  if (quote.valid_until && awaitsAnswer(quote)) {
     return (
       <>
         {t("quotes.list.validUntil")} <When iso={quote.valid_until} />

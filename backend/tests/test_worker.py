@@ -67,11 +67,13 @@ def test_the_worker_loads_with_its_scheduled_tasks() -> None:
     from app.worker import settings
 
     crons = {job.function.__name__: job for job in settings["cron_jobs"]}
-    assert set(crons) == {"purge_portal_links"}
+    assert set(crons) == {"purge_portal_links", "expire_quotes"}
     # Una pasada al día, de madrugada, con un solo intento: si falla, la recoge
     # la del día siguiente.
     assert crons["purge_portal_links"].cron == "40 3 * * *"
     assert crons["purge_portal_links"].retries == 1
+    # Cada hora, como en la arquitectura (§8, "Caducidad de presupuestos").
+    assert crons["expire_quotes"].cron == "5 * * * *"
 
 
 @pytest.mark.asyncio

@@ -279,7 +279,11 @@ async def test_cancelling_needs_a_reason(engines: Engines, quotes: Quotes) -> No
             "UPDATE quotes SET status = 'approved' WHERE id = :sent",
             "needs its decision",
         ),
-        ("UPDATE quotes SET status = 'expired' WHERE id = :sent", None),
+        # En plazo no se marca caducada (0021quoteexpiry, F5 paso 2).
+        (
+            "UPDATE quotes SET status = 'expired' WHERE id = :sent",
+            "is still valid until",
+        ),
     ],
 )
 async def test_the_status_of_a_sent_quote_follows_the_lifecycle(
@@ -296,6 +300,10 @@ async def test_the_status_of_a_sent_quote_follows_the_lifecycle(
 async def test_an_expired_quote_can_only_be_cancelled_or_superseded(
     engines: Engines, quotes: Quotes
 ) -> None:
+    from tests.test_quotes import expire_by_sql
+
+    # Fuera de plazo: en plazo, el trigger no deja marcarla (0021quoteexpiry).
+    await expire_by_sql(str(quotes.sent))
     await as_role(
         engines.app, quotes, "UPDATE quotes SET status = 'expired' WHERE id = :sent"
     )

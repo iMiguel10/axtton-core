@@ -83,6 +83,34 @@ services:
       valkey:
         condition: service_healthy
 
+  # El worker de SAQ (F5, arquitectura §8): la misma imagen, código, .venv y .env
+  # que api, con otro comando. NO usa entrypoint.sh: las migraciones las aplica
+  # solo api, y el worker espera a que esté sano. SAQ no recarga el código, así
+  # que watchfiles lo reinicia al cambiar cualquier .py de app/. --verbose: el
+  # registro a nivel INFO (sin él, SAQ solo enseña los errores).
+  worker:
+    build:
+      context: ./backend
+    entrypoint: []
+    command: watchfiles --filter python "saq --verbose app.worker.settings" app
+    volumes:
+      - ./backend:/app
+      - api_venv:/app/.venv
+    env_file:
+      - .env
+    # Sano si hay un worker de esta cola vivo en Valkey (lo comprueba SAQ).
+    healthcheck:
+      test: ["CMD", "saq", "app.worker.settings", "--check"]
+      interval: 10s
+      timeout: 10s
+      retries: 6
+      start_period: 20s
+    depends_on:
+      api:
+        condition: service_started
+      valkey:
+        condition: service_healthy
+
   # Contadores del límite de peticiones (RNF-06) y, desde F5, la cola de SAQ.
   # Sin puertos publicados: solo lo alcanza la red interna. appendonly: reiniciar
   # el contenedor no pierde los trabajos encolados.

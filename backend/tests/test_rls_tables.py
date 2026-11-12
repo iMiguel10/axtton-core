@@ -62,7 +62,7 @@ NO_DELETE = {
     "work_entries",
     "labor_rates",
     "quote_decisions",
-    "portal_links",
+    # portal_links no está desde 0020linkpurge: el worker borra los caducados.
 }
 # La columna que axtton_app puede actualizar, si no puede todas.
 UPDATABLE_COLUMN = {

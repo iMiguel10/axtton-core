@@ -373,7 +373,7 @@ El acceso del cliente en el portal **no** sale de esta tabla, sino de `work_orde
 | Rol | Lo usa | Qué puede |
 |---|---|---|
 | `axtton_owner` | Las migraciones (Alembic) | Dueño de las tablas. Nunca lo usa la aplicación |
-| `axtton_app` | La API y el `worker`, en su camino normal | `NOBYPASSRLS`. Sobre las tablas append-only (`work_order_status_changes`, `quote_decisions`, `stock_movements`, `diagnosis_versions`, `internal_notes`, `audit_log`) solo tiene `SELECT` e `INSERT`: **RNF-12 lo garantiza la base de datos**, no la disciplina del código. Tampoco tiene `DELETE` sobre `clients` (se archivan o se anonimizan, RF-15), `vehicles` ni `vehicle_ownerships` (de esta última solo puede actualizar `ended_at`), ni sobre `work_orders` y `work_order_counters`. De `work_orders` solo puede actualizar lo que cambia con la vida de la orden: el cliente, el vehículo, el número, el año, el tipo y la garantía de origen se fijan al abrirla (*cierre de F2*, migración `0011ordercols`; invariante 7). De `work_entries` solo puede insertar y escribir la anulación (`voided_at`, `voided_by_employee_id`) |
+| `axtton_app` | La API y el `worker`, en su camino normal | `NOBYPASSRLS`. Sobre las tablas append-only (`work_order_status_changes`, `quote_decisions`, `stock_movements`, `diagnosis_versions`, `internal_notes`, `audit_log`) solo tiene `SELECT` e `INSERT`: **RNF-12 lo garantiza la base de datos**, no la disciplina del código. Tampoco tiene `DELETE` sobre `clients` (se archivan o se anonimizan, RF-15), `vehicles` ni `vehicle_ownerships` (de esta última solo puede actualizar `ended_at`), ni sobre `work_orders` y `work_order_counters`. De `work_orders` solo puede actualizar lo que cambia con la vida de la orden: el cliente, el vehículo, el número, el año, el tipo y la garantía de origen se fijan al abrirla (*cierre de F2*, migración `0011ordercols`; invariante 7). De `work_entries` solo puede insertar y escribir la anulación (`voided_at`, `voided_by_employee_id`). De `portal_links` puede escribir cómo se cerró un enlace (`used_at`, `revoked_at`) y, desde F5, borrar los caducados (`0020linkpurge`): un trigger impide borrar uno que aún vale, con cualquier rol |
 | `axtton_platform` | Solo el código de plataforma (ver "Las vías que cruzan talleres") | `BYPASSRLS`, con una conexión y un pool propios |
 
 Todas las tablas de taller tienen `ENABLE ROW LEVEL SECURITY` y `FORCE ROW LEVEL SECURITY`.
@@ -408,7 +408,7 @@ Son exactamente cinco, y todas usan `axtton_platform` desde un único módulo (`
 | Vía | Qué lee | Por qué no puede ir por la política normal |
 |---|---|---|
 | Endpoints de `/admin` | `workshops`, `users`, `invitations`, `superadmin_invitations`, el `audit_log` de plataforma y **recuentos** por taller (uso respecto a los límites) | El superadministrador no pertenece a ningún taller, y nunca recibe filas operativas (RNF-08), solo números. La aceptación de una invitación de superadministrador (`/api/v1/superadmin-invitations`, pública porque quien acepta aún no tiene cuenta) es parte de esta misma vía: no cruza talleres, solo toca tablas de plataforma |
-| Planificador del `worker` | Qué hay pendiente en todos los talleres: avisos por enviar, presupuestos por caducar, firmas por borrar | Tiene que encontrar trabajo sin saber de antemano de qué taller es |
+| Planificador del `worker` (`app/platform/scheduler.py`, desde F5) | Qué hay pendiente en todos los talleres: enlaces del portal por borrar (F5 paso 1), avisos por enviar, presupuestos por caducar, firmas por borrar | Tiene que encontrar trabajo sin saber de antemano de qué taller es. De `app/platform/`, los trabajos (`app/jobs/`) solo importan este módulo (`test_architecture.py`) |
 | Comandos de servidor | Crear el primer superadministrador (RF-110), restaurar copias | Operación |
 | Selector de talleres (`GET /workshop/me`, RF-08; añadida en F1) | Los talleres en los que la persona de la sesión es empleada activa, con su nombre y su rol | Hay que saber cuáles son antes de poder fijar ninguno para RLS. Solo devuelve los de la propia persona (`app/platform/memberships.py`) |
 | Dirección del portal por nombre (`GET /portal/workshops/by-slug/{nombre}`; añadida en F4, decisión 0007) | El id del taller activo con ese nombre corto exacto | `/portal/{nombre}` no dice de qué taller es hasta buscarlo. Solo devuelve el id, nunca una lista ni nada parecido; es pública y lleva un límite por IP (`app/platform/portal_entry.py`) |
@@ -494,13 +494,15 @@ axtton-core/
 │       ├── services/            casos de uso; commit y rollback
 │       ├── platform/            lo único que usa axtton_platform: superadministrador, selector de talleres,
 │       │                        el taller de una dirección del portal (portal_entry.py, F4)
-│       │                        y, con el worker, el planificador (§4)
+│       │                        y el planificador del worker (scheduler.py, F5, §4)
 │       ├── infra/               módulos detrás de interfaces: email.py, identity.py (SuperTokens), pdf.py,
-│       │                        rate_limit.py; la cola llega con el worker
+│       │                        rate_limit.py
 │       ├── scripts/             comandos de servidor (crear superadministrador, reset_data, seed_demo)
 │       ├── templates/           email/ (la plantilla de la marca) y pdf/ (el presupuesto, F3 paso 7), con el CSS dentro
-│       ├── jobs/                llega con el worker (F5)
-│       └── main.py              (worker.py llega en F5)
+│       ├── jobs/                trabajos y tareas programadas del worker (F5): funciones finas que buscan con el
+│       │                        planificador y le pasan cada taller a un service (maintenance.py, F5 paso 1)
+│       ├── main.py              la API
+│       └── worker.py            el worker de SAQ (F5): la cola, los trabajos y sus tareas programadas
 │   ├── migrations/              Alembic, con el rol axtton_owner
 │   └── tests/                   incluidas las adversas T* y R*
 ├── frontend/
@@ -528,6 +530,7 @@ axtton-core/
 | `repositories/` | Consultas con la sesión de `axtton_app` | `commit`, reglas de negocio, usar `axtton_platform` |
 | `platform/` | Usar `axtton_platform`, leer varios talleres | Devolver filas operativas al superadministrador; ser importado desde `api/v1/workshop` o `api/v1/portal`, salvo el selector de talleres del personal y el taller de la dirección del portal (R8, `R8_EXCEPTIONS`) |
 | `domain/` | Enums, transiciones, cálculos | Cualquier I/O |
+| `jobs/` (F5) | Buscar con el planificador (`platform/scheduler.py`) y llamar a un service por cada elemento | Consultar la BD, decidir, importar otro módulo de `platform/` (`test_architecture.py`) |
 
 **Regla única:** *si habla con la BD, vive en `repositories/`; si decide, en `services/` o `domain/`; si cruza talleres, en `platform/` y en ningún otro sitio.*
 
@@ -706,6 +709,7 @@ Todas son `CronJob` de SAQ. La búsqueda la hace el planificador por `platform/`
 | Caducidad de presupuestos | Cada hora | `sent` con `valid_until` vencido → `expired` (la orden no cambia, §6 de la especificación) |
 | Vencimientos | Una vez al día por taller, a primera hora local | Crea los avisos de ITV y revisión según la antelación configurada (RF-65) |
 | Firmas | Una vez al día | Borra las firmas vencidas (RF-56) y, los lunes, crea el resumen de las que vencen en 30 días (RF-57) |
+| Enlaces del portal (*construido en F5 paso 1*) | Una vez al día (3:40 UTC), también sin correo | Borra los `portal_links` caducados hace más de 7 días (`LINK_RETENTION`), usados o no: unos días para responder a "no me funcionó el enlace". Borrarlo no reabre nada, porque el token no se guarda. El planificador da los talleres con algo que borrar y cada uno se borra en su transacción, con `axtton_app`; un taller que falla no para a los demás (`jobs/maintenance.py`) |
 | Taller de demostración | Una vez al día | Lo recrea con datos ficticios (RF-72), solo si la instalación tiene la demo activada |
 
 **Trampas que se heredan tal cual** (Applications Tracker, `segundo-plano.md`):
@@ -728,7 +732,7 @@ Todas son `CronJob` de SAQ. La búsqueda la hace el planificador por `platform/`
 | `frontend` | 5173 | Vite con las dos entradas (`/` y `/portal`) | F0 |
 | `supertokens` + `supertokens-db` | — | Core de autenticación y su propio Postgres; sin puertos publicados | F1 |
 | `valkey` | — | Límites de peticiones (RNF-06, F1); la cola de SAQ llega con el `worker` (F5) | F1 |
-| `worker` | — | La misma imagen que `api` con otro comando | F5 (antes, sin trabajos) |
+| `worker` | — | La misma imagen que `api` con otro comando (`saq app.worker.settings`), sin aplicar migraciones; sano si SAQ lo ve vivo en Valkey (`--check`) | **Existe** desde F5 paso 1 |
 | `mailpit` | 8025 | Solo desarrollo: captura todo el correo | F1 |
 | `web` | — (8080 solo al probar producción en local) | Solo en `compose.prod.yml`: Nginx con las dos aplicaciones compiladas y el reenvío de `/api` | F2 |
 | `docs` | 8001 | MkDocs | F0 |
@@ -781,7 +785,7 @@ Como en Applications Tracker (su decisión 0023). Construido en F2 ([decisión 0
 | **F2** ✔ | Clientes, vehículos, `vehicle_ownerships`, órdenes con su historial, número correlativo, deshacer, búsqueda, bloqueo optimista, borradores en IndexedDB. *Añadido al planificarla:* diagnóstico, notas internas y trabajos (RF-22, RF-23: lo que guardan los borradores), cobro (RF-28, RF-29) y anonimización (RF-15), y una revisión del diseño de la interfaz validada **antes** del despliegue. **Primer despliegue en Coolify** |
 | **F3** ✔ | **Hecha** ([cierre](f3-cierre.md)). Datos del taller y `labor_rates` editables por su administrador (RF-02; `axtton_app` recibe `UPDATE` solo sobre esas columnas de `workshops`, migración `0012settings`), presupuestos versionados con sus triggers (`0013quotes`; R6 desde aquí), totales y descuentos, envío, renovación y anulación, decisión registrada por el taller, PDF del presupuesto con los datos legales y vista previa del borrador (`0014quotepdf`) y, pendiente de F2, los filtros del listado de órdenes (RF-24) |
 | **F4** | **Hecha y cerrada** ([lo aprendido](f4-cierre.md)). Enlace propio por taller, `portal_links` (`0016portallinks`; la receta `passwordless` solo da el usuario, [decisión 0006](../decisiones/0006-enlaces-magicos-propios-ligados-al-taller.md)), la cerradura y la duración de la sesión (`0017portalepoch`), estados para el cliente, sus vehículos y órdenes, la decisión desde el portal (`0018decisionerase`), el PDF de cada versión, el nombre corto del taller (`0019portalslug`, [decisión 0007](../decisiones/0007-nombre-corto-del-taller-en-el-portal.md)) y la entrada de la demo; T4–T7 y T10 |
-| **F5** | `worker`, bandeja de avisos, despachador, presupuesto enviado y vehículo listo; B1–B6 |
+| **F5** | **En marcha.** `worker`, bandeja de avisos, despachador, presupuesto enviado y vehículo listo; B1–B6. *Paso 1:* el `worker` (SAQ sobre Valkey, `app/worker.py`, `app/jobs/`), el planificador (`app/platform/scheduler.py`) y su primera tarea, borrar los enlaces del portal caducados (`0020linkpurge`) |
 | **F6** | Hoja de recepción con firma (§7.3), resumen de entrega, informe de actuaciones, descarga en el portal; prueba de punta a punta en CI |
 | **F7** | Catálogo, `stock_movements`, `used_parts`, líneas desde el catálogo, unidades comprometidas |
 | **F8** | Citas y su conversión en orden, recordatorios, vencimientos, borrado de firmas con su aviso; B7–B11. *Añadido en F3:* el calendario del taller (horario, festivos propios y días de cierre). Cada día se marca como *festivo*, que cuenta para la validez del presupuesto (`domain/business_days.py` lo recibirá como parámetro) y para las citas, o como *cierre*, que solo cuenta para las citas y las órdenes paradas: unas vacaciones no hacen inhábil un día a efectos legales |

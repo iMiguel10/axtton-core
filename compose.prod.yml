@@ -76,6 +76,33 @@ services:
       valkey:
         condition: service_healthy
 
+  # El worker de SAQ (F5, arquitectura §8): la misma imagen que api, con otro
+  # comando. Sin el entrypoint de la imagen (las migraciones las aplica solo api,
+  # y por eso espera a que esté sana) y con su propia comprobación de salud: la
+  # de la imagen llama al puerto 8000, que aquí no escucha nadie.
+  worker:
+    build:
+      context: ./backend
+      target: prod
+      args:
+        APP_VERSION: ${APP_VERSION:-dev}
+        APP_COMMIT: ${APP_COMMIT:-}
+    entrypoint: []
+    command: ["saq", "--verbose", "app.worker.settings"]
+    environment: *api-env
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "saq", "app.worker.settings", "--check"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+    depends_on:
+      api:
+        condition: service_healthy
+      valkey:
+        condition: service_healthy
+
   # Los roles se crean al arrancar con el volumen vacío (deploy/postgres).
   db:
     build:
@@ -131,7 +158,7 @@ services:
       timeout: 5s
       retries: 10
 
-  # Contadores del límite de peticiones (RNF-06); la cola de SAQ llega en F5.
+  # Contadores del límite de peticiones (RNF-06) y la cola del worker (F5).
   valkey:
     image: valkey/valkey:9.1-alpine
     command: ["valkey-server", "--appendonly", "yes"]

@@ -12,6 +12,11 @@ from app.domain.work_orders import CLOSED, WorkOrderStatus
 # correo un rato después, pero un enlace olvidado en un buzón no debe valer.
 LINK_LIFETIME = timedelta(minutes=15)
 
+# Cuánto se guarda un enlace después de caducar, usado o no (F5 paso 1): unos días
+# para poder responder a "no me funcionó el enlace"; después, el worker lo borra.
+# Borrarlo no reabre nada: el token no se guarda, y sin la fila no vale.
+LINK_RETENTION = timedelta(days=7)
+
 # Los clientes de la demo (app/scripts/seed_demo.py): solo a ellos se puede
 # entrar sin correo, y solo con DEMO_PORTAL_ENTRY (F4 paso 8). Un dominio
 # reservado para ejemplos (RFC 2606): ningún cliente de verdad lo tiene.

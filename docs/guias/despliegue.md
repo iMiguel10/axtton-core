@@ -10,9 +10,10 @@ Hoy hay una sola instalación: **la demo**, en `https://axtton.imigueldev.duckdn
 |---|---|---|
 | `web` | `deploy/web/` | Nginx con el taller (`/`) y el portal (`/portal`) compilados; reenvía `/api` a la API. El único con dominio |
 | `api` | `backend/`, etapa `prod` | Aplica las migraciones al arrancar y sirve la API |
+| `worker` | la misma que `api`, con otro comando | Los trabajos en segundo plano y las tareas programadas (F5, arquitectura §8). No aplica migraciones: arranca cuando `api` está sana. Está sano si SAQ lo ve vivo en Valkey (`saq app.worker.settings --check`) |
 | `db` | `deploy/postgres/` | Postgres 17 con los tres roles (arquitectura §4) |
 | `supertokens` + `supertokens-db` | oficiales | Autenticación |
-| `valkey` | oficial | Límite de peticiones (RNF-06) |
+| `valkey` | oficial | Límite de peticiones (RNF-06) y la cola del worker. Guarda en disco (`appendonly`): reiniciarlo no pierde lo encolado |
 
 Ninguno publica puertos en el servidor.
 

@@ -65,3 +65,23 @@ def test_repositories_do_not_decide_nor_cross_workshops() -> None:
         )
         == {}
     )
+
+
+def test_jobs_are_thin_and_only_cross_workshops_through_the_scheduler() -> None:
+    """Un trabajo del worker no consulta la BD ni decide (F5, arquitectura §8):
+    busca con el planificador y le pasa cada elemento a un service. De
+    app.platform solo puede usar el planificador, que solo busca (§4)."""
+    assert (
+        violations(
+            "jobs",
+            ("sqlalchemy", "app.repositories", "app.models", "fastapi", "app.api"),
+        )
+        == {}
+    )
+    crossing = {
+        path.relative_to(APP).as_posix(): module
+        for path in (APP / "jobs").rglob("*.py")
+        for module in imports_of(path)
+        if module.startswith("app.platform") and module != "app.platform.scheduler"
+    }
+    assert crossing == {}

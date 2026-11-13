@@ -19,8 +19,12 @@ function portalFallback(): Plugin {
     configureServer(server) {
       server.middlewares.use((req, _res, next) => {
         const url = req.url ?? "";
-        const isPage = !url.includes(".") && !url.startsWith("/@");
-        if (isPage && (url === "/portal" || url.startsWith("/portal/"))) {
+        // Un fichero se reconoce por el punto de su ruta, no de la consulta: el
+        // enlace de un aviso (F5 paso 5) lleva `?order=…`, y un valor con puntos
+        // cargaba la aplicación del taller. Nginx (try_files $uri) ya mira solo la ruta.
+        const path = url.split("?")[0];
+        const isPage = !path.includes(".") && !path.startsWith("/@");
+        if (isPage && (path === "/portal" || path.startsWith("/portal/"))) {
           req.url = "/portal/index.html";
         }
         next();

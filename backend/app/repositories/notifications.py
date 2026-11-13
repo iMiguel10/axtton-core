@@ -184,3 +184,9 @@ async def expire_abandoned(session: AsyncSession, older_than: timedelta) -> int:
         )
     )
     return int(result.rowcount)  # type: ignore[attr-defined]
+
+
+async def status_of_key(session: AsyncSession, dedupe_key: str) -> str | None:
+    """El estado del aviso de un motivo del taller fijado, o None si no existe."""
+    query = select(Notification.status).where(Notification.dedupe_key == dedupe_key)
+    return (await session.scalars(query)).one_or_none()

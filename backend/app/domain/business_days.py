@@ -76,6 +76,13 @@ def quote_valid_until(sent_at: datetime, timezone: str, days: int) -> datetime:
     return datetime.combine(last_day + timedelta(days=1), time(), tzinfo=zone)
 
 
+def last_valid_day(valid_until: datetime, timezone: str) -> date:
+    """El último día en que vale un presupuesto, en la zona del taller: el
+    anterior a la medianoche que guarda `valid_until` (quote_valid_until)."""
+    moment = valid_until.astimezone(ZoneInfo(timezone)) - timedelta(microseconds=1)
+    return moment.date()
+
+
 def delivery_date(decided_at: datetime, timezone: str, days: int) -> date:
     """La fecha prevista de entrega de un presupuesto aprobado en `decided_at`
     (RF-37): el día hábil número `days` desde la aceptación, con la misma regla

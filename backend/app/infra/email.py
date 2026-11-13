@@ -21,6 +21,7 @@ import aiosmtplib
 from jinja2 import Environment, FileSystemLoader, select_autoescape
 
 from app.core.config import Settings, SmtpSecurity
+from app.domain.clients import Language
 from app.domain.emails import EmailContent
 
 TEMPLATES = Path(__file__).resolve().parent.parent / "templates" / "email"
@@ -76,6 +77,22 @@ class EmailDeliveryUnknownError(EmailError):
     así que no se reintenta (RF-62)."""
 
 
+# Lo que la plantilla dice por su cuenta, en el idioma del email (F5 paso 5: los
+# avisos van en el del cliente).
+_CHROME = {
+    Language.ES: {
+        "copy_link": "Si el botón no funciona, copia este enlace en el navegador:",
+        "managed_with": "gestiona sus reparaciones con AXTTON CORE.",
+        "platform": "AXTTON CORE · Gestión del taller y seguimiento de cada reparación.",
+    },
+    Language.EN: {
+        "copy_link": "If the button does not work, copy this link into your browser:",
+        "managed_with": "manages its repairs with AXTTON CORE.",
+        "platform": "AXTTON CORE · Workshop management and tracking of every repair.",
+    },
+}
+
+
 @cache
 def _templates() -> Environment:
     return Environment(
@@ -98,7 +115,7 @@ def compose(to: str, content: EmailContent) -> Email:
     html = (
         _templates()
         .get_template("base.html")
-        .render(content=content, logo_cid=LOGO_CID)
+        .render(content=content, logo_cid=LOGO_CID, chrome=_CHROME[content.language])
     )
     sender = f"{content.workshop_name} (AXTTON CORE)" if content.workshop_name else None
     return Email(

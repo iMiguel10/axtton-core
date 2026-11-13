@@ -7,6 +7,7 @@ import { AuthLayout } from "@/shared/components/AuthLayout";
 import { Button } from "@/shared/components/ui/button";
 import { errorMessage } from "@/shared/lib/errors";
 
+import { takeNextPath } from "../../lib/nextOrder";
 import { consumeLink } from "./api";
 
 
@@ -31,7 +32,8 @@ export function AccessPage() {
   }, []);
   const enter = useMutation({
     mutationFn: () => consumeLink(workshopId, token),
-    onSuccess: () => navigate("/", { replace: true }),
+    // A la orden del aviso que trajo hasta aquí, si la había (F5 paso 5).
+    onSuccess: () => navigate(takeNextPath(workshopId), { replace: true }),
   });
 
   const requestAnother = (

@@ -361,22 +361,24 @@ async def test_without_smtp_due_notifications_are_skipped_with_the_reason(
 
 @pytest.mark.asyncio
 async def test_the_worker_dispatches_and_sends_end_to_end(
-    engines: Engines, two_workshops: TwoWorkshops, client_a: UUID
+    engines: Engines,
+    two_workshops: TwoWorkshops,
+    client_a: UUID,
+    monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     """Del despachador (planificador incluido) al trabajo de envío."""
     from app.jobs.notifications import dispatch_notifications
+    from app.services import notice_composers
 
     notification_id = await create(two_workshops.a, client_a)
     outbox = InMemoryEmailSender()
     queue = InMemoryJobQueue()
     ctx = cast(WorkerContext, {"email_sender": outbox, "job_queue": queue})
     assert await dispatch_notifications(ctx) == 1
-    service.COMPOSERS[KIND] = compose_ok
-    try:
-        [job] = queue.jobs
-        await send_notification(ctx, **cast(dict[str, Any], job.kwargs))
-    finally:
-        del service.COMPOSERS[KIND]
+    # El aviso de prueba no tiene un presupuesto de verdad: su compositor es otro.
+    monkeypatch.setitem(notice_composers.COMPOSERS, KIND, compose_ok)
+    [job] = queue.jobs
+    await send_notification(ctx, **cast(dict[str, Any], job.kwargs))
     assert [email.to for email in outbox.sent] == ["ana@example.com"]
     assert (await row(engines, notification_id))["status"] == "sent"
 

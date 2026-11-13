@@ -55,6 +55,7 @@ from app.repositories import portal as portal_repo
 from app.repositories import quotes as quote_repo
 from app.repositories import vehicles as vehicle_repo
 from app.repositories import work_orders as order_repo
+from app.services import quote_notices
 from app.services.integrity import flush_or_conflict
 from app.services.settings import prices_hidden
 from app.services.work_orders import record_status_change
@@ -483,7 +484,7 @@ async def send_quote(
 ) -> None:
     """Envía un borrador: lo congela con sus totales y mueve la orden a
     `pending_approval` (arquitectura §7.1). El aviso al cliente llega con el
-    worker (F5).
+    worker (F5), que se crea aquí, en la transacción del envío.
 
     El orden de las escrituras lo imponen los triggers de 0013quotes:
     1. la versión enviada anterior pasa a sustituida antes de que haya otra (el
@@ -633,6 +634,8 @@ async def _freeze_and_send(
             },
         )
     )
+    # El aviso al cliente, en esta misma transacción (invariante 8, RF-60).
+    await quote_notices.notice_sent(session, order, quote)
     await session.flush()
 
 
@@ -680,6 +683,8 @@ async def cancel_quote(
             details={"quote_version": quote.version_no, "cancel_reason": reason},
         )
     )
+    # El aviso al cliente, si había recibido la versión (lo comprueba al enviarlo).
+    await quote_notices.notice_cancelled(session, order, quote)
     await session.flush()
 
 

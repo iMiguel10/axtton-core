@@ -2,9 +2,9 @@
 Corre con correo o sin él."""
 
 from saq import CronJob
-from saq.types import Context
 
 from app.jobs.common import each_workshop
+from app.jobs.context import WorkerContext
 from app.platform.scheduler import workshops_with_overdue_quotes
 from app.services import quotes as quote_service
 
@@ -12,7 +12,7 @@ from app.services import quotes as quote_service
 EXPIRE_TIMEOUT_SECONDS = 300
 
 
-async def expire_quotes(ctx: Context) -> int:
+async def expire_quotes(ctx: WorkerContext) -> int:
     """Escribe `expired` en las versiones enviadas cuya validez ya pasó (RF-33)."""
     return await each_workshop(
         await workshops_with_overdue_quotes(),
@@ -21,7 +21,7 @@ async def expire_quotes(ctx: Context) -> int:
     )
 
 
-def quote_cron_jobs() -> list[CronJob[Context]]:
+def quote_cron_jobs() -> list[CronJob[WorkerContext]]:
     return [
         CronJob(
             expire_quotes,

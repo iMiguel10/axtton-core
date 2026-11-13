@@ -53,7 +53,15 @@ class Email:
 
 
 class EmailError(Exception):
-    """Base de los errores de envío. Ninguno lleva credenciales del SMTP."""
+    """Base de los errores de envío. Ninguno lleva credenciales del SMTP.
+
+    `smtp_code` es el código de la respuesta del servidor, si la hubo (550,
+    421…): la bandeja de avisos lo guarda como motivo, sin el texto, que podría
+    llevar el email del destinatario (RNF-40)."""
+
+    def __init__(self, message: str, smtp_code: int | None = None) -> None:
+        super().__init__(message)
+        self.smtp_code = smtp_code
 
 
 class EmailNotSentError(EmailError):
@@ -231,7 +239,7 @@ class SmtpEmailSender:
             await client.rcpt(email.to, encoding=encoding)
         except (aiosmtplib.SMTPException, OSError) as exc:
             client.close()
-            raise EmailNotSentError(_describe(exc)) from exc
+            raise EmailNotSentError(_describe(exc), _code(exc)) from exc
 
         try:
             await client.data(
@@ -243,12 +251,12 @@ class SmtpEmailSender:
             # El servidor contestó con un código de error, al pedir DATA o al
             # final del mensaje: lo rechazó de forma explícita.
             client.close()
-            raise EmailNotSentError(_describe(exc)) from exc
+            raise EmailNotSentError(_describe(exc), _code(exc)) from exc
         except (aiosmtplib.SMTPException, OSError) as exc:
             # Corte o timeout con el mensaje en vuelo: puede que el servidor lo
             # aceptara y la confirmación no llegara.
             client.close()
-            raise EmailDeliveryUnknownError(_describe(exc)) from exc
+            raise EmailDeliveryUnknownError(_describe(exc), _code(exc)) from exc
 
         # Entregado. Un fallo al despedirse ya no cambia nada.
         try:
@@ -261,6 +269,10 @@ def _describe(exc: Exception) -> str:
     # Solo el tipo y lo que dijo el servidor: nunca la configuración, que lleva
     # la contraseña del SMTP.
     return f"{type(exc).__name__}: {exc}"
+
+
+def _code(exc: Exception) -> int | None:
+    return exc.code if isinstance(exc, aiosmtplib.SMTPResponseException) else None
 
 
 class DisabledEmailSender:

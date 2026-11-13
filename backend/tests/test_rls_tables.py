@@ -43,6 +43,7 @@ WORKSHOP_TABLES = {
     "quote_lines": "workshop_id",
     "quote_decisions": "workshop_id",
     "portal_links": "workshop_id",
+    "notifications": "workshop_id",
 }
 
 # Tablas sobre las que axtton_app no tiene DELETE: no se borran nunca, ni por un
@@ -63,6 +64,8 @@ NO_DELETE = {
     "labor_rates",
     "quote_decisions",
     # portal_links no está desde 0020linkpurge: el worker borra los caducados.
+    # Un aviso no se borra nunca: es lo que impide repetirlo (0022outbox).
+    "notifications",
 }
 # La columna que axtton_app puede actualizar, si no puede todas.
 UPDATABLE_COLUMN = {
@@ -71,6 +74,8 @@ UPDATABLE_COLUMN = {
     "work_entries": "voided_at",
     # Un enlace solo se cierra (0016portallinks).
     "portal_links": "used_at",
+    # De un aviso, solo su estado (0022outbox).
+    "notifications": "status",
     "work_orders": "version",
     # Lo que fija la creación de una versión no se actualiza (0013quotes).
     "quotes": "version",
@@ -126,6 +131,14 @@ async def seeded(engines: Engines, two_workshops: TwoWorkshops) -> Seeded:
                     " VALUES (:w, :c, :h, clock_timestamp() + interval '15 minutes')"
                 ),
                 {"w": workshop, "c": client, "h": workshop.bytes},
+            )
+            await conn.execute(
+                text(
+                    "INSERT INTO notifications"
+                    " (workshop_id, kind, dedupe_key, client_id)"
+                    " VALUES (:w, 'quote_sent', 'quote_sent:rls', :c)"
+                ),
+                {"w": workshop, "c": client},
             )
             vehicle = await conn.scalar(
                 text(

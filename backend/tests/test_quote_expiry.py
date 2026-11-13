@@ -11,11 +11,11 @@ from typing import cast
 
 import pytest
 from httpx import AsyncClient
-from saq.types import Context
 from sqlalchemy import text
 from sqlalchemy.exc import DBAPIError
 
 from app.domain.quotes import QuoteStatus
+from app.jobs.context import WorkerContext
 from app.jobs.quotes import expire_quotes
 from app.platform.scheduler import workshops_with_overdue_quotes
 from app.services import quotes as quote_service
@@ -36,7 +36,7 @@ from tests.test_work_orders import Shop, outbox, shop
 
 __all__ = ["outbox", "shop"]
 
-NO_CONTEXT = cast(Context, {})
+NO_CONTEXT = cast(WorkerContext, {})
 
 
 async def status_of(engines: Engines, quote_id: object) -> str:

@@ -261,7 +261,7 @@ Taller (organización, el "tenant")
 
 ### Notificaciones (RF-60…)
 
-- **RF-60** Se envía un email al cliente cuando se le envía un presupuesto y cuando su vehículo está listo para recoger. *Al construirlo (F5 paso 5):* también al corregir o renovar (cada versión enviada tiene su aviso) y al anular, esto solo si el cliente recibió el de esa versión (§6). El email va en el idioma del cliente, sin nada interno (ni el motivo de una anulación), y su botón lleva a la entrada del portal del taller, que abre la orden.
+- **RF-60** Se envía un email al cliente cuando se le envía un presupuesto y cuando su vehículo está listo para recoger. *Al construirlo (F5 paso 5):* también al corregir o renovar (cada versión enviada tiene su aviso) y al anular, esto solo si el cliente recibió el de esa versión (§6). El email va en el idioma del cliente, sin nada interno (ni el motivo de una anulación), y su botón lleva a la entrada del portal del taller, que abre la orden. *Vehículo listo (F5 paso 6):* al pasar la orden a lista, también "sin reparar", que el correo dice tal cual, con la dirección y el teléfono del taller. Deshacer ese cambio cancela el aviso si aún no ha salido; volver a marcarla lista avisa otra vez.
 - **RF-61** El taller decide si avisa también de otros cambios de estado.
 - **RF-62** Un aviso no se envía dos veces por el mismo motivo, aunque el trabajo que lo envía se reintente.
 - **RF-63** Si el cliente no tiene email, la acción se completa igual y la interfaz avisa de que no se le ha notificado.

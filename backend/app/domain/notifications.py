@@ -14,6 +14,7 @@ veces por el mismo motivo" (RF-62) lo dan, juntos:
 
 from datetime import datetime, timedelta
 from enum import StrEnum
+from uuid import UUID
 
 
 class NotificationKind(StrEnum):
@@ -105,3 +106,18 @@ def next_attempt_at(attempts: int, now: datetime) -> datetime | None:
     if attempts >= MAX_ATTEMPTS:
         return None
     return now + RETRY_DELAYS[attempts - 1]
+
+
+def ready_key(work_order_id: UUID, seq: int) -> str:
+    """El motivo del aviso de vehículo listo (arquitectura §8): la orden y el
+    cambio de estado que la puso lista. Deshacerlo y volver a marcarla es otro
+    cambio, y se avisa otra vez; reintentar el mismo, nunca."""
+    return f"ready:{work_order_id}:{seq}"
+
+
+def ready_seq(dedupe_key: str) -> int:
+    """El cambio de estado de un aviso de vehículo listo (`ready_key`)."""
+    kind, _, seq = dedupe_key.split(":")
+    if kind != "ready":
+        raise ValueError(f"not a ready key: {dedupe_key}")
+    return int(seq)

@@ -283,3 +283,58 @@ def quote_cancelled_email(notice: NoticeContext, *, version_no: int) -> EmailCon
         ),
         action_label="Ver la orden",
     )
+
+
+def vehicle_ready_email(
+    notice: NoticeContext,
+    *,
+    unrepaired: bool,
+    address: str | None,
+    phone: str | None,
+) -> EmailContent:
+    """El vehículo listo para recoger (RF-60). "Sin reparar" (especificación
+    §6) se dice tal cual: es lo que el cliente ve también en el portal."""
+    shop, vehicle, code = notice.workshop_name, notice.vehicle, notice.order_code
+    if notice.language == Language.EN:
+        where = [
+            *([f"Address: {address}."] if address else []),
+            *([f"Phone: {phone}."] if phone else []),
+        ]
+        first = (
+            f"{shop} has not repaired your vehicle {vehicle} (order {code}), and"
+            " you can now pick it up. You will find the details in the portal."
+            if unrepaired
+            else f"{shop} has finished with your vehicle {vehicle} (order {code})."
+            " You can now pick it up."
+        )
+        return _notice(
+            notice,
+            subject=(
+                f"Your {vehicle} is ready to pick up, unrepaired"
+                if unrepaired
+                else f"Your {vehicle} is ready to pick up"
+            ),
+            paragraphs=(first, *([" ".join(where)] if where else [])),
+            action_label="View the order",
+        )
+    where = [
+        *([f"Dirección: {address}."] if address else []),
+        *([f"Teléfono: {phone}."] if phone else []),
+    ]
+    first = (
+        f"{shop} no ha reparado tu vehículo {vehicle} (orden {code}) y ya puedes"
+        " pasar a recogerlo. En el portal tienes el detalle."
+        if unrepaired
+        else f"{shop} ha terminado con tu vehículo {vehicle} (orden {code}). Ya"
+        " puedes pasar a recogerlo."
+    )
+    return _notice(
+        notice,
+        subject=(
+            f"Tu {vehicle} está listo para recoger, sin reparar"
+            if unrepaired
+            else f"Tu {vehicle} está listo para recoger"
+        ),
+        paragraphs=(first, *([" ".join(where)] if where else [])),
+        action_label="Ver la orden",
+    )

@@ -47,6 +47,7 @@ from app.repositories import work_orders as order_repo
 from app.repositories import worklog as worklog_repo
 from app.repositories.work_orders import OrderRow
 from app.services import limits as limit_service
+from app.services import order_notices
 from app.services.settings import prices_hidden
 
 # Lo que se puede cambiar con PATCH: los datos de recepción y el responsable.
@@ -324,19 +325,18 @@ async def record_status_change(
     (invariante 5; el trigger diferido lo comprueba al confirmar). Sin empleado,
     solo cuando lo provocó el cliente desde el portal."""
     now = await vehicle_repo.db_now(session)
-    session.add(
-        WorkOrderStatusChange(
-            workshop_id=order.workshop_id,
-            work_order_id=order.id,
-            from_status=order.status,
-            to_status=to_status,
-            cause=cause,
-            employee_id=employee_id,
-            by_client=by_client,
-            note=note,
-            undoes_seq=undoes_seq,
-        )
+    change = WorkOrderStatusChange(
+        workshop_id=order.workshop_id,
+        work_order_id=order.id,
+        from_status=order.status,
+        to_status=to_status,
+        cause=cause,
+        employee_id=employee_id,
+        by_client=by_client,
+        note=note,
+        undoes_seq=undoes_seq,
     )
+    session.add(change)
     order.status = to_status
     # Un cambio de estado es actividad: la orden deja de estar "parada" (RF-24).
     order.last_activity_at = now
@@ -344,6 +344,10 @@ async def record_status_change(
         # De aquí salen la garantía (RF-53) y el plazo de la firma (RF-56).
         order.delivered_at = now
     await session.flush()
+    if to_status == WorkOrderStatus.READY:
+        # El aviso al cliente, en esta misma transacción (invariante 8, RF-60),
+        # con el `seq` del cambio que la puso lista (lo devuelve el INSERT).
+        await order_notices.notice_ready(session, order, change.seq)
 
 
 async def change_status(
@@ -413,6 +417,9 @@ async def undo_last_change(
     if last.to_status == WorkOrderStatus.READY and order.unrepaired:
         # Deshacer "lista · sin reparar" deshace también el "sin reparar".
         order.unrepaired = False
+    if last.to_status == WorkOrderStatus.READY:
+        # El aviso de "lista", si aún no ha salido, ya no tiene sentido.
+        await order_notices.cancel_ready(session, order, last.seq)
     await record_status_change(
         session,
         order,

@@ -190,3 +190,28 @@ async def status_of_key(session: AsyncSession, dedupe_key: str) -> str | None:
     """El estado del aviso de un motivo del taller fijado, o None si no existe."""
     query = select(Notification.status).where(Notification.dedupe_key == dedupe_key)
     return (await session.scalars(query)).one_or_none()
+
+
+async def cancel_open(
+    session: AsyncSession, dedupe_key: str, reason: FailureReason
+) -> int:
+    """Cancela el aviso de un motivo que ya no existe si aún no ha salido
+    (`pending` o `failed`, arquitectura §8: "cancelar al cambiar es lo rápido").
+    Uno que se está enviando no se toca: lo para la doble comprobación del
+    compositor, y uno ya enviado no se puede deshacer."""
+    result = await session.execute(
+        update(Notification)
+        .where(
+            Notification.dedupe_key == dedupe_key,
+            Notification.status.in_(
+                [NotificationStatus.PENDING, NotificationStatus.FAILED]
+            ),
+        )
+        .values(
+            status=NotificationStatus.CANCELLED,
+            failure_reason=reason,
+            next_attempt_at=None,
+            smtp_code=None,
+        )
+    )
+    return int(result.rowcount)  # type: ignore[attr-defined]

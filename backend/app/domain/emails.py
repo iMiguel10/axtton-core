@@ -22,6 +22,9 @@ class EmailContent:
     # El taller que lo envía; None si es de la plataforma (el superadministrador,
     # la recuperación de contraseña). Sale en la cabecera y en el remitente.
     workshop_name: str | None = None
+    # La dirección de respuesta del taller (RF-68): si el cliente contesta, le
+    # llega al taller y no a la plataforma. La ponen los avisos al cliente (F5).
+    reply_to: str | None = None
 
 
 def invitation_email(

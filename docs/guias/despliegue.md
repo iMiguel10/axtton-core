@@ -35,7 +35,7 @@ Si el job falla, el log de Coolify dice por qué. Mientras el despliegue nuevo n
 
 1. **Un recurso nuevo** en un proyecto (por ejemplo, "AXTTON CORE", entorno `production`): *Public Repository* → `https://github.com/iMiguel10/axtton-core`, rama `main`, *Build Pack* **Docker Compose** y fichero `/compose.prod.yml`.
 2. **El dominio:** en el servicio `web`, `https://axtton.imigueldev.duckdns.org` (puerto 80). Ningún otro servicio lleva dominio.
-3. **Las variables** (*Environment Variables*): las de `.env.prod.example`. Cada contraseña y clave, distinta y generada con `openssl rand -hex 32`. Para la demo, además, `DEMO_SEED_ENABLED=true` y `DEMO_PORTAL_ENTRY=true` (entrar en el portal como un cliente de la demo, que no tiene correo; [demo](demo.md#el-portal-del-cliente)). Ninguna de las dos en una instalación de verdad.
+3. **Las variables** (*Environment Variables*): las de `.env.prod.example`. Cada contraseña y clave, distinta y generada con `openssl rand -hex 32`. Para la demo, además, `DEMO_SEED_ENABLED=true` y `DEMO_PORTAL_ENTRY=true` (entrar en el portal como un cliente de la demo, que no tiene correo; [demo](demo.md#el-portal-del-cliente)). Ninguna de las dos en una instalación de verdad. Con correo, `SMTP_HOST` y las demás `SMTP_*`: `SMTP_SECURITY` es `starttls` si no se dice nada (el puerto 587), o `tls` con el 465. Con cifrado pedido y un servidor que no lo ofrece, no se envía en claro: el correo falla (F5 paso 3).
 4. **Desactiva el *Auto Deploy*** (*Advanced*): el despliegue lo pide la CI.
 5. **El primer despliegue**, a mano desde el panel (*Deploy*).
 6. **Carga la demo** la primera vez: en el contenedor `api` (*Terminal*), `python -m app.scripts.seed_demo`.

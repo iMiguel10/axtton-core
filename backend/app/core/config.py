@@ -3,6 +3,8 @@ from typing import Literal
 
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
+SmtpSecurity = Literal["none", "starttls", "tls"]
+
 
 class Settings(BaseSettings):
     """Configuración leída de variables de entorno (en desarrollo, del `.env`).
@@ -33,6 +35,12 @@ class Settings(BaseSettings):
     smtp_port: int = 587
     smtp_username: str | None = None
     smtp_password: str | None = None
+    # Cómo se cifra (F5 paso 3): "starttls" (el 587 de siempre), "tls" (el 465) o
+    # "none" (solo Mailpit, en desarrollo). Con cifrado, si el servidor no lo
+    # ofrece no se envía en claro: el envío falla como no enviado.
+    smtp_security: SmtpSecurity = "starttls"
+    # Lo que se espera a cada paso de la conversación SMTP.
+    smtp_timeout_seconds: float = 20
     email_from: str = "AXTTON CORE <no-reply@localhost>"
 
     # Modo de instalación (RF-111): un solo taller o varios.

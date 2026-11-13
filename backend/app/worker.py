@@ -10,11 +10,15 @@ planificador (`app/platform/scheduler.py`).
 """
 
 from saq import Queue
-from saq.types import Context, SettingsDict
+from saq.types import SettingsDict
 
 from app.core.config import get_settings
 from app.core.db import engine
+from app.infra.email import build_email_sender
+from app.infra.queue import SaqJobQueue
+from app.jobs.context import WorkerContext
 from app.jobs.maintenance import maintenance_cron_jobs
+from app.jobs.notifications import notification_cron_jobs, send_notification
 from app.jobs.quotes import quote_cron_jobs
 from app.platform.db import platform_engine
 
@@ -28,19 +32,31 @@ if not _valkey_url:
 queue = Queue.from_url(_valkey_url)
 
 
-async def shutdown(ctx: Context) -> None:
+async def startup(ctx: WorkerContext) -> None:
+    # Lo que comparten los trabajos, creado una vez al arrancar.
+    ctx["email_sender"] = build_email_sender(get_settings())
+    ctx["job_queue"] = SaqJobQueue(queue)
+
+
+async def shutdown(ctx: WorkerContext) -> None:
     # Cierra los pools de Postgres al parar, en vez de dejar las conexiones a medias.
     await engine.dispose()
     await platform_engine.dispose()
 
 
-settings: SettingsDict[Context] = {
+settings: SettingsDict[WorkerContext] = {
     "queue": queue,
-    "functions": [],
+    "functions": [send_notification],
     # SAQ encola cada pasada con la clave `cron:<función>`: aunque hubiera dos
     # workers, cada una se ejecuta una vez. Aun así, cada tarea es segura si se
-    # ejecutara dos veces (borrar lo ya borrado no hace nada).
-    "cron_jobs": [*maintenance_cron_jobs(), *quote_cron_jobs()],
+    # ejecutara dos veces: borrar lo ya borrado no hace nada, y dos despachadores
+    # a la vez se reparten los avisos (FOR UPDATE SKIP LOCKED).
+    "cron_jobs": [
+        *maintenance_cron_jobs(),
+        *quote_cron_jobs(),
+        *notification_cron_jobs(),
+    ],
+    "startup": startup,
     "shutdown": shutdown,
     "concurrency": 10,
 }

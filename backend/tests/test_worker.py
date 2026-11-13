@@ -11,12 +11,12 @@ from typing import cast
 from uuid import UUID
 
 import pytest
-from saq.types import Context
 from sqlalchemy import text
 from sqlalchemy.exc import DBAPIError
 
 from app.domain.portal import LINK_RETENTION
 from app.jobs import maintenance
+from app.jobs.context import WorkerContext
 from app.jobs.maintenance import purge_portal_links
 from app.platform.scheduler import workshops_with_expired_links
 from tests.conftest import Engines, TwoWorkshops
@@ -25,7 +25,7 @@ from tests.test_portal_auth import add_client, new_email
 from tests.test_rls import set_workshops
 
 # SAQ pasa su contexto; esta tarea no usa nada de él.
-NO_CONTEXT = cast(Context, {})
+NO_CONTEXT = cast(WorkerContext, {})
 
 
 async def add_link(
@@ -67,7 +67,12 @@ def test_the_worker_loads_with_its_scheduled_tasks() -> None:
     from app.worker import settings
 
     crons = {job.function.__name__: job for job in settings["cron_jobs"]}
-    assert set(crons) == {"purge_portal_links", "expire_quotes"}
+    assert set(crons) == {
+        "purge_portal_links",
+        "expire_quotes",
+        "dispatch_notifications",
+        "expire_abandoned_notifications",
+    }
     # Una pasada al día, de madrugada, con un solo intento: si falla, la recoge
     # la del día siguiente.
     assert crons["purge_portal_links"].cron == "40 3 * * *"

@@ -1,10 +1,10 @@
 """Limpieza programada (F5 paso 1): corre con correo o sin él."""
 
 from saq import CronJob
-from saq.types import Context
 
 from app.domain.portal import LINK_RETENTION
 from app.jobs.common import each_workshop
+from app.jobs.context import WorkerContext
 from app.platform.scheduler import workshops_with_expired_links
 from app.services import portal_auth as portal_auth_service
 
@@ -13,7 +13,7 @@ from app.services import portal_auth as portal_auth_service
 PURGE_TIMEOUT_SECONDS = 300
 
 
-async def purge_portal_links(ctx: Context) -> int:
+async def purge_portal_links(ctx: WorkerContext) -> int:
     """Borra los enlaces del portal caducados hace más de LINK_RETENTION."""
     return await each_workshop(
         await workshops_with_expired_links(LINK_RETENTION),
@@ -22,7 +22,7 @@ async def purge_portal_links(ctx: Context) -> int:
     )
 
 
-def maintenance_cron_jobs() -> list[CronJob[Context]]:
+def maintenance_cron_jobs() -> list[CronJob[WorkerContext]]:
     return [
         CronJob(
             purge_portal_links,

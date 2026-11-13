@@ -5,6 +5,7 @@ import { useNavigate } from "react-router-dom";
 import { Button } from "@/shared/components/ui/button";
 import { errorMessage } from "@/shared/lib/errors";
 
+import { takeNextPath } from "../../lib/nextOrder";
 import { demoEnter, fetchDemoClients } from "./api";
 
 /**
@@ -22,7 +23,7 @@ export function DemoEntry({ workshopId }: { workshopId: string }) {
   });
   const enter = useMutation({
     mutationFn: (email: string) => demoEnter(workshopId, email),
-    onSuccess: () => navigate("/", { replace: true }),
+    onSuccess: () => navigate(takeNextPath(workshopId), { replace: true }),
   });
 
   if (!clients.data?.length) return null;

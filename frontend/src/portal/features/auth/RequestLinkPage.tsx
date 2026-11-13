@@ -3,18 +3,20 @@ import { useQuery } from "@tanstack/react-query";
 import { useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
 import { useTranslation } from "react-i18next";
-import { useParams } from "react-router-dom";
+import { Navigate, useParams, useSearchParams } from "react-router-dom";
+import Session from "supertokens-web-js/recipe/session";
 import { z } from "zod";
 
 import { AuthLayout } from "@/shared/components/AuthLayout";
 import { Field } from "@/shared/components/form/Field";
-import { LinesSkeleton } from "@/shared/components/Loading";
+import { AppSplash, LinesSkeleton } from "@/shared/components/Loading";
 import { Button } from "@/shared/components/ui/button";
 import { errorMessage } from "@/shared/lib/errors";
 
 import { rememberWorkshop } from "../../lib/lastWorkshop";
+import { orderFromLink, orderPath, rememberNextOrder } from "../../lib/nextOrder";
 import { DemoEntry } from "./DemoEntry";
-import { fetchEntry, logoUrl, requestLink } from "./api";
+import { fetchEntry, fetchMe, logoUrl, requestLink } from "./api";
 
 const schema = z.object({ email: z.email("validation.email") });
 type RequestForm = z.infer<typeof schema>;
@@ -41,6 +43,23 @@ export function WorkshopEntry({ workshopId }: { workshopId: string }) {
     if (entry.isSuccess) rememberWorkshop(workshopId);
   }, [entry.isSuccess, workshopId]);
 
+  // El botón de un aviso (F5 paso 5) trae la orden: `?order=<id>`. Con sesión de
+  // este taller se va directo a ella; si no, se recuerda para después de entrar.
+  const [params] = useSearchParams();
+  const orderId = orderFromLink(params.get("order"));
+  const sessionWorkshop = useQuery({
+    queryKey: ["portal", "entry-session"],
+    queryFn: async () => ((await Session.doesSessionExist()) ? (await fetchMe()).workshop_id : null),
+    enabled: orderId !== null,
+    retry: false,
+  });
+  const goToOrder = orderId !== null && sessionWorkshop.data === workshopId;
+  useEffect(() => {
+    if (orderId && !sessionWorkshop.isPending && !goToOrder) rememberNextOrder(workshopId, orderId);
+  }, [orderId, sessionWorkshop.isPending, goToOrder, workshopId]);
+
+  if (orderId && sessionWorkshop.isPending) return <AppSplash />;
+  if (orderId && goToOrder) return <Navigate to={orderPath(orderId)} replace />;
   if (entry.isError) return <UnknownEntry />;
 
   return (

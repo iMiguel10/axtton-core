@@ -65,12 +65,11 @@ class NotDelivered:
     reason: FailureReason
 
 
-# El compositor de un tipo de aviso (pasos 5 y 6): vuelve a comprobar que el
-# motivo sigue vigente (arquitectura §8, "doble comprobación al enviar") y
-# escribe el correo, o dice por qué no hay que enviarlo. Corre en la transacción
-# del envío, con el aviso bloqueado.
+# El compositor de un tipo de aviso: vuelve a comprobar que el motivo sigue
+# vigente (arquitectura §8, "doble comprobación al enviar") y escribe el correo,
+# o dice por qué no hay que enviarlo. Corre en la transacción del envío, con el
+# aviso bloqueado. Los de cada tipo, en `services/notice_composers.py`.
 Composer = Callable[[AsyncSession, Notification], Awaitable[Email | NotDelivered]]
-COMPOSERS: dict[NotificationKind, Composer] = {}
 
 
 async def create(
@@ -156,7 +155,7 @@ async def deliver(
     notification_id: UUID,
     attempt: int,
     sender: EmailSender,
-    composers: Mapping[NotificationKind, Composer] = COMPOSERS,
+    composers: Mapping[NotificationKind, Composer],
 ) -> NotificationStatus | None:
     """Envía un aviso reclamado y guarda el resultado. Devuelve el estado en que
     lo deja, o None si no le tocaba a esta ejecución.

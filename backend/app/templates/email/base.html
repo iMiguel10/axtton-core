@@ -6,7 +6,7 @@
   dorado #c9a96a (el botón: texto oscuro sobre dorado, ~8:1) y el dorado
   oscurecido #7a5e26 para enlaces sobre blanco, que sí pasa el contraste.
 #}
-<html lang="es">
+<html lang="{{ content.language }}">
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
@@ -39,14 +39,14 @@
                     </td>
                   </tr>
                 </table>
-                <p style="margin:0 0 8px;font-size:13px;line-height:1.5;color:#5b6168;">Si el botón no funciona, copia este enlace en el navegador:</p>
+                <p style="margin:0 0 8px;font-size:13px;line-height:1.5;color:#5b6168;">{{ chrome.copy_link }}</p>
                 <p style="margin:0 0 24px;font-size:13px;line-height:1.5;word-break:break-all;"><a href="{{ content.action_url }}" style="color:#7a5e26;">{{ content.action_url }}</a></p>
                 <p style="margin:0;padding-top:16px;border-top:1px solid #e3e5e8;font-size:13px;line-height:1.5;color:#5b6168;">{{ content.footnote }}</p>
               </td>
             </tr>
             <tr>
               <td style="padding:16px 32px;font-size:12px;line-height:1.5;color:#5b6168;text-align:center;">
-                {% if content.workshop_name %}{{ content.workshop_name }} gestiona sus reparaciones con AXTTON CORE.{% else %}AXTTON CORE · Gestión del taller y seguimiento de cada reparación.{% endif %}
+                {% if content.workshop_name %}{{ content.workshop_name }} {{ chrome.managed_with }}{% else %}{{ chrome.platform }}{% endif %}
               </td>
             </tr>
           </table>

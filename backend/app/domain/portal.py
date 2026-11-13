@@ -92,6 +92,17 @@ class PortalLogin:
     portal_epoch: int
 
 
+def order_link(
+    app_url: str, workshop_id: UUID, portal_slug: str | None, order_id: UUID
+) -> str:
+    """El botón de un aviso (F5 paso 5): la entrada del portal del taller, con la
+    orden a la que llevar. Con sesión de ese taller, el portal va directo a la
+    orden; sin ella, la recuerda y lleva a ella al entrar. No es un enlace mágico:
+    caducaría en 15 minutos, y un aviso se lee días después."""
+    entry = f"/portal/{portal_slug}" if portal_slug else f"/portal/login/{workshop_id}"
+    return f"{app_url.rstrip('/')}{entry}?order={order_id}"
+
+
 def access_link(app_url: str, workshop_id: UUID, token: str) -> str:
     """La dirección del enlace que recibe el cliente.
 

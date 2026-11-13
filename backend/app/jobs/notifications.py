@@ -18,6 +18,7 @@ from app.platform.scheduler import (
     workshops_with_due_notifications,
 )
 from app.services import notifications as notification_service
+from app.services.notice_composers import COMPOSERS
 
 # Una pasada recorre los talleres con algo que enviar; cada uno, como mucho
 # DISPATCH_BATCH avisos. Lo que no quepa, en la del minuto siguiente.
@@ -41,7 +42,11 @@ async def send_notification(
 ) -> None:
     """El envío de un aviso. Solo ids: el resto se lee de la base de datos."""
     await notification_service.deliver(
-        UUID(workshop_id), UUID(notification_id), attempt, ctx["email_sender"]
+        UUID(workshop_id),
+        UUID(notification_id),
+        attempt,
+        ctx["email_sender"],
+        COMPOSERS,
     )
 
 

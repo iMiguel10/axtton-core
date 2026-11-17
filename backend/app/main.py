@@ -22,6 +22,7 @@ from app.core.db import get_session
 from app.core.errors import AppError, RateLimitedError
 from app.core.supertokens import init_supertokens
 from app.infra.email import build_email_sender, set_email_sender
+from app.infra.queue import build_job_queue, set_job_queue
 from app.infra.rate_limit import build_rate_limiter, set_rate_limiter
 
 # Antes de crear la app: el middleware necesita el SDK ya inicializado.
@@ -31,6 +32,8 @@ app = FastAPI(title="AXTTON CORE API", version=get_settings().app_version)
 # La implementación del correo se elige una vez, al arrancar; los endpoints la
 # reciben por dependencia (app/api/deps.py) y las pruebas la sustituyen.
 set_email_sender(build_email_sender(get_settings()))
+# Y la cola del worker: el enlace del portal se envía desde allí (F5 paso 8).
+set_job_queue(build_job_queue(get_settings()))
 # Igual el límite de peticiones (RNF-06): las pruebas lo apagan y ponen el suyo.
 set_rate_limiter(build_rate_limiter(get_settings()))
 # Atiende /api/auth/* (inicio y cierre de sesión, renovación). Sin CORS: con un

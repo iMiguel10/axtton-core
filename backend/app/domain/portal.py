@@ -17,6 +17,16 @@ LINK_LIFETIME = timedelta(minutes=15)
 # Borrarlo no reabre nada: el token no se guarda, y sin la fila no vale.
 LINK_RETENTION = timedelta(days=7)
 
+# El envío del enlace, en el worker (F5 paso 8). Quien lo pide está esperando y
+# el enlace caduca en 15 minutos: pocos intentos y seguidos. Cada intento emite
+# su propio enlace; el de un intento que no salió se revoca.
+LINK_SEND_ATTEMPTS = 3
+LINK_RETRY_DELAY = timedelta(seconds=15)
+# El trabajo lleva el email, que hace falta para enviarlo: terminado, Valkey lo
+# guarda solo un minuto (lo normal en SAQ son 10).
+LINK_JOB_KEEP = timedelta(minutes=1)
+LINK_JOB_TIMEOUT = timedelta(seconds=60)
+
 # Los clientes de la demo (app/scripts/seed_demo.py): solo a ellos se puede
 # entrar sin correo, y solo con DEMO_PORTAL_ENTRY (F4 paso 8). Un dominio
 # reservado para ejemplos (RFC 2606): ningún cliente de verdad lo tiene.

@@ -30,12 +30,62 @@ from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncEngine, create_async_engine
 
 import app.main  # noqa: F401
+from app.api.deps import get_email_sender
+from app.infra.queue import EnqueuedJob, JobArg, set_job_queue
 from app.scripts.reset_data import truncate_all
 
 # app.main se importa AQUÍ, una vez, antes de cualquier fixture: al importarse
 # inicializa SuperTokens y fija el emisor de correo del proceso. Si se importara
 # por primera vez dentro de un fixture, pisaría el emisor de pruebas que otro
 # fixture acabara de poner (le pasó a test_account.py).
+
+
+class PortalLinkRunner:
+    """La cola de las pruebas: nunca la de Valkey (el worker de desarrollo
+    cogería los trabajos). El envío del enlace del portal (F5 paso 8) lo ejecuta
+    en el acto, con el emisor de correo que tenga la prueba, para que las
+    pruebas del portal reciban el correo como antes; lo demás solo lo registra.
+    Las que miran lo encolado ponen su propia `InMemoryJobQueue`."""
+
+    def __init__(self) -> None:
+        self.jobs: list[EnqueuedJob] = []
+
+    async def enqueue(
+        self,
+        job: str,
+        *,
+        timeout_seconds: int,
+        max_attempts: int,
+        key: str | None = None,
+        retry_delay_seconds: float = 0.0,
+        keep_seconds: int | None = None,
+        **kwargs: JobArg,
+    ) -> bool:
+        from app.main import app as fastapi_app
+        from app.services import portal_auth as portal_auth_service
+
+        self.jobs.append(
+            EnqueuedJob(
+                job,
+                dict(kwargs),
+                timeout_seconds,
+                max_attempts,
+                key,
+                retry_delay_seconds,
+                keep_seconds,
+            )
+        )
+        if job == "send_portal_link":
+            sender = fastapi_app.dependency_overrides.get(
+                get_email_sender, get_email_sender
+            )()
+            await portal_auth_service.send_link(
+                UUID(str(kwargs["workshop_id"])), str(kwargs["email"]), sender
+            )
+        return True
+
+
+set_job_queue(PortalLinkRunner())
 
 
 @pytest.fixture(scope="session", autouse=True)

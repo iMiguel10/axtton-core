@@ -10,24 +10,23 @@ y buscan bajo RLS. La única que cruza talleres es buscar uno por su nombre cort
 por la vía de plataforma con nombre (decisión 0007, R8_EXCEPTIONS).
 """
 
-import logging
 from typing import Annotated
 from uuid import UUID
 
-from fastapi import APIRouter, BackgroundTasks, Depends, Request, Response, status
+from fastapi import APIRouter, Depends, Request, Response, status
 
-from app.api.deps import get_email_sender
+from app.api.deps import get_email_sender, get_job_queue
 from app.api.rate_limit import (
     limit_portal_consume,
     limit_portal_entry,
     limit_portal_link,
 )
-from app.core.config import get_settings
 from app.core.errors import NotFoundError
 from app.core.sessions import create_client_session
 from app.domain.clients import normalize_email
 from app.domain.portal import normalize_slug, slug_problem
-from app.infra.email import EmailSender, compose
+from app.infra.email import EmailSender
+from app.infra.queue import JobQueue
 from app.platform.portal_entry import workshop_id_by_slug
 from app.schemas.portal import (
     PortalDemoClient,
@@ -38,8 +37,6 @@ from app.schemas.portal import (
     PortalSlugRead,
 )
 from app.services import portal_auth as portal_auth_service
-
-logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/api/v1/portal", tags=["portal"])
 
@@ -83,36 +80,20 @@ async def workshop_logo(workshop_id: UUID, request: Request) -> Response:
     )
 
 
-async def _send_link(workshop_id: UUID, email: str, email_sender: EmailSender) -> None:
-    """Emite y envía, después de responder.
-
-    En segundo plano para que la respuesta no dependa de si el email es de un
-    cliente: ni en lo que dice ni en lo que tarda (RF-41). Un fallo aquí no llega
-    a quien lo pidió; queda en el registro.
-    """
-    try:
-        content = await portal_auth_service.issue_link(
-            workshop_id, email, app_url=get_settings().app_url
-        )
-        if content is not None:
-            await email_sender.send(compose(email, content))
-    except Exception:
-        logger.exception("No se pudo enviar el acceso al portal")
-
-
 @router.post("/auth/request-link", status_code=status.HTTP_202_ACCEPTED)
 async def request_link(
     body: PortalLinkRequest,
     request: Request,
-    background: BackgroundTasks,
     email_sender: Annotated[EmailSender, Depends(get_email_sender)],
+    queue: Annotated[JobQueue, Depends(get_job_queue)],
 ) -> None:
-    """Pide un enlace de acceso a un taller. Responde siempre lo mismo (RF-41)."""
+    """Pide un enlace de acceso a un taller. Responde siempre lo mismo (RF-41):
+    lo emite y lo envía el worker (F5 paso 8)."""
     email = normalize_email(str(body.email))
     await limit_portal_link(request, email)
     # Sin SMTP no hay enlaces: se emitirían sin llegar a nadie.
     if email_sender.enabled:
-        background.add_task(_send_link, body.workshop_id, email, email_sender)
+        await portal_auth_service.request_link(queue, body.workshop_id, email)
 
 
 @router.get("/workshops/{workshop_id}/demo-clients")

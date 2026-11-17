@@ -13,8 +13,10 @@ del portal cruza talleres.
   petición (T10).
 """
 
+import logging
 from dataclasses import dataclass
 from datetime import UTC, datetime
+from enum import StrEnum
 from uuid import UUID
 
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -23,20 +25,33 @@ from app.core.config import get_settings
 from app.core.db import workshop_transaction
 from app.core.errors import AppError, ForbiddenError, NotFoundError
 from app.core.tokens import hash_token, new_token
-from app.domain.emails import EmailContent, portal_access_email
+from app.domain.emails import portal_access_email
 from app.domain.portal import (
     DEMO_CLIENT_DOMAIN,
     DEMO_CLIENTS_SHOWN,
+    LINK_JOB_KEEP,
+    LINK_JOB_TIMEOUT,
     LINK_LIFETIME,
     LINK_RETENTION,
+    LINK_RETRY_DELAY,
+    LINK_SEND_ATTEMPTS,
     PortalLogin,
     access_link,
 )
+from app.infra.email import (
+    EmailDeliveryUnknownError,
+    EmailNotSentError,
+    EmailSender,
+    compose,
+)
+from app.infra.queue import JobQueue, QueueUnavailableError
 from app.models import Client, Workshop
 from app.repositories import clients as client_repo
 from app.repositories import portal_links as link_repo
 from app.repositories import settings as settings_repo
 from app.repositories import vehicles as vehicle_repo
+
+logger = logging.getLogger(__name__)
 
 
 class PortalLinkInvalidError(AppError):
@@ -118,11 +133,18 @@ async def entry_logo(workshop_id: UUID) -> EntryLogo:
         return EntryLogo(logo.content, logo.media_type)
 
 
+@dataclass(frozen=True)
+class _Issued:
+    workshop: Workshop
+    # El token no se guarda: solo su hash.
+    token: str
+    link_id: UUID
+
+
 async def _issue(
     session: AsyncSession, workshop_id: UUID, email: str
-) -> tuple[Workshop, str] | None:
-    """Guarda un enlace nuevo y devuelve su taller y su token, que no se guarda:
-    solo su hash."""
+) -> _Issued | None:
+    """Guarda un enlace nuevo y devuelve su taller, su token y su id."""
     workshop = await session.get(Workshop, workshop_id)
     if workshop is None or not _active(workshop):
         return None
@@ -135,27 +157,85 @@ async def _issue(
         return None
     token = new_token()
     expires_at = await vehicle_repo.db_now(session) + LINK_LIFETIME
-    await link_repo.add(session, workshop_id, client.id, hash_token(token), expires_at)
-    return workshop, token
+    link_id = await link_repo.add(
+        session, workshop_id, client.id, hash_token(token), expires_at
+    )
+    return _Issued(workshop, token, link_id)
 
 
-async def issue_link(
-    workshop_id: UUID, email: str, *, app_url: str
-) -> EmailContent | None:
-    """Emite el enlace de ese email en ese taller y devuelve el email que lo
-    lleva, o None si no es de un cliente activo de un taller activo.
+async def request_link(queue: JobQueue, workshop_id: UUID, email: str) -> None:
+    """Deja el envío del enlace al worker (F5 paso 8) sin mirar nada más: ni si
+    el email es de un cliente ni si el taller existe. Así la respuesta no depende
+    de eso, ni en lo que dice ni en lo que tarda (RF-41).
 
-    Confirma antes de devolver: el email sale después, nunca con un enlace que no
-    llegó a guardarse. El email llega ya normalizado, como se guarda.
+    El trabajo lleva el email, que hace falta para enviarlo, y nunca el token: el
+    enlace se emite al enviarlo (arquitectura §8). Si la cola no responde, queda
+    en el registro (sin el email) y quien lo pidió puede volver a pedirlo.
     """
+    try:
+        await queue.enqueue(
+            "send_portal_link",
+            timeout_seconds=int(LINK_JOB_TIMEOUT.total_seconds()),
+            max_attempts=LINK_SEND_ATTEMPTS,
+            retry_delay_seconds=LINK_RETRY_DELAY.total_seconds(),
+            keep_seconds=int(LINK_JOB_KEEP.total_seconds()),
+            workshop_id=str(workshop_id),
+            email=email,
+        )
+    except QueueUnavailableError:
+        logger.exception("No se pudo encolar el acceso al portal")
+
+
+class LinkSendOutcome(StrEnum):
+    SENT = "sent"
+    # No es un cliente con acceso de un taller activo: no se envía nada.
+    NO_ACCESS = "no_access"
+    # El worker no tiene SMTP.
+    EMAIL_DISABLED = "email_disabled"
+    # Se cortó con el mensaje en vuelo: pudo llegar, y no se reintenta.
+    DELIVERY_UNKNOWN = "delivery_unknown"
+
+
+class LinkNotSentError(Exception):
+    """El correo no salió y se puede reintentar: SAQ lo vuelve a intentar con
+    otro enlace. Sin el texto del servidor, que podría llevar el email y que SAQ
+    guardaría en Valkey con el trabajo."""
+
+    def __init__(self, smtp_code: int | None) -> None:
+        super().__init__(f"portal link not sent (smtp code {smtp_code})")
+        self.smtp_code = smtp_code
+
+
+async def send_link(
+    workshop_id: UUID, email: str, sender: EmailSender
+) -> LinkSendOutcome:
+    """Emite el enlace de ese email en ese taller y lo envía (en el worker).
+
+    Emitirlo se confirma antes de enviar: el correo nunca lleva un enlace que no
+    llegó a guardarse. Si no salió, ese enlace se revoca y se lanza
+    `LinkNotSentError` para que el siguiente intento emita otro; si no se sabe,
+    no se reintenta (arquitectura §8). El email llega ya normalizado.
+    """
+    if not sender.enabled:
+        return LinkSendOutcome.EMAIL_DISABLED
     async with workshop_transaction([workshop_id]) as session:
         issued = await _issue(session, workshop_id, email)
     if issued is None:
-        return None
-    workshop, token = issued
-    return portal_access_email(
-        workshop_name=workshop.name, link=access_link(app_url, workshop_id, token)
+        return LinkSendOutcome.NO_ACCESS
+    content = portal_access_email(
+        workshop_name=issued.workshop.name,
+        link=access_link(get_settings().app_url, workshop_id, issued.token),
     )
+    try:
+        await sender.send(compose(email, content))
+    except EmailNotSentError as exc:
+        async with workshop_transaction([workshop_id]) as session:
+            await link_repo.revoke_if_open(session, issued.link_id)
+        raise LinkNotSentError(exc.smtp_code) from None
+    except EmailDeliveryUnknownError:
+        logger.warning("El acceso al portal pudo no llegar; no se reintenta")
+        return LinkSendOutcome.DELIVERY_UNKNOWN
+    return LinkSendOutcome.SENT
 
 
 # --- La entrada de la demo (F4 paso 8) -----------------------------------------
@@ -199,7 +279,7 @@ async def demo_login(workshop_id: UUID, email: str) -> PortalLogin:
         issued = await _issue(session, workshop_id, email)
     if issued is None:
         raise NotFoundError("demo_client_not_found")
-    return await consume(workshop_id, issued[1])
+    return await consume(workshop_id, issued.token)
 
 
 async def consume(workshop_id: UUID, token: str) -> PortalLogin:

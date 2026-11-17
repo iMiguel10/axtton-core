@@ -19,6 +19,7 @@ from app.infra.queue import SaqJobQueue
 from app.jobs.context import WorkerContext
 from app.jobs.maintenance import maintenance_cron_jobs
 from app.jobs.notifications import notification_cron_jobs, send_notification
+from app.jobs.portal import send_portal_link
 from app.jobs.quotes import quote_cron_jobs
 from app.platform.db import platform_engine
 
@@ -46,7 +47,7 @@ async def shutdown(ctx: WorkerContext) -> None:
 
 settings: SettingsDict[WorkerContext] = {
     "queue": queue,
-    "functions": [send_notification],
+    "functions": [send_notification, send_portal_link],
     # SAQ encola cada pasada con la clave `cron:<función>`: aunque hubiera dos
     # workers, cada una se ejecuta una vez. Aun así, cada tarea es segura si se
     # ejecutara dos veces: borrar lo ya borrado no hace nada, y dos despachadores

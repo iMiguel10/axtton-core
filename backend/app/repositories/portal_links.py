@@ -15,16 +15,30 @@ async def add(
     client_id: UUID,
     token_hash: bytes,
     expires_at: datetime,
-) -> None:
-    session.add(
-        PortalLink(
-            workshop_id=workshop_id,
-            client_id=client_id,
-            token_hash=token_hash,
-            expires_at=expires_at,
-        )
+) -> UUID:
+    link = PortalLink(
+        workshop_id=workshop_id,
+        client_id=client_id,
+        token_hash=token_hash,
+        expires_at=expires_at,
     )
+    session.add(link)
     await session.flush()
+    return link.id
+
+
+async def revoke_if_open(session: AsyncSession, link_id: UUID) -> None:
+    """Revoca un enlace que aún no se ha cerrado: el de un envío que no salió
+    (F5 paso 8). Nadie lo ha visto, pero no tiene por qué seguir valiendo."""
+    await session.execute(
+        update(PortalLink)
+        .where(
+            PortalLink.id == link_id,
+            PortalLink.used_at.is_(None),
+            PortalLink.revoked_at.is_(None),
+        )
+        .values(revoked_at=func.clock_timestamp())
+    )
 
 
 async def use_if_open(session: AsyncSession, token_hash: bytes) -> UUID | None:

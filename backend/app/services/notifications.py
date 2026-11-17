@@ -211,7 +211,12 @@ async def deliver(
         try:
             await sender.send(composed)
         except EmailDeliveryUnknownError as exc:
-            logger.warning("Aviso %s: no se sabe si salió (%s)", notification_id, exc)
+            # Sin el texto del servidor, que puede repetir el email (RNF-40).
+            logger.warning(
+                "Aviso %s: no se sabe si salió (código %s)",
+                notification_id,
+                exc.smtp_code,
+            )
             _finish(
                 notification,
                 NotificationStatus.UNKNOWN,
@@ -220,15 +225,20 @@ async def deliver(
             )
             return NotificationStatus.UNKNOWN
         except EmailNotSentError as exc:
-            logger.warning("Aviso %s no enviado (%s)", notification_id, exc)
+            logger.warning(
+                "Aviso %s no enviado (código %s)", notification_id, exc.smtp_code
+            )
             return await _failed(
                 session, notification, FailureReason.NOT_SENT, exc.smtp_code
             )
-        except Exception:
+        except Exception as exc:  # noqa: BLE001 (se registra su tipo, abajo)
             # Un error sin clasificar al enviar: puede que saliera. Lo prudente es
-            # no reintentarlo (RF-62).
-            logger.exception(
-                "Aviso %s: error sin clasificar al enviar", notification_id
+            # no reintentarlo (RF-62). Solo su tipo: su texto y su traza pueden
+            # llevar el email (RNF-40).
+            logger.error(
+                "Aviso %s: error sin clasificar al enviar (%s)",
+                notification_id,
+                type(exc).__name__,
             )
             _finish(
                 notification, NotificationStatus.UNKNOWN, FailureReason.DELIVERY_UNKNOWN

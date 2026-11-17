@@ -1405,6 +1405,24 @@ async def _backdate(shops: tuple[Shop, ...]) -> None:
                 await conn.execute(
                     text(f"ALTER TABLE {table} ENABLE TRIGGER {trigger}")
                 )
+            # Los avisos (F5), a la hora del cambio que los provocó: su hora de
+            # creación no cambia con cualquier rol, y uno que el worker ya
+            # terminó tampoco cambia nada (`notifications_transitions` y
+            # `notifications_final_frozen`).
+            notice_triggers = (
+                "notifications_transitions",
+                "notifications_final_frozen",
+            )
+            for trigger in notice_triggers:
+                await conn.execute(
+                    text(f"ALTER TABLE notifications DISABLE TRIGGER {trigger}")
+                )
+            for shop in shops:
+                await _backdate_notifications(conn, shop)
+            for trigger in notice_triggers:
+                await conn.execute(
+                    text(f"ALTER TABLE notifications ENABLE TRIGGER {trigger}")
+                )
     finally:
         await owner.dispose()
 
@@ -1502,6 +1520,33 @@ async def _backdate_quotes(conn: Any, shop: Shop) -> None:
         await conn.execute(
             text("UPDATE quotes SET updated_at = :at WHERE id = :q"), params
         )
+
+
+async def _backdate_notifications(conn: Any, shop: Shop) -> None:
+    """Cada aviso, a la hora de su motivo ya movido: el envío de la versión, su
+    anulación (la última vez que cambió) o el cambio de estado que puso la orden
+    lista (el `seq` de su clave). Su estado no se toca: lo decide el worker, que
+    en la demo desplegada, sin correo, los deja `skipped` (`email_disabled`)."""
+    await conn.execute(
+        text(
+            "UPDATE notifications n SET created_at = e.at, scheduled_for = e.at"
+            " FROM (SELECT x.id, CASE x.kind"
+            "   WHEN 'quote_sent' THEN q.sent_at"
+            "   WHEN 'quote_cancelled' THEN q.updated_at"
+            "   WHEN 'vehicle_ready' THEN c.created_at END AS at"
+            "  FROM notifications x"
+            "  LEFT JOIN quotes q ON q.id = x.quote_id"
+            "  LEFT JOIN work_order_status_changes c"
+            "   ON x.kind = 'vehicle_ready' AND c.work_order_id = x.work_order_id"
+            # Un CASE, no un AND: Postgres no promete evaluar antes el tipo, y
+            # las claves de presupuesto no tienen tercera parte.
+            "   AND c.seq = CASE WHEN x.kind = 'vehicle_ready'"
+            "    THEN CAST(split_part(x.dedupe_key, ':', 3) AS integer) END"
+            "  WHERE x.workshop_id = :w) e"
+            " WHERE n.id = e.id AND e.at IS NOT NULL"
+        ),
+        {"w": shop.id},
+    )
 
 
 async def _renumber(conn: Any, workshop_id: UUID) -> None:

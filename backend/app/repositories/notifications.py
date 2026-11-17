@@ -187,8 +187,18 @@ async def expire_abandoned(session: AsyncSession, older_than: timedelta) -> int:
 
 
 async def status_of_key(session: AsyncSession, dedupe_key: str) -> str | None:
-    """El estado del aviso de un motivo del taller fijado, o None si no existe."""
-    query = select(Notification.status).where(Notification.dedupe_key == dedupe_key)
+    """El estado del aviso de un motivo del taller fijado, o None si no existe.
+
+    Bloquea la fila (`FOR UPDATE`, sin `SKIP LOCKED`): si ese aviso se está
+    enviando, su envío la tiene bloqueada durante la conversación SMTP, y se
+    espera a que guarde cómo acabó. Sin esperar, se leería `claimed` con el
+    correo en vuelo (lo encontró qa-verifier al cerrar F5, `test_adverse_f5.py`).
+    """
+    query = (
+        select(Notification.status)
+        .where(Notification.dedupe_key == dedupe_key)
+        .with_for_update()
+    )
     return (await session.scalars(query)).one_or_none()
 
 

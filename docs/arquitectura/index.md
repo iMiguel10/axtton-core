@@ -1,6 +1,6 @@
 # Arquitectura
 
-> Estado: **v0.1** (2026-10-24, puesto al día el 2026-11-11) · F0 a F4 hechas y cerradas ([lo aprendido en F0](f0-cierre.md), [en F1](f1-cierre.md), [en F2](f2-cierre.md), [en F3](f3-cierre.md), [en F4](f4-cierre.md)). Donde F1, F2, F3 o F4 resultaron distintas del diseño, el texto lo dice ("al construirlo en F1", "al construirlo (F4 paso 1)").
+> Estado: **v0.1** (2026-10-24, puesto al día el 2026-11-17) · F0 a F5 hechas y cerradas ([lo aprendido en F0](f0-cierre.md), [en F1](f1-cierre.md), [en F2](f2-cierre.md), [en F3](f3-cierre.md), [en F4](f4-cierre.md), [en F5](f5-cierre.md)). Lo construido en F5 (el `worker` y los avisos al cliente) está marcado como tal en §8. Donde F1, F2, F3, F4 o F5 resultaron distintas del diseño, el texto lo dice ("al construirlo en F1", "al construirlo (F4 paso 1)").
 
 Este documento recoge **qué se ha decidido y contra qué alternativa**. La especificación de producto está en [producto/especificacion.md](../producto/especificacion.md); los requisitos se citan por su número (RF-xx, RNF-xx).
 
@@ -408,7 +408,7 @@ Son exactamente cinco, y todas usan `axtton_platform` desde un único módulo (`
 | Vía | Qué lee | Por qué no puede ir por la política normal |
 |---|---|---|
 | Endpoints de `/admin` | `workshops`, `users`, `invitations`, `superadmin_invitations`, el `audit_log` de plataforma y **recuentos** por taller (uso respecto a los límites) | El superadministrador no pertenece a ningún taller, y nunca recibe filas operativas (RNF-08), solo números. La aceptación de una invitación de superadministrador (`/api/v1/superadmin-invitations`, pública porque quien acepta aún no tiene cuenta) es parte de esta misma vía: no cruza talleres, solo toca tablas de plataforma |
-| Planificador del `worker` (`app/platform/scheduler.py`, desde F5) | Qué hay pendiente en todos los talleres: enlaces del portal por borrar (F5 paso 1), presupuestos por caducar (paso 2), avisos por enviar, firmas por borrar | Tiene que encontrar trabajo sin saber de antemano de qué taller es. De `app/platform/`, los trabajos (`app/jobs/`) solo importan este módulo (`test_architecture.py`) |
+| Planificador del `worker` (`app/platform/scheduler.py`, desde F5) | Qué hay pendiente en todos los talleres: enlaces del portal por borrar (F5 paso 1), presupuestos por caducar (paso 2), avisos por enviar o abandonados (paso 4), y más adelante firmas por borrar (F8) | Tiene que encontrar trabajo sin saber de antemano de qué taller es. De `app/platform/`, los trabajos (`app/jobs/`) solo importan este módulo (`test_architecture.py`) |
 | Comandos de servidor | Crear el primer superadministrador (RF-110), restaurar copias | Operación |
 | Selector de talleres (`GET /workshop/me`, RF-08; añadida en F1) | Los talleres en los que la persona de la sesión es empleada activa, con su nombre y su rol | Hay que saber cuáles son antes de poder fijar ninguno para RLS. Solo devuelve los de la propia persona (`app/platform/memberships.py`) |
 | Dirección del portal por nombre (`GET /portal/workshops/by-slug/{nombre}`; añadida en F4, decisión 0007) | El id del taller activo con ese nombre corto exacto | `/portal/{nombre}` no dice de qué taller es hasta buscarlo. Solo devuelve el id, nunca una lista ni nada parecido; es pública y lleva un límite por IP (`app/platform/portal_entry.py`) |
@@ -456,7 +456,7 @@ flowchart LR
     WK --> VK
     WK -- axtton_app / axtton_platform --> DB
     WK --> SMTP
-    API -. enlaces de acceso hasta F5 .-> SMTP
+    API -. invitaciones y recuperación de contraseña .-> SMTP
 ```
 
 - **Un solo dominio**, como en Applications Tracker: el proxy sirve las dos aplicaciones y la API. El taller vive en `/`, el portal en `/portal` y la API en `/api`. Así las cookies de sesión no cruzan dominios y no hace falta CORS en producción.
@@ -501,7 +501,7 @@ axtton-core/
 │       ├── templates/           email/ (la plantilla de la marca) y pdf/ (el presupuesto, F3 paso 7), con el CSS dentro
 │       ├── jobs/                trabajos y tareas programadas del worker (F5): funciones finas que buscan con el
 │       │                        planificador y le pasan cada taller a un service (common.py, maintenance.py y
-│       │                        quotes.py, F5 pasos 1 y 2)
+│       │                        notifications.py, portal.py y quotes.py, F5)
 │       ├── main.py              la API
 │       └── worker.py            el worker de SAQ (F5): la cola, los trabajos y sus tareas programadas
 │   ├── migrations/              Alembic, con el rol axtton_owner
@@ -558,7 +558,7 @@ sequenceDiagram
     API->>DB: INSERT notification (dedupe_key = quote_sent:{quote_id})
     API->>DB: COMMIT
     WK->>DB: recoge el aviso pendiente
-    WK->>Cl: email con el enlace de acceso a su taller
+    WK->>Cl: email con el botón a su orden en el portal (no es un enlace mágico, §8)
     Cl->>API: POST /portal/quotes/{id}/decision (approve)
     API->>DB: BEGIN · fija el taller · SELECT work_order FOR UPDATE
     API->>DB: comprueba: es su orden, la versión está en sent y no ha caducado
@@ -571,7 +571,7 @@ sequenceDiagram
 |---|---|---|
 | Enviar | Otro administrador envió otra versión a la vez | El `FOR UPDATE` serializa los dos envíos. El segundo encuentra la orden en `pendiente_aprobacion` y deja la anterior como `superseded`. El índice único parcial impide dos versiones `sent` aunque el código fallara |
 | Enviar | El cliente no tiene email | Se envía igual; la notificación queda como `skipped` y la interfaz lo dice (RF-63) |
-| Aviso | El SMTP falla | El `worker` reintenta. Nunca sale dos veces, porque la `dedupe_key` es única y el envío marca la fila antes de enviar (§8) |
+| Aviso | El SMTP falla | El `worker` reintenta. Nunca sale dos veces, porque la `dedupe_key` es única y el envío tiene la fila reclamada y bloqueada hasta guardar el resultado (§8) |
 | Decidir | El cliente aprueba una versión ya sustituida, caducada o anulada | 409, y el portal muestra la versión vigente |
 | Decidir | Dos pestañas del cliente deciden a la vez | La segunda encuentra la versión en `approved` o `rejected`: 409. `quote_decisions.quote_id` es único |
 | Decidir | El cliente aprueba un adicional estando la orden en `en_reparacion` | La orden vuelve a su `origin_status` (`en_reparacion`), no a `aprobada` |
@@ -587,7 +587,7 @@ sequenceDiagram
 - **Lo que el presupuesto cambia en la orden:** una orden con alguna versión enviada (aunque ya esté anulada) no se cancela (409 `work_order_has_quotes`): para un cliente que no sigue adelante está "lista · sin reparar". Los cambios del presupuesto no se deshacen (causa automática), y mientras la orden espera respuesta no hay ningún cambio manual. Un borrador nunca enviado no impide cancelar, y deja de salir en el listado.
 - **Renovar** (`renew_quote`): crea la versión siguiente copiando la enviada (o caducada) y la envía en el mismo paso, con la orden bloqueada `FOR UPDATE` durante todo. La renovada pasa a sustituida y le deja su estado de origen a la nueva, que es la que espera respuesta. Es ampliar el plazo sin tocar lo enviado: cambiar el `valid_until` de una versión enviada lo impediría el trigger y rompería RF-55. Con un borrador abierto no se renueva (409 `quote_draft_exists`). La versión que se sustituye, al enviar o al renovar, es la que espera respuesta, enviada o ya marcada como caducada (`awaiting_version`).
 - **Concurrencia** (`test_quote_send.py`, dos transacciones reales): una renovación y una corrección a la vez dan versiones consecutivas; un envío y un guardado del mismo borrador se ponen en fila y el envío recibe un 409; dos envíos del mismo borrador lo envían una sola vez; cancelar la orden mientras se envía su presupuesto se rechaza.
-- **Ni aviso ni caducidad escrita todavía:** el email al cliente llega con el worker (F5), y hasta entonces nadie marca `expired`. La ficha y el listado enseñan caducada una versión enviada fuera de plazo, y el trigger de las decisiones no deja aprobarla.
+- **Aviso y caducidad, con el worker (F5):** el aviso al cliente nace en esta misma transacción y lo envía el worker (§8), y desde el paso 2 el worker marca `expired` cada hora. Entre una cosa y otra, la ficha y el listado ya enseñan caducada una versión enviada fuera de plazo (se lee de `valid_until`), y el trigger de las decisiones no deja aprobarla.
 - **La decisión registrada por el taller** (F3 paso 6, `record_decision`, `POST /workshop/quotes/{id}/decision`): solo por teléfono o en persona (el portal decidirá por su vía en F4), con la orden y la versión bloqueadas en el orden de siempre. Se escribe primero la decisión, que el trigger fecha con la hora del servidor, y después el estado de la versión, porque el trigger de `quotes` exige que la decisión exista y el diferido que coincidan al confirmar. La orden va adonde dice `order_after_decision` (aprobado el inicial, `approved`; aprobado un adicional, `in_repair`; rechazado, su origen) con un cambio `quote_decided`. Dos decisiones a la vez dejan una sola (la segunda espera a la orden y recibe un 409), y una decisión y una renovación a la vez nunca se aplican las dos (`test_quote_decision.py`).
 - **La decisión del cliente en el portal** (F4 paso 5, `decide_from_portal`, `POST /portal/quotes/{id}/decision`): primero comprueba con `repositories/portal.py::quote_of` que la versión sea de una orden del cliente de la sesión y no sea un borrador (si no, 404 `quote_not_found`, igual que una que no existe); después, los mismos bloqueos y las mismas comprobaciones que la del taller, sin `version`: cada versión tiene su id y, enviada, no cambia, así que aprobar una sustituida da 409 y nunca vale para la nueva. Guarda la IP (validada: si no lo es, vacía) y el navegador, recortado a su columna. El cambio del historial va con `by_client` y sin empleado, y el motivo del rechazo se queda en la decisión, no en el historial (RNF-40). En la auditoría, sin actor: la interfaz lo enseña como "El cliente". Carreras con dos transacciones reales: dos pestañas, el cliente y el taller a la vez, y aprobar mientras el taller renueva (`test_portal_decision.py`).
 
@@ -600,13 +600,14 @@ sequenceDiagram
     participant API
     participant ST as SuperTokens
     participant DB
+    participant WK as worker
 
     Cl->>PO: abre /portal/login/{taller A} (de su web, su resguardo o sus correos) y escribe su email
     PO->>API: POST /portal/auth/request-link {taller A, email}
+    API->>WK: encola send_portal_link {taller A, email}, sin mirar nada más
     API-->>PO: 202, siempre la misma respuesta (RF-41)
-    Note over API: el resto, después de responder
-    API->>DB: fija el taller A · ¿cliente activo con ese email? · token nuevo, guarda su hash en portal_links
-    API-->>Cl: un email con el enlace de ese taller (si no es cliente activo, no se envía nada)
+    WK->>DB: fija el taller A · ¿cliente activo con ese email? · token nuevo, guarda su hash en portal_links
+    WK-->>Cl: un email con el enlace de ese taller (si no es cliente activo, no se envía nada)
     Cl->>PO: abre /portal/access/{taller A}#token y pulsa "Entrar"
     PO->>API: POST /portal/auth/consume {taller A, token}
     API->>DB: fija el taller A · cierra el enlace si vale (una sola sentencia) · ¿cliente activo?
@@ -620,6 +621,8 @@ sequenceDiagram
 | Pedir enlace | El email no es cliente de ese taller, o el taller no existe o está desactivado | Misma respuesta, mismo tiempo de respuesta aproximado y ningún email |
 | Pedir enlace | El email es cliente de varios talleres | Solo recibe el del taller de la entrada: a cada uno se entra desde su dirección |
 | Pedir enlace | Alguien pide enlaces en bucle | Límite por email y por IP (§10 de la especificación) |
+| Pedir enlace | El servidor de correo no acepta el mensaje | El worker revoca ese enlace y lo reintenta con otro, hasta tres intentos con 15 segundos entre ellos (§8). Si se corta con el mensaje en vuelo, no se reintenta: pudo llegar |
+| Pedir enlace | Valkey no responde | La petición responde 202 igual y el fallo queda en el registro, sin el email; quien lo pidió puede volver a pedirlo |
 | Consumir | Se cambia el taller en la URL (T5) | El enlace es una fila del taller A, y la transacción fija el taller de la URL: RLS no la deja ver, así que no hay sesión, y el enlace sigue sin usar |
 | Consumir | El enlace ya se usó o caducó | Error, y el portal ofrece pedir otro |
 | Consumir | El cliente fue anonimizado o cambió de email entre pedir y consumir | Las dos cosas revocan sus enlaces pendientes en la misma transacción: no hay sesión. Emitir bloquea al cliente, así que un cambio a la vez también ve el enlace recién emitido |
@@ -674,19 +677,26 @@ stateDiagram-v2
     claimed --> unknown: fallo ambiguo o reclamo abandonado
     claimed --> cancelled: al componerlo, lo que avisaba ya no existe
     claimed --> skipped: al componerlo, el cliente no tiene email; o no hay SMTP
-    claimed --> pending: no se pudo encolar (se deshace el reclamo)
+    claimed --> pending: no se pudo encolar (se deshace el reclamo; un reintento vuelve a failed)
     failed --> skipped: sin SMTP, el reintento ya no saldrá
 ```
 
 *Construido en F5 paso 4* (migración `0022outbox`, `domain/notifications.py`, `services/notifications.py`, `jobs/notifications.py`):
 
 - **La fila no guarda el email ni el texto del correo**, que el compositor de cada tipo lee y escribe al enviar, ni el texto de un error del servidor, que podría llevar el email (RNF-40): el motivo va como código (`failure_reason`: `no_email`, `email_disabled`, `obsolete`, `not_sent`, `compose_failed`, `no_composer`, `delivery_unknown`, `abandoned`) y, si lo hubo, el código SMTP. **No se borra nunca**: es lo que impide repetir el motivo, y el taller ve el historial (RF-69).
-- **El trigger `notifications_transitions`**, con cualquier rol: solo estas transiciones, cada reclamo suma exactamente un intento (y deshacerlo lo devuelve), nada cambia de qué ni para quién es el aviso, y ninguna fila se borra. `sent` y `unknown` son finales: ni por SQL se reabre un aviso que pudo salir. `axtton_app` además solo puede actualizar las columnas del estado.
+- **El trigger `notifications_transitions`**, con cualquier rol: solo estas transiciones, cada reclamo suma exactamente un intento (y deshacerlo lo devuelve), nada cambia de qué ni para quién es el aviso, y ninguna fila se borra. `sent` y `unknown` son finales: ni por SQL se reabre un aviso que pudo salir. `axtton_app` además solo puede actualizar las columnas del estado. *Al cerrar F5* (`0023noticefinal`, lo encontró qa-verifier), el trigger `notifications_final_frozen` impide también reescribir un aviso terminado sin cambiar su estado: de uno `sent`, `unknown`, `cancelled` o `skipped` solo cambia `updated_at`.
 - **Despachar** (cada minuto): el planificador da los talleres con avisos pendientes cuya hora llegó o fallidos cuyo reintento venció; en cada uno se reclaman (`FOR UPDATE SKIP LOCKED`, hasta 100), se confirma, y ya confirmado se encola un envío por aviso, con un solo intento en SAQ y una clave por **reclamo** (`notification:<id>:<hora del reclamo>`). Si encolar falla, se deshace el reclamo y vuelve a esperar: Applications Tracker lo dejaba reclamado, y acababa como `unknown` sin haber salido. La clave por reclamo, y no por intento, es porque deshacer un reclamo devuelve el número de intento: con la misma clave, SAQ (que la recuerda unos 10 minutos) descartaría el trabajo nuevo.
 - **Enviar** (un trabajo por aviso): la fila se lee con `FOR UPDATE SKIP LOCKED` y no se suelta hasta guardar el resultado, conversación SMTP incluida; si ya no está reclamada con ese intento, no hace nada. El compositor corre en un *savepoint*: un error de SQL al escribir el correo no aborta la transacción y el fallo se guarda. Sin compositor para el tipo, `failed` sin más intentos. Un error del emisor que no se haya clasificado cuenta como `unknown`: pudo salir.
 - **Reclamos abandonados** (cada 10 minutos): `claimed` de más de 10 minutos pasa a `unknown`, saltándose las filas que un envío aún tiene bloqueadas.
 - **Sin SMTP**, el despachador marca `skipped` (`email_disabled`) lo que tocaba enviar, sin encolar nada, y el taller ve por qué no se avisó.
-- **Las pruebas** (`test_notifications.py`) cubren B1–B6 con dos transacciones reales donde hay carrera, y se comprobó que fallan rompiendo cada guarda (el bloqueo del envío, el del reclamo y la comprobación del intento).
+- **Las pruebas** (`test_notifications.py`) cubren B1–B6 con dos transacciones reales donde hay carrera, y se comprobó que fallan rompiendo cada guarda (el bloqueo del envío, el del reclamo y la comprobación del intento). Son, adaptadas de Applications Tracker:
+    - **B1**: el mismo trabajo ejecutado dos veces envía un solo correo.
+    - **B2**: un trabajo con otro taller fijado no ve el aviso (RLS) y no envía nada.
+    - **B3**: dos despachadores a la vez reclaman cada aviso una vez, y el mismo envío dos veces a la vez sale una vez (la fila bloqueada durante la conversación SMTP).
+    - **B4**: un fallo después de entregar los datos (o uno sin clasificar) deja el aviso `unknown`, que nunca se reintenta.
+    - **B5**: un fallo antes de entregarlos se reintenta, hasta 3 intentos en total, y luego queda `failed` sin más.
+    - **B6**: un reclamo abandonado (el proceso murió a medias) pasa a `unknown` y nunca se envía, sin pisar un envío que sigue en marcha.
+    - B7–B12 llegan con los avisos de F8 (citas, recordatorios, vencimientos y firmas).
 
 *Los avisos de presupuesto, construidos en F5 paso 5* (`services/quote_notices.py`, `services/notice_composers.py`):
 
@@ -753,12 +763,12 @@ Todas son `CronJob` de SAQ. La búsqueda la hace el planificador por `platform/`
 |---|---|---|
 | Despachador | Cada minuto | Reclama los `pending` cuyo `scheduled_for` ya llegó y encola su envío |
 | Reclamos abandonados | Cada 10 minutos | `claimed` de hace más de 10 minutos → `unknown` |
-| Citas | Cada 15 minutos | Crea el recordatorio de las citas de mañana, programado a las 10:00 de la hora del taller del día anterior |
+| Citas (*F8, aún no existe*) | Cada 15 minutos | Crea el recordatorio de las citas de mañana, programado a las 10:00 de la hora del taller del día anterior |
 | Caducidad de presupuestos (*construido en F5 paso 2*) | Cada hora (al minuto 5), también sin correo | `sent` con `valid_until` vencido → `expired` (la orden no cambia, §6 de la especificación). Cada versión en su transacción: bloquea solo la versión y vuelve a mirarla, porque el taller pudo renovarla, anularla o registrar su decisión entre la búsqueda y el bloqueo. Hasta 200 por taller y pasada (`jobs/quotes.py`) |
-| Vencimientos | Una vez al día por taller, a primera hora local | Crea los avisos de ITV y revisión según la antelación configurada (RF-65) |
-| Firmas | Una vez al día | Borra las firmas vencidas (RF-56) y, los lunes, crea el resumen de las que vencen en 30 días (RF-57) |
+| Vencimientos (*F8, aún no existe*) | Una vez al día por taller, a primera hora local | Crea los avisos de ITV y revisión según la antelación configurada (RF-65) |
+| Firmas (*F8, aún no existe*) | Una vez al día | Borra las firmas vencidas (RF-56) y, los lunes, crea el resumen de las que vencen en 30 días (RF-57) |
 | Enlaces del portal (*construido en F5 paso 1*) | Una vez al día (3:40 UTC), también sin correo | Borra los `portal_links` caducados hace más de 7 días (`LINK_RETENTION`), usados o no: unos días para responder a "no me funcionó el enlace". Borrarlo no reabre nada, porque el token no se guarda. El planificador da los talleres con algo que borrar y cada uno se borra en su transacción, con `axtton_app`; un taller que falla no para a los demás (`jobs/maintenance.py`) |
-| Taller de demostración | Una vez al día | Lo recrea con datos ficticios (RF-72), solo si la instalación tiene la demo activada |
+| Taller de demostración | Una vez al día | Lo recrea con datos ficticios (RF-72), solo si la instalación tiene la demo activada. *Decidido en F2 ([decisión 0004](../decisiones/0004-produccion-en-coolify.md)):* no es una tarea del `worker` sino una tarea programada de Coolify que ejecuta `seed_demo` (§9) |
 
 **Trampas que se heredan tal cual** (Applications Tracker, `segundo-plano.md`):
 
@@ -779,7 +789,7 @@ Todas son `CronJob` de SAQ. La búsqueda la hace el planificador por `platform/`
 | `api` | 8000 | FastAPI; `/docs` con el OpenAPI | F0 |
 | `frontend` | 5173 | Vite con las dos entradas (`/` y `/portal`) | F0 |
 | `supertokens` + `supertokens-db` | — | Core de autenticación y su propio Postgres; sin puertos publicados | F1 |
-| `valkey` | — | Límites de peticiones (RNF-06, F1); la cola de SAQ llega con el `worker` (F5) | F1 |
+| `valkey` | — | Límites de peticiones (RNF-06, F1); la cola de SAQ del `worker` (F5) | F1 |
 | `worker` | — | La misma imagen que `api` con otro comando (`saq app.worker.settings`), sin aplicar migraciones; sano si SAQ lo ve vivo en Valkey (`--check`) | **Existe** desde F5 paso 1 |
 | `mailpit` | 8025 | Solo desarrollo: captura todo el correo | F1 |
 | `web` | — (8080 solo al probar producción en local) | Solo en `compose.prod.yml`: Nginx con las dos aplicaciones compiladas y el reenvío de `/api` | F2 |
@@ -833,7 +843,7 @@ Como en Applications Tracker (su decisión 0023). Construido en F2 ([decisión 0
 | **F2** ✔ | Clientes, vehículos, `vehicle_ownerships`, órdenes con su historial, número correlativo, deshacer, búsqueda, bloqueo optimista, borradores en IndexedDB. *Añadido al planificarla:* diagnóstico, notas internas y trabajos (RF-22, RF-23: lo que guardan los borradores), cobro (RF-28, RF-29) y anonimización (RF-15), y una revisión del diseño de la interfaz validada **antes** del despliegue. **Primer despliegue en Coolify** |
 | **F3** ✔ | **Hecha** ([cierre](f3-cierre.md)). Datos del taller y `labor_rates` editables por su administrador (RF-02; `axtton_app` recibe `UPDATE` solo sobre esas columnas de `workshops`, migración `0012settings`), presupuestos versionados con sus triggers (`0013quotes`; R6 desde aquí), totales y descuentos, envío, renovación y anulación, decisión registrada por el taller, PDF del presupuesto con los datos legales y vista previa del borrador (`0014quotepdf`) y, pendiente de F2, los filtros del listado de órdenes (RF-24) |
 | **F4** | **Hecha y cerrada** ([lo aprendido](f4-cierre.md)). Enlace propio por taller, `portal_links` (`0016portallinks`; la receta `passwordless` solo da el usuario, [decisión 0006](../decisiones/0006-enlaces-magicos-propios-ligados-al-taller.md)), la cerradura y la duración de la sesión (`0017portalepoch`), estados para el cliente, sus vehículos y órdenes, la decisión desde el portal (`0018decisionerase`), el PDF de cada versión, el nombre corto del taller (`0019portalslug`, [decisión 0007](../decisiones/0007-nombre-corto-del-taller-en-el-portal.md)) y la entrada de la demo; T4–T7 y T10 |
-| **F5** | **En marcha.** `worker`, bandeja de avisos, despachador, presupuesto enviado y vehículo listo; B1–B6. *Paso 1:* el `worker` (SAQ sobre Valkey, `app/worker.py`, `app/jobs/`), el planificador (`app/platform/scheduler.py`) y su primera tarea, borrar los enlaces del portal caducados (`0020linkpurge`). *Paso 2:* los presupuestos fuera de plazo se marcan `expired` cada hora (`0021quoteexpiry`). *Paso 3:* el envío SMTP paso a paso que clasifica dónde falla (§8). *Paso 4:* la bandeja de avisos, con el despachador, el envío y los reclamos abandonados (`0022outbox`, B1–B6). *Paso 5:* los avisos de presupuesto enviado y anulado, en el idioma del cliente, con el botón a la orden en el portal. *Paso 6:* el aviso de vehículo listo, cancelado al deshacer el cambio. *Paso 7:* lo que ve el taller de sus avisos, en la orden (RF-69), y el aviso de que el cliente no tiene email antes de actuar (RF-63). *Paso 8:* el enlace del portal lo emite y lo envía el worker, con reintentos |
+| **F5** | **Hecha y cerrada** ([lo aprendido](f5-cierre.md)). `worker`, bandeja de avisos, despachador, presupuesto enviado y vehículo listo; B1–B6. *Paso 1:* el `worker` (SAQ sobre Valkey, `app/worker.py`, `app/jobs/`), el planificador (`app/platform/scheduler.py`) y su primera tarea, borrar los enlaces del portal caducados (`0020linkpurge`). *Paso 2:* los presupuestos fuera de plazo se marcan `expired` cada hora (`0021quoteexpiry`). *Paso 3:* el envío SMTP paso a paso que clasifica dónde falla (§8). *Paso 4:* la bandeja de avisos, con el despachador, el envío y los reclamos abandonados (`0022outbox`, B1–B6). *Paso 5:* los avisos de presupuesto enviado y anulado, en el idioma del cliente, con el botón a la orden en el portal. *Paso 6:* el aviso de vehículo listo, cancelado al deshacer el cambio. *Paso 7:* lo que ve el taller de sus avisos, en la orden (RF-69), y el aviso de que el cliente no tiene email antes de actuar (RF-63). *Paso 8:* el enlace del portal lo emite y lo envía el worker, con reintentos. *Cierre:* un aviso terminado no cambia nada (`0023noticefinal`), el aviso de anulación espera al de envío en vuelo y los registros del worker no llevan el email |
 | **F6** | Hoja de recepción con firma (§7.3), resumen de entrega, informe de actuaciones, descarga en el portal; prueba de punta a punta en CI |
 | **F7** | Catálogo, `stock_movements`, `used_parts`, líneas desde el catálogo, unidades comprometidas |
 | **F8** | Citas y su conversión en orden, recordatorios, vencimientos, borrado de firmas con su aviso; B7–B11. *Añadido en F3:* el calendario del taller (horario, festivos propios y días de cierre). Cada día se marca como *festivo*, que cuenta para la validez del presupuesto (`domain/business_days.py` lo recibirá como parámetro) y para las citas, o como *cierre*, que solo cuenta para las citas y las órdenes paradas: unas vacaciones no hacen inhábil un día a efectos legales |

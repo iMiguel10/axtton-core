@@ -136,6 +136,7 @@ async def test_an_order_is_opened_for_the_current_owner_with_its_first_change(
         "id": shop.maria["id"],
         "name": "María",
         "phone": "600 111 222",
+        "has_email": False,
     }
     assert order["vehicle"]["plate"] == "1234 BCD"
     assert (order["odometer_km"], order["reason"]) == (123456, "Ruido al frenar")

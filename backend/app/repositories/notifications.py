@@ -16,7 +16,7 @@ from app.domain.notifications import (
     NotificationKind,
     NotificationStatus,
 )
-from app.models import Notification
+from app.models import Notification, Quote
 
 
 async def db_now(session: AsyncSession) -> datetime:
@@ -215,3 +215,23 @@ async def cancel_open(
         )
     )
     return int(result.rowcount)  # type: ignore[attr-defined]
+
+
+async def of_order(
+    session: AsyncSession, work_order_id: UUID
+) -> list[tuple[Notification, int | None]]:
+    """Los avisos de una orden, el más reciente primero, con el número de la
+    versión de presupuesto de la que avisan (RF-69)."""
+    rows = await session.execute(
+        select(Notification, Quote.version_no)
+        .outerjoin(
+            Quote,
+            and_(
+                Quote.id == Notification.quote_id,
+                Quote.workshop_id == Notification.workshop_id,
+            ),
+        )
+        .where(Notification.work_order_id == work_order_id)
+        .order_by(Notification.created_at.desc(), Notification.id)
+    )
+    return [(notification, version_no) for notification, version_no in rows]

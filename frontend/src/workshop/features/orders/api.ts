@@ -35,7 +35,8 @@ export type Order = {
   unrepaired: boolean;
   vehicle: { id: string; plate: string; make: string | null; model: string | null };
   /** El titular del vehículo al abrirla: no cambia aunque cambie el titular. */
-  client: { id: string; name: string; phone: string };
+  /** `has_email`: si se le puede avisar por correo (RF-63); el email no viaja. */
+  client: { id: string; name: string; phone: string; has_email: boolean };
   responsible: { id: string; name: string } | null;
   expected_delivery_at: string | null;
   last_activity_at: string;
@@ -175,8 +176,46 @@ export function ordersApi(workshopId: string) {
       request<void>(`/${order.id}/payment`, "PUT", { version: order.version, ...input }),
     unpaid: (offset = 0) =>
       request<UnpaidOrder[]>(`/unpaid?limit=${PAGE_SIZE}&offset=${offset}`, "GET"),
+    notifications: (id: string) => request<OrderNotice[]>(`/${id}/notifications`, "GET"),
   };
 }
+
+// --- Avisos al cliente (RF-69) ------------------------------------------------
+
+export type NoticeKind = "quote_sent" | "quote_cancelled" | "vehicle_ready";
+export type NoticeStatus =
+  | "pending"
+  | "claimed"
+  | "sent"
+  | "failed"
+  | "unknown"
+  | "cancelled"
+  | "skipped";
+export type NoticeFailure =
+  | "no_email"
+  | "email_disabled"
+  | "obsolete"
+  | "not_sent"
+  | "compose_failed"
+  | "no_composer"
+  | "delivery_unknown"
+  | "abandoned";
+
+/** Un aviso al cliente: lo que se le envió, o por qué no (sin el email ni el texto). */
+export type OrderNotice = {
+  id: string;
+  kind: NoticeKind;
+  /** La versión del presupuesto de la que avisa; `null` si no es de uno. */
+  quote_version_no: number | null;
+  status: NoticeStatus;
+  failure_reason: NoticeFailure | null;
+  smtp_code: number | null;
+  attempts: number;
+  created_at: string;
+  sent_at: string | null;
+  /** Cuándo se reintenta uno fallido; `null` si ya no se reintenta. */
+  next_attempt_at: string | null;
+};
 
 // --- Diagnóstico, notas y trabajos (RF-22, RF-23) ---------------------------
 

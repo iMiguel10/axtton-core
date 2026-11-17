@@ -14,6 +14,7 @@ from app.api.v1.workshop.deps import WorkshopContext, require
 from app.domain.permissions import Action, can
 from app.domain.work_orders import CLOSED, OPEN, WorkOrderStatus, order_code
 from app.repositories.work_orders import OrderRow
+from app.schemas.notifications import NotificationRead
 from app.schemas.work_orders import (
     Named,
     NoQuoteChange,
@@ -32,6 +33,7 @@ from app.schemas.work_orders import (
     WorkOrderRead,
     WorkOrderUpdate,
 )
+from app.services import notice_log
 from app.services import work_orders as order_service
 
 router = APIRouter(prefix="/orders")
@@ -62,7 +64,10 @@ def _summary(row: OrderRow) -> dict[str, object]:
             model=row.vehicle.model,
         ),
         "client": OrderClient(
-            id=row.client.id, name=row.client.name, phone=row.client.phone
+            id=row.client.id,
+            name=row.client.name,
+            phone=row.client.phone,
+            has_email=bool(row.client.email),
         ),
         "responsible": (
             Named(id=order.responsible_employee_id, name=row.responsible_name)
@@ -197,6 +202,28 @@ async def get_order(order_id: UUID, workshop: Viewer) -> WorkOrderDetailRead:
             "paid_on": order.paid_on,
         }
     )
+
+
+@router.get("/{order_id}/notifications")
+async def order_notifications(
+    order_id: UUID, workshop: Viewer
+) -> list[NotificationRead]:
+    """Los avisos al cliente de esta orden, el más reciente primero (RF-69)."""
+    return [
+        NotificationRead(
+            id=view.notification.id,
+            kind=view.notification.kind,
+            quote_version_no=view.quote_version_no,
+            status=view.notification.status,
+            failure_reason=view.notification.failure_reason,
+            smtp_code=view.notification.smtp_code,
+            attempts=view.notification.attempts,
+            created_at=view.notification.created_at,
+            sent_at=view.notification.sent_at,
+            next_attempt_at=view.notification.next_attempt_at,
+        )
+        for view in await notice_log.notices_of_order(workshop.session, order_id)
+    ]
 
 
 @router.post("", status_code=status.HTTP_201_CREATED)

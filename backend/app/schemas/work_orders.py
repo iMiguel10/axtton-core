@@ -24,6 +24,9 @@ class OrderClient(BaseModel):
     id: UUID
     name: str
     phone: str
+    # Si se le puede avisar por correo (RF-63): la interfaz lo dice antes de
+    # enviar un presupuesto o marcar la orden lista. El email no hace falta.
+    has_email: bool
 
 
 class Named(BaseModel):

@@ -264,13 +264,13 @@ Taller (organización, el "tenant")
 - **RF-60** Se envía un email al cliente cuando se le envía un presupuesto y cuando su vehículo está listo para recoger. *Al construirlo (F5 paso 5):* también al corregir o renovar (cada versión enviada tiene su aviso) y al anular, esto solo si el cliente recibió el de esa versión (§6). El email va en el idioma del cliente, sin nada interno (ni el motivo de una anulación), y su botón lleva a la entrada del portal del taller, que abre la orden. *Vehículo listo (F5 paso 6):* al pasar la orden a lista, también "sin reparar", que el correo dice tal cual, con la dirección y el teléfono del taller. Deshacer ese cambio cancela el aviso si aún no ha salido; volver a marcarla lista avisa otra vez.
 - **RF-61** El taller decide si avisa también de otros cambios de estado.
 - **RF-62** Un aviso no se envía dos veces por el mismo motivo, aunque el trabajo que lo envía se reintente.
-- **RF-63** Si el cliente no tiene email, la acción se completa igual y la interfaz avisa de que no se le ha notificado.
+- **RF-63** Si el cliente no tiene email, la acción se completa igual y la interfaz avisa de que no se le ha notificado. *Al construirlo (F5 paso 7):* lo dice **antes** de actuar, en el diálogo de enviar o renovar un presupuesto y junto al botón de marcar la orden lista, para que el taller sepa que tiene que llamarle; después, el aviso queda en la orden como "no enviado" con ese motivo (RF-69).
 - **RF-64** Se envía un recordatorio de la cita el día anterior. Si la cita se mueve o se cancela, el recordatorio pendiente se anula o se reprograma: nunca llega uno con la fecha vieja.
 - **RF-65** Se avisa al cliente por email cuando se acercan la ITV o la revisión de su vehículo (antelación configurable por taller). Solo los vencimientos **por fecha** generan aviso: los de kilómetros no, porque el sistema no sabe cuántos lleva el coche entre visitas (§8).
 - **RF-66** Los avisos de vencimiento llevan un enlace para darse de baja de ellos, y el cliente también puede desactivarlos en el portal. Los avisos de su propia reparación (presupuesto, vehículo listo, cita) no se pueden desactivar: son parte del servicio.
 - **RF-67** Si el vehículo cambia de titular, los avisos pendientes de vencimiento se anulan para el titular anterior.
 - **RF-68** Todos los emails salen del correo de la plataforma. Los avisos al cliente llevan el nombre del taller como remitente visible ("Talleres Pérez vía AXTTON") y el email del taller como dirección de respuesta, de modo que si el cliente responde, le llega al taller.
-- **RF-69** El taller ve en la orden qué avisos se enviaron al cliente y cuáles fallaron, con el motivo.
+- **RF-69** El taller ve en la orden qué avisos se enviaron al cliente y cuáles fallaron, con el motivo. *Al construirlo (F5 paso 7):* la pestaña "Avisos" de la orden, para los dos roles, con cada aviso, su estado y, si no salió, el motivo explicado y qué hacer (llamarle si no tiene email, si falló sin más reintentos o si no se sabe si llegó); cuándo se reintenta uno que falló; y se actualiza sola mientras alguno esté en marcha.
 
 ### Datos (RF-70…)
 

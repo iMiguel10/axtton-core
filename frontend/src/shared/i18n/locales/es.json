@@ -424,7 +424,8 @@
       "fixed_price": "Precio cerrado"
     },
     "noQuoteHint": "Permite empezar a reparar sin presupuesto aprobado. La renuncia del cliente necesita la hoja de recepción firmada, que llega más adelante.",
-    "opened": "Orden {{code}} abierta."
+    "opened": "Orden {{code}} abierta.",
+    "noEmailReady": "El cliente no tiene email: no se le avisará cuando esté lista. Llámale."
   },
   "vehicles": {
     "title": "Vehículos",
@@ -1015,6 +1016,50 @@
       },
       "recordedBy": "lo registró {{name}}",
       "evidence": "IP {{ip}} · navegador: {{browser}}"
+    },
+    "noEmail": "El cliente no tiene email: no se le avisará del presupuesto. Llámale para dárselo."
+  },
+  "notices": {
+    "tab": "Avisos",
+    "title": "Avisos al cliente",
+    "none": "Aún no se ha avisado al cliente",
+    "noneHint": "Se le avisa por correo al enviarle un presupuesto y cuando el vehículo está listo para recoger.",
+    "kinds": {
+      "quote_sent": "Presupuesto v{{version}} enviado",
+      "quote_cancelled": "Presupuesto v{{version}} anulado",
+      "vehicle_ready": "Vehículo listo para recoger"
+    },
+    "states": {
+      "pending": "En cola",
+      "claimed": "Enviándose",
+      "sent": "Enviado",
+      "retrying": "Reintentando",
+      "failed": "No se pudo enviar",
+      "unknown": "Sin confirmar",
+      "cancelled": "Cancelado",
+      "skipped": "No enviado"
+    },
+    "createdAt": "Creado",
+    "sentAt": "Enviado",
+    "attempts_one": "{{count}} intento",
+    "attempts_other": "{{count}} intentos",
+    "pendingHint": "Sale en un minuto como mucho.",
+    "retryAt": "Se reintentará",
+    "gaveUp": "Ya no se reintenta: avísale por teléfono.",
+    "smtpCode": "(código del servidor: {{code}})",
+    "reasons": {
+      "no_email": "El cliente no tiene email: avísale por teléfono.",
+      "email_disabled": "Esta instalación no tiene correo configurado y no envía avisos.",
+      "not_sent": "El servidor de correo no lo aceptó.",
+      "compose_failed": "No se pudo preparar el correo.",
+      "no_composer": "Este tipo de aviso todavía no se puede enviar.",
+      "delivery_unknown": "La conexión se cortó mientras se entregaba: puede que le haya llegado. No se reintenta para no enviarlo dos veces; si dudas, llámale.",
+      "abandoned": "El envío se quedó a medias: puede que le haya llegado. No se reintenta para no enviarlo dos veces; si dudas, llámale."
+    },
+    "obsolete": {
+      "quote_sent": "Ya no hacía falta: antes de que saliera, esa versión se corrigió, se anuló o ya tenía respuesta, o el cliente dejó de estar activo.",
+      "quote_cancelled": "No hacía falta: el cliente no había recibido esa versión, así que no hay nada que anularle.",
+      "vehicle_ready": "Ya no hacía falta: antes de que saliera, la orden dejó de estar lista (se deshizo el cambio o se entregó) o el cliente dejó de estar activo."
     }
   }
 }

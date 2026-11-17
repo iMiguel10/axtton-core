@@ -118,6 +118,11 @@ export function StatusCard({
             </div>
           </form>
         )}
+        {/* RF-63: se marca lista igual, pero el taller sabe antes que tiene que llamarle. */}
+        {!order.client.has_email &&
+          order.allowed_transitions.some((transition) => transition.to_status === "ready") && (
+            <p className="text-muted-foreground text-sm">{t("orders.noEmailReady")}</p>
+          )}
         {order.can_undo && (
           <div>
             <ConfirmButton

@@ -128,7 +128,12 @@ async def test_anonymizing_empties_the_client_and_keeps_its_orders(
 
     # La orden sigue, ligada al mismo cliente, sin quién trajo el coche.
     kept = await get(client, shop.headers, order["id"])
-    assert kept["client"] == {"id": maria["id"], "name": "", "phone": ""}
+    assert kept["client"] == {
+        "id": maria["id"],
+        "name": "",
+        "phone": "",
+        "has_email": False,
+    }
     assert (kept["dropped_off_by_name"], kept["dropped_off_by_phone"]) == (None, None)
     # Y el coche, con su historial de titulares.
     car = await get_vehicle(client, shop.headers, shop.car["id"])

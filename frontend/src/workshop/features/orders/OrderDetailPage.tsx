@@ -17,13 +17,15 @@ import { QuotesSection } from "../quotes/QuotesSection";
 import { useActiveWorkshop } from "../session/ActiveWorkshop";
 import { ordersApi, type OrderDetail, type ReceptionInput } from "./api";
 import { StatusBadge } from "./OrderBits";
+import { NoticesSection } from "./NoticesSection";
 import { ReceptionForm } from "./ReceptionForm";
 import { PaymentCard } from "./PaymentCard";
 import { StatusCard } from "./StatusCard";
+import { useOrderNotices } from "./useOrderNotices";
 import { WorklogSection } from "./WorklogSection";
 
 const CLOSED = ["delivered", "cancelled"];
-const TABS = ["work", "diagnosis", "quotes", "notes", "reception", "history"] as const;
+const TABS = ["work", "diagnosis", "quotes", "notes", "notices", "reception", "history"] as const;
 
 /**
  * Ficha de una orden (RF-20 a RF-25): vehículo, cliente, recepción, responsable
@@ -40,6 +42,8 @@ export function OrderDetailPage() {
   const queryClient = useQueryClient();
   const queryKey = ["order", workshopId, orderId];
   const order = useQuery({ queryKey, queryFn: () => api.get(orderId) });
+  // Para el contador de la pestaña; la pestaña usa la misma consulta.
+  const notices = useOrderNotices(orderId);
 
   // También tras un 409: se recarga lo último guardado, con su versión.
   const refresh = () =>
@@ -127,6 +131,10 @@ export function OrderDetailPage() {
                   {t("worklog.notesTab")}
                   {parts && <Count value={parts.counts.notes} />}
                 </TabsTrigger>
+                <TabsTrigger value="notices">
+                  {t("notices.tab")}
+                  {notices.data && <Count value={notices.data.length} />}
+                </TabsTrigger>
                 <TabsTrigger value="reception">{t("orders.reception")}</TabsTrigger>
                 <TabsTrigger value="history">{t("orders.historyTab")}</TabsTrigger>
               </TabsList>
@@ -143,11 +151,15 @@ export function OrderDetailPage() {
               <QuotesSection
                 orderId={current.id}
                 closed={CLOSED.includes(current.status)}
+                clientHasEmail={current.client.has_email}
                 onOrderChanged={refresh}
               />
             </TabsContent>
             <TabsContent value="notes" keepMounted>
               {parts?.notes ?? <LinesSkeleton lines={4} />}
+            </TabsContent>
+            <TabsContent value="notices">
+              <NoticesSection orderId={current.id} />
             </TabsContent>
             <TabsContent value="reception" keepMounted className="grid gap-4">
               {save.isError && (

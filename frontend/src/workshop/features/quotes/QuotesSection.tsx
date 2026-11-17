@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { CheckCircle, FileText, Plus, RefreshCw, Send, Trash2 } from "lucide-react";
-import { useState } from "react";
+import { useState, type ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 
 import { ConfirmButton } from "@/shared/components/ConfirmButton";
@@ -52,10 +52,13 @@ import {
 export function QuotesSection({
   orderId,
   closed,
+  clientHasEmail,
   onOrderChanged,
 }: {
   orderId: string;
   closed: boolean;
+  /** Sin email, enviar no le avisa (RF-63): el diálogo lo dice antes. */
+  clientHasEmail: boolean;
   /** Enviar o anular cambian el estado de la orden: la ficha se recarga. */
   onOrderChanged: () => unknown;
 }) {
@@ -107,7 +110,13 @@ export function QuotesSection({
           quote.status === "draft" && canManageQuotes && !closed ? (
             // Por id, no por versión: guardar sube la versión y remontar el
             // editor borraría lo que se está escribiendo (RNF-15).
-            <DraftEditor key={quote.id} quote={quote} queryKey={queryKey} onOrderChanged={onOrderChanged} />
+            <DraftEditor
+              key={quote.id}
+              quote={quote}
+              queryKey={queryKey}
+              clientHasEmail={clientHasEmail}
+              onOrderChanged={onOrderChanged}
+            />
           ) : (
             <QuoteCard
               key={quote.id}
@@ -121,6 +130,7 @@ export function QuotesSection({
               // Registrar la respuesta del cliente: enviada y en plazo (RF-33).
               canDecide={canManageQuotes && !closed && quote.status === "sent" && !quote.expired}
               queryKey={queryKey}
+              clientHasEmail={clientHasEmail}
               onOrderChanged={onOrderChanged}
             />
           ),
@@ -176,6 +186,7 @@ function QuoteCard({
   canRenew,
   canDecide,
   queryKey,
+  clientHasEmail,
   onOrderChanged,
 }: {
   quote: Quote;
@@ -183,6 +194,7 @@ function QuoteCard({
   canRenew: boolean;
   canDecide: boolean;
   queryKey: unknown[];
+  clientHasEmail: boolean;
   onOrderChanged: () => unknown;
 }) {
   const { t } = useTranslation();
@@ -317,9 +329,13 @@ function QuoteCard({
                 size="sm"
                 disabled={renew.isPending}
                 title={t("quotes.renewTitle", { number: quote.version_no })}
-                description={t("quotes.confirmRenew", {
-                  days: settings.data?.quote_validity_business_days ?? 12,
-                })}
+                description={
+                  <WithNoEmail clientHasEmail={clientHasEmail}>
+                    {t("quotes.confirmRenew", {
+                      days: settings.data?.quote_validity_business_days ?? 12,
+                    })}
+                  </WithNoEmail>
+                }
                 confirmLabel={t("quotes.renew")}
                 onConfirm={() => renew.mutate()}
               >
@@ -586,10 +602,12 @@ function toInput(
 function DraftEditor({
   quote,
   queryKey,
+  clientHasEmail,
   onOrderChanged,
 }: {
   quote: Quote;
   queryKey: unknown[];
+  clientHasEmail: boolean;
   onOrderChanged: () => unknown;
 }) {
   const { t } = useTranslation();
@@ -814,9 +832,13 @@ function DraftEditor({
           <ConfirmButton
             disabled={dirty || lines.length === 0 || quote.delivery_business_days === null || send.isPending}
             title={t("quotes.sendTitle", { number: quote.version_no })}
-            description={t("quotes.confirmSend", {
-              days: workshop.data?.quote_validity_business_days ?? 12,
-            })}
+            description={
+              <WithNoEmail clientHasEmail={clientHasEmail}>
+                {t("quotes.confirmSend", {
+                  days: workshop.data?.quote_validity_business_days ?? 12,
+                })}
+              </WithNoEmail>
+            }
             confirmLabel={t("quotes.send")}
             onConfirm={() => send.mutate()}
           >
@@ -945,5 +967,22 @@ function LineEditor({
         </div>
       )}
     </li>
+  );
+}
+
+/**
+ * Lo que dice el diálogo de enviar o renovar y, si el cliente no tiene email,
+ * que no se le avisará (RF-63): se envía igual, y el taller sabe que tiene que
+ * llamarle. Dentro de la descripción del diálogo, que ya es un párrafo: `span`.
+ */
+function WithNoEmail({ clientHasEmail, children }: { clientHasEmail: boolean; children: ReactNode }) {
+  const { t } = useTranslation();
+  return (
+    <>
+      {children}
+      {!clientHasEmail && (
+        <span className="text-foreground mt-2 block font-medium">{t("quotes.noEmail")}</span>
+      )}
+    </>
   );
 }

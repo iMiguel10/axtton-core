@@ -215,6 +215,8 @@ MECHANIC_ALLOWED = {
     ("GET", "/orders/{order_id}"),
     ("POST", "/orders/{order_id}/status"),
     ("GET", "/orders/{order_id}/worklog"),
+    # Los avisos al cliente de la orden (RF-69): los ve quien ve la orden.
+    ("GET", "/orders/{order_id}/notifications"),
     ("POST", "/orders/{order_id}/diagnosis"),
     ("POST", "/orders/{order_id}/notes"),
     ("POST", "/orders/{order_id}/work-entries"),

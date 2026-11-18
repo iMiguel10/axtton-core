@@ -66,7 +66,9 @@
       "quote_sent": "Presupuesto enviado",
       "quote_cancelled": "Presupuesto anulado",
       "quote_renewed": "Presupuesto renovado",
-      "quote_decided": "Respuesta al presupuesto"
+      "quote_decided": "Respuesta al presupuesto",
+      "reception_signed": "Hoja de recepción firmada",
+      "reception_corrected": "Recepción corregida tras firmar"
     },
     "fields": {
       "email": "Email",
@@ -105,7 +107,20 @@
       "total_cents": "Total",
       "cancel_reason": "Motivo",
       "quote_outcome": "Respuesta",
-      "decision_channel": "Canal"
+      "decision_channel": "Canal",
+      "signature_method": "Firma",
+      "fields": "Datos"
+    },
+    "receptionFields": {
+      "odometer_km": "Kilómetros",
+      "reason": "Motivo",
+      "expected_delivery_at": "Entrega prevista",
+      "dropped_off_by_name": "Quién lo trae",
+      "dropped_off_by_phone": "Su teléfono",
+      "visible_damage": "Daños visibles",
+      "belongings": "Objetos",
+      "fuel_level": "Combustible",
+      "quote_waived": "Renuncia al presupuesto"
     }
   },
   "nav": {
@@ -437,7 +452,7 @@
       "warranty": "Garantía",
       "fixed_price": "Precio cerrado"
     },
-    "noQuoteHint": "Permite empezar a reparar sin presupuesto aprobado. La renuncia del cliente necesita la hoja de recepción firmada, que llega más adelante.",
+    "noQuoteHint": "Permite empezar a reparar sin presupuesto aprobado. La renuncia del cliente solo aparece si la hoja de recepción está firmada con ella.",
     "opened": "Orden {{code}} abierta.",
     "noEmailReady": "El cliente no tiene email: no se le avisará cuando esté lista. Llámale."
   },
@@ -803,7 +818,11 @@
     "portal_slug_invalid": "El nombre tiene que tener de 3 a 40 caracteres: letras sin tildes, números y guiones, sin guion al principio ni al final ni dos seguidos.",
     "portal_slug_reserved": "Ese nombre lo usa el propio portal. Elige otro.",
     "portal_slug_taken": "Ese nombre ya lo usa otro taller. Elige otro.",
-    "demo_client_not_found": "Ese cliente no está en la demo de este taller."
+    "demo_client_not_found": "Ese cliente no está en la demo de este taller.",
+    "signature_required": "Falta la firma o el nombre de quien firma.",
+    "signature_invalid": "La firma no se ha podido leer. Bórrela y vuelva a firmar.",
+    "signature_not_expected": "Una hoja firmada en papel no lleva firma en pantalla.",
+    "reception_already_signed": "La hoja de recepción ya está firmada."
   },
   "palette": {
     "open": "Buscar en el taller",
@@ -1074,6 +1093,33 @@
       "quote_sent": "Ya no hacía falta: antes de que saliera, esa versión se corrigió, se anuló o ya tenía respuesta, o el cliente dejó de estar activo.",
       "quote_cancelled": "No hacía falta: el cliente no había recibido esa versión, así que no hay nada que anularle.",
       "vehicle_ready": "Ya no hacía falta: antes de que saliera, la orden dejó de estar lista (se deshizo el cambio o se entregó) o el cliente dejó de estar activo."
+    }
+  },
+  "reception": {
+    "title": "Hoja de recepción",
+    "unsigned": "Sin firmar. Mientras no se firma, la hoja sale con los datos de recepción de la orden.",
+    "signOnScreen": "Firmar en pantalla",
+    "markPaper": "Firmada en papel",
+    "paperTitle": "¿Marcar la hoja como firmada en papel?",
+    "paperDescription": "El cliente ha firmado la hoja en papel y está conforme; la copia en papel la guarda el taller. Quedará firmada con los datos de recepción de ahora y no cambiará.",
+    "paperConfirm": "Sí, está firmada",
+    "signed": "Hoja de recepción firmada",
+    "signedOnScreen": "Firmada en pantalla por {{signer}} el {{when}}, con {{by}}.",
+    "signedOnPaper": "Firmada en papel y conforme. La marcó {{by}} el {{when}}.",
+    "signerErased": "el cliente",
+    "waivedSigned": "Con la renuncia al presupuesto firmada.",
+    "frozenHint": "La hoja firmada no cambia: si corriges ahora la recepción, la corrección queda en la orden y en la auditoría.",
+    "screenTitle": "Hoja de recepción {{code}}",
+    "screenDescription": "Lea los datos con los que deja el vehículo. Al firmar, la hoja queda así.",
+    "waiverText": "Renuncio al presupuesto.",
+    "signerName": "Nombre de quien firma",
+    "signHere": "Firme aquí",
+    "signHint": "Con el dedo o un lápiz táctil.",
+    "clear": "Borrar",
+    "sign": "Firmar",
+    "methods": {
+      "screen": "En pantalla",
+      "paper": "En papel"
     }
   }
 }

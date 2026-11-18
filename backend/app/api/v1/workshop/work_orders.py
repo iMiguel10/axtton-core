@@ -15,6 +15,7 @@ from app.domain.permissions import Action, can
 from app.domain.work_orders import CLOSED, OPEN, WorkOrderStatus, order_code
 from app.repositories.work_orders import OrderRow
 from app.schemas.notifications import NotificationRead
+from app.schemas.reception import ReceptionSheetRead
 from app.schemas.work_orders import (
     Named,
     NoQuoteChange,
@@ -197,6 +198,21 @@ async def get_order(order_id: UUID, workshop: Viewer) -> WorkOrderDetailRead:
             ],
             "can_undo": detail.can_undo,
             "can_mark_no_quote": detail.can_mark_no_quote,
+            "reception_sheet": (
+                ReceptionSheetRead(
+                    signed_at=sheet.sheet.signed_at,
+                    signature_method=sheet.sheet.signature_method,
+                    recorded_by=sheet.recorded_by_name,
+                    signer_name=sheet.sheet.signer_name,
+                    quote_waived=sheet.sheet.quote_waived,
+                    signature_purged=sheet.sheet.signature_purged_at is not None,
+                )
+                if (sheet := detail.reception)
+                else None
+            ),
+            "can_sign_reception": can(workshop.role, Action.SIGN_RECEPTION)
+            and detail.reception is None
+            and order.status not in CLOSED,
             "can_record_payment": can(workshop.role, Action.RECORD_PAYMENT)
             and order.status in CLOSED,
             "payment_status": order.payment_status,
@@ -249,6 +265,8 @@ async def update_order(
 ) -> None:
     await order_service.update_order(
         workshop.session,
+        workshop.workshop_id,
+        workshop.user_id,
         order_id,
         expected_version=body.version,
         changes=body.model_dump(exclude_unset=True, exclude={"version"}),

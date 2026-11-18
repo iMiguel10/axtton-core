@@ -255,6 +255,8 @@ ADMIN_ONLY = {
     ("PATCH", "/orders/{order_id}"),
     ("POST", "/orders/{order_id}/undo"),
     ("POST", "/orders/{order_id}/no-quote"),
+    # Firmar la hoja de recepción (F6 paso 2, RF-52).
+    ("POST", "/orders/{order_id}/reception-sheet"),
     ("PUT", "/orders/{order_id}/payment"),
     # Configuración del taller (F3 paso 1, RF-02).
     ("GET", "/settings"),

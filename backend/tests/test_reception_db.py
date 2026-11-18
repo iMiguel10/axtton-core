@@ -21,7 +21,7 @@ from tests.test_anonymize import ANONYMIZE_SQL
 from tests.test_rls import set_workshops
 from tests.test_work_orders_db import Order, seed_order
 
-SIGNATURE = "[[[10, 20], [30, 40]]]"
+SIGNATURE = '{"width": 600, "height": 200, "strokes": [[[10, 20], [30, 40]]]}'
 SNAPSHOT = '{"odometer_km": 123456, "fuel_level": "half"}'
 
 INSERT = (
@@ -207,7 +207,7 @@ CHANGES = [
     "UPDATE reception_sheets SET snapshot = '{\"odometer_km\": 1}'",
     "UPDATE reception_sheets SET quote_waived = false",
     "UPDATE reception_sheets SET signed_at = signed_at - interval '1 day'",
-    "UPDATE reception_sheets SET signature = '[[[0, 0], [1, 1]]]'",
+    "UPDATE reception_sheets SET signature = '{\"width\": 1}'",
     "UPDATE reception_sheets SET signature_method = 'paper', signature = NULL",
     "UPDATE reception_sheets SET signature = NULL, signature_purged_at = now()",
     "UPDATE reception_sheets SET signer_name = 'Otro'",

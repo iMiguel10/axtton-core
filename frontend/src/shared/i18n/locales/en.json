@@ -66,7 +66,9 @@
       "quote_sent": "Quote sent",
       "quote_cancelled": "Quote cancelled",
       "quote_renewed": "Quote renewed",
-      "quote_decided": "Quote reply"
+      "quote_decided": "Quote reply",
+      "reception_signed": "Reception sheet signed",
+      "reception_corrected": "Reception corrected after signing"
     },
     "fields": {
       "email": "Email",
@@ -105,7 +107,20 @@
       "total_cents": "Total",
       "cancel_reason": "Reason",
       "quote_outcome": "Reply",
-      "decision_channel": "Channel"
+      "decision_channel": "Channel",
+      "signature_method": "Signature",
+      "fields": "Details"
+    },
+    "receptionFields": {
+      "odometer_km": "Mileage",
+      "reason": "Reason",
+      "expected_delivery_at": "Expected delivery",
+      "dropped_off_by_name": "Brought by",
+      "dropped_off_by_phone": "Their phone",
+      "visible_damage": "Visible damage",
+      "belongings": "Items",
+      "fuel_level": "Fuel",
+      "quote_waived": "Quote waiver"
     }
   },
   "nav": {
@@ -437,7 +452,7 @@
       "warranty": "Warranty",
       "fixed_price": "Fixed price"
     },
-    "noQuoteHint": "Lets the repair start without an approved quote. The client's waiver needs the signed reception sheet, which arrives later.",
+    "noQuoteHint": "Lets the repair start without an approved quote. The client's waiver only appears if the reception sheet is signed with it.",
     "opened": "Order {{code}} opened.",
     "noEmailReady": "The client has no email: they won't be notified when it's ready. Give them a call."
   },
@@ -803,7 +818,11 @@
     "portal_slug_invalid": "The name must be 3 to 40 characters: unaccented letters, numbers and hyphens, with no hyphen at the start or end and no two in a row.",
     "portal_slug_reserved": "The portal itself uses that name. Choose another.",
     "portal_slug_taken": "Another workshop already uses that name. Choose another.",
-    "demo_client_not_found": "That customer is not in this workshop's demo."
+    "demo_client_not_found": "That customer is not in this workshop's demo.",
+    "signature_required": "The signature or the signer's name is missing.",
+    "signature_invalid": "The signature could not be read. Clear it and sign again.",
+    "signature_not_expected": "A sheet signed on paper has no on-screen signature.",
+    "reception_already_signed": "The reception sheet is already signed."
   },
   "palette": {
     "open": "Search the workshop",
@@ -1074,6 +1093,33 @@
       "quote_sent": "No longer needed: before it went out, that version was corrected, cancelled or already answered, or the client stopped being active.",
       "quote_cancelled": "Not needed: the client had not received that version, so there is nothing to cancel for them.",
       "vehicle_ready": "No longer needed: before it went out, the order stopped being ready (the change was undone or it was delivered) or the client stopped being active."
+    }
+  },
+  "reception": {
+    "title": "Reception sheet",
+    "unsigned": "Not signed. Until it is, the sheet shows the order's reception details.",
+    "signOnScreen": "Sign on screen",
+    "markPaper": "Signed on paper",
+    "paperTitle": "Mark the sheet as signed on paper?",
+    "paperDescription": "The client has signed the paper sheet and agrees; the workshop keeps the paper copy. It will be signed with the current reception details and will not change.",
+    "paperConfirm": "Yes, it is signed",
+    "signed": "Reception sheet signed",
+    "signedOnScreen": "Signed on screen by {{signer}} on {{when}}, with {{by}}.",
+    "signedOnPaper": "Signed on paper and agreed. Marked by {{by}} on {{when}}.",
+    "signerErased": "the client",
+    "waivedSigned": "With the quote waiver signed.",
+    "frozenHint": "A signed sheet does not change: if you correct the reception now, the correction stays in the order and in the audit log.",
+    "screenTitle": "Reception sheet {{code}}",
+    "screenDescription": "Please read the details you leave the vehicle with. Once signed, the sheet stays as it is.",
+    "waiverText": "I waive the quote.",
+    "signerName": "Name of the person signing",
+    "signHere": "Sign here",
+    "signHint": "With your finger or a stylus.",
+    "clear": "Clear",
+    "sign": "Sign",
+    "methods": {
+      "screen": "On screen",
+      "paper": "On paper"
     }
   }
 }

@@ -89,7 +89,30 @@ export type OrderDetail = Order & {
   paid_amount_cents: number | null;
   paid_on: string | null;
   can_record_payment: boolean;
+  /** La hoja de recepción firmada (RF-52); nula mientras no se firma. */
+  reception_sheet: ReceptionSheet | null;
+  can_sign_reception: boolean;
 };
+
+export type SignatureMethod = "screen" | "paper";
+
+/** Cómo se firmó la hoja: la firma y la copia congelada van al PDF. */
+export type ReceptionSheet = {
+  signed_at: string;
+  signature_method: SignatureMethod;
+  recorded_by: string;
+  signer_name: string | null;
+  /** La renuncia al presupuesto que se firmó: la que vale para RF-27. */
+  quote_waived: boolean;
+  signature_purged: boolean;
+};
+
+/** Los trazos de una firma en pantalla, en el marco del lienzo: nunca una imagen. */
+export type ScreenSignature = { width: number; height: number; strokes: number[][][] };
+
+export type SignInput =
+  | { method: "paper" }
+  | { method: "screen"; signer_name: string; signature: ScreenSignature };
 
 export type PaymentStatus = "pending" | "paid" | "no_charge";
 export type PaymentMethod = "cash" | "card" | "transfer" | "other";
@@ -187,6 +210,8 @@ export function ordersApi(workshopId: string) {
     unpaid: (offset = 0) =>
       request<UnpaidOrder[]>(`/unpaid?limit=${PAGE_SIZE}&offset=${offset}`, "GET"),
     notifications: (id: string) => request<OrderNotice[]>(`/${id}/notifications`, "GET"),
+    signReception: (order: Order, input: SignInput) =>
+      request<void>(`/${order.id}/reception-sheet`, "POST", { version: order.version, ...input }),
   };
 }
 

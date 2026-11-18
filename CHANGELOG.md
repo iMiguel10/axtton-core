@@ -4,6 +4,26 @@ Lo mantiene [release-please](https://github.com/googleapis/release-please) a par
 
 Las dos primeras versiones se escribieron a mano, resumidas por fase, al empezar a versionar.
 
+## [0.6.0](https://github.com/iMiguel10/axtton-core/compare/v0.5.0...v0.6.0) (2026-11-18)
+
+
+### Novedades
+
+* **email:** envío SMTP paso a paso que dice si el correo salió (F5 paso 3, RF-62, RF-68) ([#31](https://github.com/iMiguel10/axtton-core/issues/31)) ([b65236a](https://github.com/iMiguel10/axtton-core/commit/b65236af8ac0e2c2ae05f1ed4b80ec7f0b4da140))
+* **notifications:** aviso al cliente de presupuesto enviado y anulado (F5 paso 5, RF-60) ([#33](https://github.com/iMiguel10/axtton-core/issues/33)) ([6f2810d](https://github.com/iMiguel10/axtton-core/commit/6f2810d8786d8fc302cd35fc091993ece76c9779))
+* **notifications:** aviso al cliente de vehículo listo para recoger (F5 paso 6, RF-60) ([#34](https://github.com/iMiguel10/axtton-core/issues/34)) ([fe4347f](https://github.com/iMiguel10/axtton-core/commit/fe4347f1242912b1dad4918deb658fd25b5cb277))
+* **notifications:** la bandeja de avisos, con reintentos y sin duplicados (F5 paso 4, RF-62) ([#32](https://github.com/iMiguel10/axtton-core/issues/32)) ([c575a34](https://github.com/iMiguel10/axtton-core/commit/c575a3450cc5db0b213130ea7101c16694ce575e))
+* **notifications:** lo que ve el taller de sus avisos al cliente (F5 paso 7, RF-63, RF-69) ([#35](https://github.com/iMiguel10/axtton-core/issues/35)) ([dc7e2f9](https://github.com/iMiguel10/axtton-core/commit/dc7e2f9c55e87656f264786948c38b1844c0615d))
+* **portal:** el enlace de acceso al portal lo envía el worker, con reintentos (F5 paso 8, RF-40, RF-41) ([#36](https://github.com/iMiguel10/axtton-core/issues/36)) ([e6e273c](https://github.com/iMiguel10/axtton-core/commit/e6e273c0cd6cab2c966b00a5bf11f3602ec0b205))
+* **quotes:** el worker marca como caducados los presupuestos fuera de plazo (F5 paso 2, RF-33) ([#30](https://github.com/iMiguel10/axtton-core/issues/30)) ([fff5d1d](https://github.com/iMiguel10/axtton-core/commit/fff5d1de760c68aa3ceae675f4ec9c3e9ed1d1bd))
+* **worker:** el worker de SAQ y el borrado de los enlaces del portal caducados (F5 paso 1) ([#27](https://github.com/iMiguel10/axtton-core/issues/27)) ([f8aef7d](https://github.com/iMiguel10/axtton-core/commit/f8aef7d8c05f467bfc11cccec7c674dc0d00d1c8))
+
+
+### Correcciones
+
+* **deploy:** el worker sin entrypoint vacío, que Coolify no acepta ([#29](https://github.com/iMiguel10/axtton-core/issues/29)) ([1b8ffdd](https://github.com/iMiguel10/axtton-core/commit/1b8ffddfd689571643e2dcf3961acf0d05111c76))
+* **notifications:** cierre de F5, con lo que encontró qa-verifier (F5 paso 9) ([#37](https://github.com/iMiguel10/axtton-core/issues/37)) ([7400b3c](https://github.com/iMiguel10/axtton-core/commit/7400b3ceeef0ea8a7c2eb65d750d3091f8e53b65))
+
 ## [0.5.0](https://github.com/iMiguel10/axtton-core/compare/v0.4.0...v0.5.0) (2026-11-11)
 
 

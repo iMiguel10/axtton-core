@@ -257,6 +257,8 @@ ADMIN_ONLY = {
     ("POST", "/orders/{order_id}/no-quote"),
     # Firmar la hoja de recepción (F6 paso 2, RF-52).
     ("POST", "/orders/{order_id}/reception-sheet"),
+    # Su PDF (F6 paso 3, RF-51).
+    ("GET", "/orders/{order_id}/reception-sheet/pdf"),
     ("PUT", "/orders/{order_id}/payment"),
     # Configuración del taller (F3 paso 1, RF-02).
     ("GET", "/settings"),

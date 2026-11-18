@@ -3,6 +3,7 @@ import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 
 import { ConfirmButton } from "@/shared/components/ConfirmButton";
+import { PdfButton } from "@/shared/components/PdfButton";
 import { Field } from "@/shared/components/form/Field";
 import { notify } from "@/shared/components/Toaster";
 import { Button } from "@/shared/components/ui/button";
@@ -78,6 +79,15 @@ export function ReceptionSheetCard({
             </p>
             {sheet.quote_waived && <p className="text-sm">{t("reception.waivedSigned")}</p>}
             <p className="text-muted-foreground text-xs">{t("reception.frozenHint")}</p>
+            {order.can_print_reception && (
+              <div className="flex flex-wrap gap-2">
+                <PdfButton
+                  load={() => api.receptionPdf(order.id)}
+                  label={t("reception.pdfSigned")}
+                  filename={`hoja-de-recepcion-${order.code}.pdf`}
+                />
+              </div>
+            )}
           </>
         ) : (
           <>
@@ -107,6 +117,15 @@ export function ReceptionSheetCard({
                 >
                   {t("reception.markPaper")}
                 </ConfirmButton>
+              </div>
+            )}
+            {order.can_print_reception && (
+              <div className="flex flex-wrap gap-2">
+                <PdfButton
+                  load={() => api.receptionPdf(order.id)}
+                  label={t("reception.pdfToSign")}
+                  filename={`hoja-de-recepcion-${order.code}.pdf`}
+                />
               </div>
             )}
           </>

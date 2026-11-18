@@ -1,4 +1,4 @@
-import { apiRequest } from "@/shared/lib/apiClient";
+import { apiBlob, apiRequest } from "@/shared/lib/apiClient";
 
 export const STATUSES = [
   "received",
@@ -92,6 +92,8 @@ export type OrderDetail = Order & {
   /** La hoja de recepción firmada (RF-52); nula mientras no se firma. */
   reception_sheet: ReceptionSheet | null;
   can_sign_reception: boolean;
+  /** Generar la hoja en PDF, firmada o para firmarla en papel (RF-51). */
+  can_print_reception: boolean;
 };
 
 export type SignatureMethod = "screen" | "paper";
@@ -210,6 +212,8 @@ export function ordersApi(workshopId: string) {
     unpaid: (offset = 0) =>
       request<UnpaidOrder[]>(`/unpaid?limit=${PAGE_SIZE}&offset=${offset}`, "GET"),
     notifications: (id: string) => request<OrderNotice[]>(`/${id}/notifications`, "GET"),
+    receptionPdf: (id: string) =>
+      apiBlob(`/workshop/orders/${id}/reception-sheet/pdf`, { workshopId }),
     signReception: (order: Order, input: SignInput) =>
       request<void>(`/${order.id}/reception-sheet`, "POST", { version: order.version, ...input }),
   };

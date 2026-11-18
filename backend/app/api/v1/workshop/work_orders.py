@@ -213,6 +213,7 @@ async def get_order(order_id: UUID, workshop: Viewer) -> WorkOrderDetailRead:
             "can_sign_reception": can(workshop.role, Action.SIGN_RECEPTION)
             and detail.reception is None
             and order.status not in CLOSED,
+            "can_print_reception": can(workshop.role, Action.SIGN_RECEPTION),
             "can_record_payment": can(workshop.role, Action.RECORD_PAYMENT)
             and order.status in CLOSED,
             "payment_status": order.payment_status,

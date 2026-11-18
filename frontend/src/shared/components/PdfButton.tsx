@@ -14,10 +14,13 @@ import { errorMessage } from "@/shared/lib/errors";
 export function PdfButton({
   load,
   label,
+  filename = "documento.pdf",
   disabled = false,
 }: {
   load: () => Promise<Blob>;
   label: string;
+  /** El nombre si el navegador bloquea la pestaña y hay que descargarlo. */
+  filename?: string;
   disabled?: boolean;
 }) {
   const { t } = useTranslation();
@@ -34,7 +37,7 @@ export function PdfButton({
           // Bloqueada de todos modos: se descarga.
           const link = document.createElement("a");
           link.href = url;
-          link.download = "presupuesto.pdf";
+          link.download = filename;
           link.click();
         }
         // La pestaña ya lo cargó: se libera la memoria del navegador.

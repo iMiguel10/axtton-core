@@ -79,7 +79,8 @@ async def sign_reception(order_id: str) -> None:
                     " quote_waived, dropped_off_by_name, dropped_off_by_phone,"
                     " signer_name, signature)"
                     " SELECT o.workshop_id, o.id, 'screen', e.id, '{}', false,"
-                    " :name, :phone, :name, '[[[1, 2], [3, 4]]]'"
+                    " :name, :phone, :name,"
+                    ' \'{"width": 600, "height": 200, "strokes": [[[1, 2], [3, 4]]]}\''
                     " FROM work_orders o"
                     " JOIN employees e ON e.workshop_id = o.workshop_id"
                     " WHERE o.id = :o LIMIT 1"

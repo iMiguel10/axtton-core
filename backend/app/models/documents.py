@@ -84,6 +84,8 @@ class ReceptionSheet(IdMixin, CreatedAtMixin, Base):
     dropped_off_by_phone: Mapped[str | None] = mapped_column(String(30))
     signer_name: Mapped[str | None] = mapped_column(String(200))
     # Los trazos de la firma en pantalla, reconstruidos por el servidor.
-    signature: Mapped[list[Any] | None] = mapped_column(JSONB)
+    # none_as_null: sin él, None se guarda como el JSON `null`, no como NULL, y
+    # el CHECK de una firma en papel lo rechaza.
+    signature: Mapped[dict[str, Any] | None] = mapped_column(JSONB(none_as_null=True))
     # Cuándo se borró la firma al vencer su plazo (RF-56, F8).
     signature_purged_at: Mapped[datetime | None]

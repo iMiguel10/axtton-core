@@ -110,7 +110,9 @@ function Details({ entry, t }: { entry: AuditEntry; t: TFunction }) {
           <span className="text-muted-foreground">
             {t(`audit.fields.${field}`, { defaultValue: field })}:
           </span>{" "}
-          {Array.isArray(value) && value.length === 2
+          {field === "fields" && Array.isArray(value)
+            ? value.map((name) => t(`audit.receptionFields.${String(name)}`, { defaultValue: String(name) })).join(", ")
+            : Array.isArray(value) && value.length === 2
             ? `${show(t, field, value[0])} → ${show(t, field, value[1])}`
             : show(t, field, value)}
         </li>
@@ -129,6 +131,7 @@ function show(t: TFunction, field: string, value: unknown): string {
   if (field === "work_order_status") return t(`orders.statuses.${String(value)}`);
   if (field === "quote_outcome") return t(`quotes.decision.outcomes.${String(value)}`);
   if (field === "decision_channel") return t(`quotes.decision.channels.${String(value)}`);
+  if (field === "signature_method") return t(`reception.methods.${String(value)}`);
   if (field === "no_quote_reason") return t(`orders.noQuoteReasons.${String(value)}`);
   if (field === "hourly_cost_cents" && typeof value === "number") return formatEur(value);
   if (field === "paid_amount_cents" && typeof value === "number") return formatEur(value);

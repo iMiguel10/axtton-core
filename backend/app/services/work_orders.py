@@ -42,6 +42,7 @@ from app.models import AuditEntry, WorkOrder, WorkOrderStatusChange
 from app.repositories import clients as client_repo
 from app.repositories import employees as employee_repo
 from app.repositories import quotes as quote_repo
+from app.repositories import reception as reception_repo
 from app.repositories import vehicles as vehicle_repo
 from app.repositories import work_orders as order_repo
 from app.repositories import worklog as worklog_repo
@@ -64,6 +65,8 @@ EDITABLE = (
     "quote_waived",
     "responsible_employee_id",
 )
+# Lo que recoge la hoja de recepción (RF-51); el responsable no está en ella.
+RECEPTION_FIELDS = frozenset(EDITABLE) - {"responsible_employee_id"}
 OPTIONAL_TEXT = (
     "reason",
     "dropped_off_by_name",
@@ -88,6 +91,8 @@ class OrderDetail:
     transitions: list[Transition]
     can_undo: bool
     can_mark_no_quote: bool
+    # La hoja de recepción, si ya se firmó (F6).
+    reception: reception_repo.SignedSheet | None
 
 
 def _blank_to_none(values: dict[str, Any]) -> dict[str, Any]:
@@ -250,18 +255,26 @@ async def get_order(session: AsyncSession, order_id: UUID, role: str) -> OrderDe
         can_undo=undo is None,
         can_mark_no_quote=can(role, Action.MARK_NO_QUOTE)
         and row.order.status in NO_QUOTE_STATUSES,
+        reception=await reception_repo.of_order(session, order_id),
     )
 
 
 async def update_order(
     session: AsyncSession,
+    workshop_id: UUID,
+    user_id: UUID,
     order_id: UUID,
     *,
     expected_version: int,
     changes: dict[str, Any],
 ) -> None:
     """Editar la recepción o el responsable (RF-20, RF-25), con bloqueo
-    optimista (RNF-15). Una orden cerrada no se edita (RF-26)."""
+    optimista (RNF-15). Una orden cerrada no se edita (RF-26).
+
+    Con la hoja de recepción ya firmada, la corrección cambia la orden y no la
+    hoja (RF-52), y deja constancia en la auditoría de qué datos se corrigieron:
+    sin sus valores, que pueden ser personales (quién trajo el coche) y la
+    auditoría no se vacía al anonimizar."""
     order = await order_repo.get(session, order_id)
     if order is None:
         raise NotFoundError("work_order_not_found")
@@ -272,9 +285,27 @@ async def update_order(
     values = _blank_to_none(changes)
     if "responsible_employee_id" in values:
         await _check_responsible(session, values["responsible_employee_id"])
+    corrected = [
+        field
+        for field in EDITABLE
+        if field in values
+        and field in RECEPTION_FIELDS
+        and getattr(order, field) != values[field]
+    ]
     for field in EDITABLE:
         if field in values:
             setattr(order, field, values[field])
+    if corrected and await reception_repo.is_signed(session, order_id):
+        session.add(
+            AuditEntry(
+                workshop_id=workshop_id,
+                actor_user_id=user_id,
+                action="reception_corrected",
+                target_type="work_order",
+                target_id=order_id,
+                details={"fields": corrected},
+            )
+        )
     await session.flush()
 
 
@@ -459,9 +490,12 @@ async def set_no_quote(
     if order.status not in NO_QUOTE_STATUSES:
         raise ConflictError("no_quote_not_now")
     if reason == NoQuoteReason.WAIVER:
-        # La renuncia solo vale firmada en la hoja de recepción (RF-27, RF-52),
-        # que llega en F6.
-        raise ConflictError("waiver_requires_signed_reception")
+        # La renuncia solo vale firmada en la hoja de recepción (RF-27, RF-52):
+        # la de la hoja, no la casilla de la orden, que se puede cambiar después.
+        # Firmar bloquea la orden, igual que aquí, así que no se cruzan.
+        signed = await reception_repo.of_order(session, order_id)
+        if signed is None or not signed.sheet.quote_waived:
+            raise ConflictError("waiver_requires_signed_reception")
     if reason == order.no_quote_reason:
         return
     previous = order.no_quote_reason

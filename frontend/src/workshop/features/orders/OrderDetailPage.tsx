@@ -9,7 +9,6 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/shared/components/ui
 import { notify } from "@/shared/components/Toaster";
 import { errorMessage } from "@/shared/lib/errors";
 import { cn } from "@/shared/lib/utils";
-import { useDates } from "@/shared/lib/dates";
 
 import { clientName } from "../clients/clientName";
 import { usePageCrumb } from "../layout/PageCrumb";
@@ -19,6 +18,8 @@ import { ordersApi, type OrderDetail, type ReceptionInput } from "./api";
 import { StatusBadge } from "./OrderBits";
 import { NoticesSection } from "./NoticesSection";
 import { ReceptionForm } from "./ReceptionForm";
+import { ReceptionSheetCard } from "./ReceptionSheetCard";
+import { ReceptionSummary } from "./ReceptionSummary";
 import { PaymentCard } from "./PaymentCard";
 import { StatusCard } from "./StatusCard";
 import { useOrderNotices } from "./useOrderNotices";
@@ -162,6 +163,7 @@ export function OrderDetailPage() {
               <NoticesSection orderId={current.id} />
             </TabsContent>
             <TabsContent value="reception" keepMounted className="grid gap-4">
+              <ReceptionSheetCard order={current} onChanged={refresh} />
               {save.isError && (
                 <p role="alert" className="text-destructive text-sm">
                   {errorMessage(t, save.error)}
@@ -200,35 +202,6 @@ export function OrderDetailPage() {
         )}
       />
     </section>
-  );
-}
-
-function ReceptionSummary({ order }: { order: OrderDetail }) {
-  const { t, i18n } = useTranslation();
-  const dates = useDates();
-  const droppedOff = [order.dropped_off_by_name, order.dropped_off_by_phone]
-    .filter(Boolean)
-    .join(" · ");
-  const rows: [string, string | null][] = [
-    [t("orders.reason"), order.reason],
-    [t("orders.odometer"), order.odometer_km?.toLocaleString(i18n.language) ?? null],
-    [t("orders.expectedDelivery"), dates.dateTime(order.expected_delivery_at)],
-    [t("orders.responsible"), order.responsible?.name ?? null],
-    [t("orders.droppedOffBy"), droppedOff || null],
-    [t("orders.fuelLevel"), order.fuel_level && t(`orders.fuel.${order.fuel_level}`)],
-    [t("orders.visibleDamage"), order.visible_damage],
-    [t("orders.belongings"), order.belongings],
-    [t("orders.quoteWaived"), order.quote_waived ? t("orders.quoteWaivedYes") : null],
-  ];
-  return (
-    <dl className="grid gap-x-6 gap-y-3 sm:grid-cols-[max-content_1fr]">
-      {rows.map(([label, value]) => (
-        <div key={label} className="contents">
-          <dt className="text-muted-foreground text-sm">{label}</dt>
-          <dd className="whitespace-pre-line">{value ?? "—"}</dd>
-        </div>
-      ))}
-    </dl>
   );
 }
 

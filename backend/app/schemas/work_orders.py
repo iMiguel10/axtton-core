@@ -12,6 +12,7 @@ from app.domain.work_orders import (
     WorkOrderStatus,
     WorkOrderType,
 )
+from app.schemas.reception import ReceptionSheetRead
 
 
 class OrderVehicle(BaseModel):
@@ -106,6 +107,9 @@ class WorkOrderDetailRead(WorkOrderRead):
     can_undo: bool
     can_mark_no_quote: bool
     can_record_payment: bool
+    # La hoja de recepción firmada, o nada si aún no se firmó (RF-52).
+    reception_sheet: ReceptionSheetRead | None
+    can_sign_reception: bool
 
 
 class _ReceptionFields(BaseModel):

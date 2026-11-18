@@ -145,6 +145,7 @@ export function StatusCard({
             // Lo guardado manda: al cambiar, el desplegable vuelve a empezar.
             key={order.no_quote_reason ?? ""}
             current={order.no_quote_reason}
+            waiverSigned={order.reception_sheet?.quote_waived ?? false}
             disabled={action.isPending}
             onSave={(reason) => run(() => api.setNoQuote(order, reason))}
           />
@@ -154,14 +155,16 @@ export function StatusCard({
   );
 }
 
-/** "Sin presupuesto" (RF-27). La renuncia del cliente no se ofrece: exige la
- * hoja de recepción firmada, que llega en F6. */
+/** "Sin presupuesto" (RF-27). La renuncia del cliente solo se ofrece si la hoja
+ * de recepción está firmada con ella (RF-52); el servidor lo vuelve a mirar. */
 function NoQuoteControl({
   current,
+  waiverSigned,
   disabled,
   onSave,
 }: {
   current: NoQuoteReason | null;
+  waiverSigned: boolean;
   disabled: boolean;
   onSave: (reason: NoQuoteReason | null) => void;
 }) {
@@ -173,6 +176,9 @@ function NoQuoteControl({
       <div className="flex flex-wrap gap-2">
         <Select id="no-quote" value={reason} onChange={(event) => setReason(event.target.value)}>
           <option value="">{t("orders.noQuoteNone")}</option>
+          {(waiverSigned || current === "waiver") && (
+            <option value="waiver">{t("orders.noQuoteReasons.waiver")}</option>
+          )}
           <option value="warranty">{t("orders.noQuoteReasons.warranty")}</option>
           <option value="fixed_price">{t("orders.noQuoteReasons.fixed_price")}</option>
         </Select>

@@ -65,6 +65,35 @@ async def anonymize(
     )
 
 
+async def sign_reception(order_id: str) -> None:
+    """Su hoja de recepción, firmada en pantalla por su hijo (F6): guarda otra
+    vez quién trajo el coche, y quién firmó. Escrita con SQL mientras no hay
+    forma de firmar por la API (F6 paso 2)."""
+    engine = create_async_engine(os.environ["PLATFORM_DATABASE_URL"])
+    try:
+        async with engine.begin() as conn:
+            await conn.execute(
+                text(
+                    "INSERT INTO reception_sheets (workshop_id, work_order_id,"
+                    " signature_method, recorded_by_employee_id, snapshot,"
+                    " quote_waived, dropped_off_by_name, dropped_off_by_phone,"
+                    " signer_name, signature)"
+                    " SELECT o.workshop_id, o.id, 'screen', e.id, '{}', false,"
+                    " :name, :phone, :name, '[[[1, 2], [3, 4]]]'"
+                    " FROM work_orders o"
+                    " JOIN employees e ON e.workshop_id = o.workshop_id"
+                    " WHERE o.id = :o LIMIT 1"
+                ),
+                {
+                    "o": order_id,
+                    "name": DROPPED_OFF["dropped_off_by_name"],
+                    "phone": DROPPED_OFF["dropped_off_by_phone"],
+                },
+            )
+    finally:
+        await engine.dispose()
+
+
 async def maria_with_history(client: AsyncClient, shop: Shop) -> tuple[Any, Any]:
     """María, con todos sus datos, y una orden entregada de su coche traída por
     su hijo."""
@@ -75,6 +104,7 @@ async def maria_with_history(client: AsyncClient, shop: Shop) -> tuple[Any, Any]
     )
     assert response.status_code == 204, response.text
     order = await open_order(client, shop.headers, shop.car["id"], **DROPPED_OFF)
+    await sign_reception(order["id"])
     await deliver(order["id"])
     return await read(client, shop.headers, shop.maria["id"]), order
 

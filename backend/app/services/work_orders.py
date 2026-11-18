@@ -58,14 +58,18 @@ EDITABLE = (
     "expected_delivery_at",
     "dropped_off_by_name",
     "dropped_off_by_phone",
-    "reception_notes",
+    "visible_damage",
+    "belongings",
+    "fuel_level",
+    "quote_waived",
     "responsible_employee_id",
 )
 OPTIONAL_TEXT = (
     "reason",
     "dropped_off_by_name",
     "dropped_off_by_phone",
-    "reception_notes",
+    "visible_damage",
+    "belongings",
 )
 
 

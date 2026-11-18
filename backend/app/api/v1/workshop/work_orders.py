@@ -168,7 +168,10 @@ async def get_order(order_id: UUID, workshop: Viewer) -> WorkOrderDetailRead:
             "reason": order.reason,
             "dropped_off_by_name": order.dropped_off_by_name,
             "dropped_off_by_phone": order.dropped_off_by_phone,
-            "reception_notes": order.reception_notes,
+            "visible_damage": order.visible_damage,
+            "belongings": order.belongings,
+            "fuel_level": order.fuel_level,
+            "quote_waived": order.quote_waived,
             "delivered_at": order.delivered_at,
             "history": [
                 StatusChangeRead(

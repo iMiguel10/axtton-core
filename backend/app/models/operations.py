@@ -27,6 +27,7 @@ from sqlalchemy import (
 )
 from sqlalchemy.orm import Mapped, mapped_column
 
+from app.domain.reception import FuelLevel
 from app.domain.work_orders import (
     PaymentMethod,
     PaymentStatus,
@@ -258,6 +259,7 @@ class WorkOrder(IdMixin, CreatedAtMixin, UpdatedAtMixin, Base):
             "warranty_of_id IS NULL OR type = 'warranty'", name="warranty_of_type"
         ),
         CheckConstraint("odometer_km >= 0", name="odometer_km"),
+        CheckConstraint(sql_in("fuel_level", FuelLevel), name="fuel_level"),
         CheckConstraint("number > 0", name="number"),
         # El cobro (RF-28): solo una orden cerrada deja de estar pendiente, y
         # una cobrada lleva forma de pago, importe y fecha; las demás, nada.
@@ -308,8 +310,14 @@ class WorkOrder(IdMixin, CreatedAtMixin, UpdatedAtMixin, Base):
     # Quien trae el coche si no es el titular: un dato, sin acceso a nada.
     dropped_off_by_name: Mapped[str | None] = mapped_column(String(200))
     dropped_off_by_phone: Mapped[str | None] = mapped_column(String(30))
-    # Daños visibles y objetos en el coche al recibirlo.
-    reception_notes: Mapped[str | None] = mapped_column(String(2000))
+    # Daños visibles y objetos en el coche al recibirlo, por separado desde F6
+    # (RF-51): la hoja de recepción los lleva cada uno en su apartado.
+    visible_damage: Mapped[str | None] = mapped_column(String(2000))
+    belongings: Mapped[str | None] = mapped_column(String(2000))
+    fuel_level: Mapped[str | None] = mapped_column(String(20))
+    # La renuncia expresa al presupuesto ("Renuncio al presupuesto", RF-51). Solo
+    # vale firmada: la que cuenta para RF-27 es la de la hoja firmada.
+    quote_waived: Mapped[bool] = mapped_column(server_default="false")
     delivered_at: Mapped[datetime | None]
     # El cobro (RF-28): una marca operativa, no una factura. El importe lo
     # escribe quien cobra (con F3 lo propondrá el presupuesto aceptado); la

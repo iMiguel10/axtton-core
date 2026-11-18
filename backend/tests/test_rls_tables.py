@@ -44,6 +44,7 @@ WORKSHOP_TABLES = {
     "quote_decisions": "workshop_id",
     "portal_links": "workshop_id",
     "notifications": "workshop_id",
+    "reception_sheets": "workshop_id",
 }
 
 # Tablas sobre las que axtton_app no tiene DELETE: no se borran nunca, ni por un
@@ -66,6 +67,8 @@ NO_DELETE = {
     # portal_links no está desde 0020linkpurge: el worker borra los caducados.
     # Un aviso no se borra nunca: es lo que impide repetirlo (0022outbox).
     "notifications",
+    # Una hoja firmada no se borra (0024receptionsheets).
+    "reception_sheets",
 }
 # La columna que axtton_app puede actualizar, si no puede todas.
 UPDATABLE_COLUMN = {
@@ -82,6 +85,8 @@ UPDATABLE_COLUMN = {
     "quote_lines": "position",
     # Sus datos legales y ajustes, desde 0012settings (RF-02).
     "workshops": "name",
+    # De una hoja firmada, solo lo personal, al anonimizar (0024receptionsheets).
+    "reception_sheets": "signer_name",
 }
 
 
@@ -234,6 +239,14 @@ async def seeded(engines: Engines, two_workshops: TwoWorkshops) -> Seeded:
             await conn.execute(
                 text("UPDATE quotes SET status = 'approved' WHERE id = :q"),
                 {"q": quote},
+            )
+            await conn.execute(
+                text(
+                    "INSERT INTO reception_sheets (workshop_id, work_order_id,"
+                    " signature_method, recorded_by_employee_id, snapshot,"
+                    " quote_waived) VALUES (:w, :o, 'paper', :e, '{}', false)"
+                ),
+                {"w": workshop, "o": order, "e": employee},
             )
         await conn.execute(
             text("INSERT INTO audit_log (action) VALUES ('workshop_created')")

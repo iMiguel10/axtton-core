@@ -3,6 +3,7 @@ from uuid import UUID
 
 from pydantic import AwareDatetime, BaseModel, ConfigDict, Field
 
+from app.domain.reception import FuelLevel
 from app.domain.work_orders import (
     NoQuoteReason,
     PaymentMethod,
@@ -87,7 +88,10 @@ class WorkOrderDetailRead(WorkOrderRead):
     reason: str | None
     dropped_off_by_name: str | None
     dropped_off_by_phone: str | None
-    reception_notes: str | None
+    visible_damage: str | None
+    belongings: str | None
+    fuel_level: FuelLevel | None
+    quote_waived: bool
     delivered_at: datetime | None
     # El cobro (RF-28): solo una cobrada lleva forma, importe y fecha.
     payment_status: PaymentStatus
@@ -113,7 +117,12 @@ class _ReceptionFields(BaseModel):
     expected_delivery_at: AwareDatetime | None = None
     dropped_off_by_name: str | None = Field(default=None, max_length=200)
     dropped_off_by_phone: str | None = Field(default=None, max_length=30)
-    reception_notes: str | None = Field(default=None, max_length=2000)
+    # Daños, objetos y combustible al recibirlo, y la renuncia expresa al
+    # presupuesto (RF-51). La renuncia solo vale firmada en la hoja (RF-27).
+    visible_damage: str | None = Field(default=None, max_length=2000)
+    belongings: str | None = Field(default=None, max_length=2000)
+    fuel_level: FuelLevel | None = None
+    quote_waived: bool = False
     # Puede quedar sin asignar al abrirla (RF-25).
     responsible_employee_id: UUID | None = None
 

@@ -13,7 +13,7 @@ import { Button } from "@/shared/components/ui/button";
 import { Label } from "@/shared/components/ui/label";
 
 import { useActiveWorkshop } from "../session/ActiveWorkshop";
-import { fetchStaff, type OrderDetail, type ReceptionInput } from "./api";
+import { FUEL_LEVELS, fetchStaff, type OrderDetail, type ReceptionInput } from "./api";
 
 const schema = z.object({
   odometerKm: z
@@ -24,7 +24,10 @@ const schema = z.object({
   expectedDelivery: z.string(),
   droppedOffByName: z.string().trim().max(200),
   droppedOffByPhone: z.string().trim().max(30),
-  receptionNotes: z.string().trim().max(2000),
+  visibleDamage: z.string().trim().max(2000),
+  belongings: z.string().trim().max(2000),
+  fuelLevel: z.enum(["", ...FUEL_LEVELS]),
+  quoteWaived: z.boolean(),
   responsibleId: z.string(),
 });
 type Values = z.infer<typeof schema>;
@@ -39,7 +42,10 @@ function toValues(dates: Dates, order?: OrderDetail): Values {
     expectedDelivery: dates.toInput(order?.expected_delivery_at ?? null),
     droppedOffByName: order?.dropped_off_by_name ?? "",
     droppedOffByPhone: order?.dropped_off_by_phone ?? "",
-    receptionNotes: order?.reception_notes ?? "",
+    visibleDamage: order?.visible_damage ?? "",
+    belongings: order?.belongings ?? "",
+    fuelLevel: order?.fuel_level ?? "",
+    quoteWaived: order?.quote_waived ?? false,
     responsibleId: order?.responsible?.id ?? "",
   };
 }
@@ -53,7 +59,10 @@ function toInput(dates: Dates, values: Values): ReceptionInput {
     expected_delivery_at: values.expectedDelivery ? dates.fromInput(values.expectedDelivery) : null,
     dropped_off_by_name: values.droppedOffByName || null,
     dropped_off_by_phone: values.droppedOffByPhone || null,
-    reception_notes: values.receptionNotes || null,
+    visible_damage: values.visibleDamage || null,
+    belongings: values.belongings || null,
+    fuel_level: values.fuelLevel || null,
+    quote_waived: values.quoteWaived,
     responsible_employee_id: values.responsibleId || null,
   };
 }
@@ -146,10 +155,39 @@ export function ReceptionForm({
         autoComplete="off"
         {...form.register("droppedOffByPhone")}
       />
+      <div className="grid gap-1.5">
+        <Label htmlFor="order-fuel">{t("orders.fuelLevel")}</Label>
+        <Select id="order-fuel" {...form.register("fuelLevel")}>
+          <option value="">{t("orders.fuelUnknown")}</option>
+          {FUEL_LEVELS.map((level) => (
+            <option key={level} value={level}>
+              {t(`orders.fuel.${level}`)}
+            </option>
+          ))}
+        </Select>
+      </div>
+      <div />
       <div className="grid gap-1.5 md:col-span-2">
-        <Label htmlFor="order-reception-notes">{t("orders.receptionNotes")}</Label>
-        <Textarea id="order-reception-notes" {...form.register("receptionNotes")} />
-        <p className="text-muted-foreground text-xs">{t("orders.receptionNotesHint")}</p>
+        <Label htmlFor="order-damage">{t("orders.visibleDamage")}</Label>
+        <Textarea id="order-damage" {...form.register("visibleDamage")} />
+      </div>
+      <div className="grid gap-1.5 md:col-span-2">
+        <Label htmlFor="order-belongings">{t("orders.belongings")}</Label>
+        <Textarea id="order-belongings" {...form.register("belongings")} />
+        <p className="text-muted-foreground text-xs">{t("orders.belongingsHint")}</p>
+      </div>
+      {/* La renuncia expresa (RF-51); solo vale firmada en la hoja (RF-27). */}
+      <div className="flex items-start gap-2 md:col-span-2">
+        <input
+          id="order-waived"
+          type="checkbox"
+          className="accent-primary mt-1 size-4"
+          {...form.register("quoteWaived")}
+        />
+        <div className="grid gap-0.5">
+          <Label htmlFor="order-waived">{t("orders.quoteWaivedLabel")}</Label>
+          <p className="text-muted-foreground text-xs">{t("orders.quoteWaivedHint")}</p>
+        </div>
       </div>
       <div className="md:col-span-2">
         <Button type="submit" disabled={pending || !canSubmit || (order !== undefined && !isDirty)}>

@@ -215,7 +215,10 @@ function ReceptionSummary({ order }: { order: OrderDetail }) {
     [t("orders.expectedDelivery"), dates.dateTime(order.expected_delivery_at)],
     [t("orders.responsible"), order.responsible?.name ?? null],
     [t("orders.droppedOffBy"), droppedOff || null],
-    [t("orders.receptionNotes"), order.reception_notes],
+    [t("orders.fuelLevel"), order.fuel_level && t(`orders.fuel.${order.fuel_level}`)],
+    [t("orders.visibleDamage"), order.visible_damage],
+    [t("orders.belongings"), order.belongings],
+    [t("orders.quoteWaived"), order.quote_waived ? t("orders.quoteWaivedYes") : null],
   ];
   return (
     <dl className="grid gap-x-6 gap-y-3 sm:grid-cols-[max-content_1fr]">

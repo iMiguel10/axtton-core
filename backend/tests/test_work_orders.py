@@ -127,7 +127,10 @@ async def test_an_order_is_opened_for_the_current_owner_with_its_first_change(
         expected_delivery_at="2026-11-02T18:00:00+01:00",
         dropped_off_by_name="Pepe (su hijo)",
         dropped_off_by_phone="622",
-        reception_notes="Rayón en la puerta trasera",
+        visible_damage="Rayón en la puerta trasera",
+        belongings="Silla infantil",
+        fuel_level="quarter",
+        quote_waived=True,
     )
     assert order["code"] == f"OT-{order['year']}-0001"
     assert (order["status"], order["type"]) == ("received", "breakdown")
@@ -140,6 +143,16 @@ async def test_an_order_is_opened_for_the_current_owner_with_its_first_change(
     }
     assert order["vehicle"]["plate"] == "1234 BCD"
     assert (order["odometer_km"], order["reason"]) == (123456, "Ruido al frenar")
+    # El resguardo de depósito (RF-51), cada dato en su apartado.
+    assert {
+        k: order[k]
+        for k in ("visible_damage", "belongings", "fuel_level", "quote_waived")
+    } == {
+        "visible_damage": "Rayón en la puerta trasera",
+        "belongings": "Silla infantil",
+        "fuel_level": "quarter",
+        "quote_waived": True,
+    }
     # Invariante 5 desde el primer momento: el estado es el de su único cambio.
     [opened] = order["history"]
     assert (opened["from_status"], opened["to_status"], opened["cause"]) == (
@@ -206,6 +219,9 @@ async def test_an_order_cannot_be_opened_for_an_archived_owner(
         {"type": "itv", "odometer_km": -1},
         # Una hora sin zona no dice qué instante es.
         {"type": "itv", "expected_delivery_at": "2026-11-02T18:00:00"},
+        {"type": "itv", "fuel_level": "medio"},
+        # La renuncia es sí o no, nunca "no se sabe".
+        {"type": "itv", "quote_waived": None},
     ],
 )
 async def test_invalid_data_is_a_422(
@@ -440,12 +456,15 @@ async def test_the_reception_and_the_responsible_can_be_edited(
             "version": order["version"],
             "responsible_employee_id": juan,
             "reason": "",
+            "fuel_level": "full",
+            "belongings": "  ",
         },
         headers=shop.headers,
     )
     assert response.status_code == 204
     after = await get(client, shop.headers, order["id"])
     assert (after["responsible"]["name"], after["reason"]) == ("Juan", None)
+    assert (after["fuel_level"], after["belongings"]) == ("full", None)
     assert after["version"] == order["version"] + 1
 
     unassigned = await client.patch(

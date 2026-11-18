@@ -60,6 +60,10 @@ export type StatusChange = {
 
 export type AllowedTransition = { to_status: Status; needs_note: boolean; unrepaired: boolean };
 
+/** El combustible o la carga al recibirlo (RF-51), como en un resguardo de depósito. */
+export const FUEL_LEVELS = ["reserve", "quarter", "half", "three_quarters", "full"] as const;
+export type FuelLevel = (typeof FUEL_LEVELS)[number];
+
 export type NoQuoteReason = "waiver" | "warranty" | "fixed_price";
 
 export type OrderDetail = Order & {
@@ -69,7 +73,10 @@ export type OrderDetail = Order & {
   reason: string | null;
   dropped_off_by_name: string | null;
   dropped_off_by_phone: string | null;
-  reception_notes: string | null;
+  visible_damage: string | null;
+  belongings: string | null;
+  fuel_level: FuelLevel | null;
+  quote_waived: boolean;
   delivered_at: string | null;
   history: StatusChange[];
   /** Lo que puede hacer quien la mira: el servidor lo vuelve a comprobar. */
@@ -107,7 +114,10 @@ export type ReceptionInput = {
   expected_delivery_at: string | null;
   dropped_off_by_name: string | null;
   dropped_off_by_phone: string | null;
-  reception_notes: string | null;
+  visible_damage: string | null;
+  belongings: string | null;
+  fuel_level: FuelLevel | null;
+  quote_waived: boolean;
   responsible_employee_id: string | null;
 };
 

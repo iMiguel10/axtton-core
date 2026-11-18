@@ -1,5 +1,6 @@
 """Importa todos los modelos para que queden registrados en Base.metadata."""
 
+from app.models.documents import ReceptionSheet
 from app.models.notifications import Notification
 from app.models.operations import (
     Client,
@@ -37,6 +38,7 @@ __all__ = [
     "Quote",
     "QuoteDecision",
     "QuoteLine",
+    "ReceptionSheet",
     "SuperadminInvitation",
     "User",
     "Vehicle",

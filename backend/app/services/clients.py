@@ -19,6 +19,7 @@ from app.models import AuditEntry, Client
 from app.repositories import clients as client_repo
 from app.repositories import portal_links as link_repo
 from app.repositories import quotes as quote_repo
+from app.repositories import reception as reception_repo
 from app.repositories import vehicles as vehicle_repo
 from app.repositories import work_orders as order_repo
 from app.services import limits as limit_service
@@ -206,6 +207,8 @@ async def anonymize_client(
     # que el cliente ya esté anonimizado.
     await session.flush()
     await quote_repo.erase_portal_decision_details(session, client_id)
+    # Igual con las hojas de recepción firmadas: su trigger también lo exige.
+    await reception_repo.erase_personal(session, client_id)
     # Sin email no hay portal: ningún enlace pendiente vale ya (RF-15, RF-47).
     await link_repo.revoke_open_for_client(session, client_id)
     session.add(

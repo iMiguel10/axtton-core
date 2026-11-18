@@ -235,6 +235,14 @@ async def send_link(
     except EmailDeliveryUnknownError:
         logger.warning("El acceso al portal pudo no llegar; no se reintenta")
         return LinkSendOutcome.DELIVERY_UNKNOWN
+    except Exception as exc:  # noqa: BLE001 (se registra su tipo, abajo)
+        # Sin clasificar: puede que saliera, como en la bandeja (B4). No se
+        # reintenta, y solo su tipo al registro: su texto puede llevar el email.
+        logger.error(
+            "El acceso al portal: error sin clasificar al enviar (%s)",
+            type(exc).__name__,
+        )
+        return LinkSendOutcome.DELIVERY_UNKNOWN
     return LinkSendOutcome.SENT
 
 

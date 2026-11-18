@@ -129,6 +129,7 @@ async def compose_quote_cancelled(
     if quote.status != QuoteStatus.CANCELLED:
         return OBSOLETE
     # "Si ya lo había recibido" (§6): el aviso de esa versión salió, o pudo salir.
+    # Si se está enviando ahora mismo, se espera a saber cómo acaba.
     sent = await notification_repo.status_of_key(session, sent_key(quote))
     if sent not in (NotificationStatus.SENT, NotificationStatus.UNKNOWN):
         return OBSOLETE

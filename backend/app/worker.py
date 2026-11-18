@@ -9,7 +9,9 @@ roles que la API: axtton_app para trabajar, axtton_platform solo desde el
 planificador (`app/platform/scheduler.py`).
 """
 
-from saq import Queue
+import logging
+
+from saq import Job, Queue
 from saq.types import SettingsDict
 
 from app.core.config import get_settings
@@ -26,6 +28,23 @@ from app.platform.db import platform_engine
 _valkey_url = get_settings().valkey_url
 if not _valkey_url:
     raise RuntimeError("El worker necesita VALKEY_URL: ahí vive la cola de SAQ")
+
+
+class _JobsWithoutArguments(logging.Filter):
+    """SAQ registra un trabajo que falla con todos sus argumentos
+    (`logger.exception("Error processing job %s", job)`), y el del enlace del
+    portal lleva el email (RNF-40). Aquí se escribe como en el resto de sus
+    líneas, sin los argumentos. Lo encontró qa-verifier al cerrar F5."""
+
+    def filter(self, record: logging.LogRecord) -> bool:
+        if isinstance(record.args, tuple):
+            record.args = tuple(
+                arg.info(False) if isinstance(arg, Job) else arg for arg in record.args
+            )
+        return True
+
+
+logging.getLogger("saq").addFilter(_JobsWithoutArguments())
 
 # La cola se crea al importar, pero SAQ no la conecta hasta que el worker arranca,
 # ya dentro de su event loop (trampa heredada: las primitivas de asyncio quedan

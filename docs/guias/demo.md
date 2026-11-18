@@ -63,11 +63,21 @@ La demo desplegada **no tiene correo**, así que nadie recibiría el enlace mág
 
 En Talleres Martínez, la revisión de la flota de Transportes Navarro (pendiente de cobro) se **aprobó desde el portal**: en su ficha, el administrador ve la IP (una de ejemplo, `203.0.113.24`) y el navegador. Los presupuestos que esperan respuesta se pueden aceptar o rechazar entrando como su cliente.
 
+## Los avisos al cliente
+
+Enviar un presupuesto, anularlo o marcar una orden lista crea su aviso al cliente (F5, RF-60), también al cargar la demo: cada orden enseña los suyos en la pestaña **Avisos** de su ficha, con la fecha del cambio que los provocó. Qué les pasa lo decide el worker de verdad, en el minuto siguiente a la carga:
+
+- **En la demo desplegada**, que no tiene correo, todos acaban **"No enviado: esta instalación no tiene correo configurado"**. Es lo honesto: no se finge un envío que no ha ocurrido.
+- **En desarrollo**, con Mailpit, salen los que siguen teniendo sentido (los presupuestos que esperan respuesta, a clientes con email; se ven en http://localhost:8025), se omiten los de clientes sin email (**"El cliente no tiene email"**) y se cancelan los que ya no hacían falta (**"Ya no hacía falta"**: el vehículo ya se entregó, o la versión se corrigió o ya tiene respuesta).
+
+Para ver el aviso de RF-63, abre una orden de un cliente sin email (Antonio García Pérez, la recibida hoy): el diálogo de enviar un presupuesto y la tarjeta de estado dicen que no se le avisará.
+
 ## Cómo está hecho
 
 - Los datos del taller se crean con **los services de verdad**, en transacciones del taller con RLS. Cumplen todas las reglas: el historial de estados, la numeración, los permisos de cada rol y la auditoría. Si una regla cambia y la demo deja de cumplirla, el script falla (y su prueba, `test_seed_demo.py`).
 - Como todo se crea "ahora", al final **las fechas se mueven hacia atrás**, relativas a hoy: la demo nunca envejece. Lo hacen el rol de plataforma (órdenes, historiales, clientes, vehículos) y el dueño para los periodos de titularidad, cuyo trigger los congela con cualquier rol. El dueño lo desactiva dentro de su transacción y lo vuelve a activar antes de confirmar. Lo mismo hace con los presupuestos enviados y sus decisiones (`quotes_frozen_after_send` y `quote_decisions_frozen`).
 - Los **presupuestos** se colocan junto al cambio de estado de su orden que los precedía, ya movido, y su validez se vuelve a calcular con la regla de RF-33: así el enviado hace semanas sale caducado. Su trigger también los congela con cualquier rol, así que el dueño lo desactiva igual que el de la titularidad.
+- Los **avisos** se colocan a la hora de su motivo (el envío de la versión, su anulación o el cambio que puso la orden lista), con el trigger `notifications_transitions` desactivado igual. Su estado no se toca: lo decide el worker.
 - Después se **renumeran** las órdenes por fecha, con el año en la zona del taller, y se rehacen los contadores: la siguiente orden sigue la serie.
 - **La auditoría se queda con la hora real** en que corrió el script: es append-only también para esto.
 - Las cuentas de SuperTokens sobreviven al vaciado (su base de datos es otra): se reutilizan, se les vuelve a poner la contraseña y se cierran sus sesiones.

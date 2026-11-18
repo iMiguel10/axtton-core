@@ -629,7 +629,9 @@ async def test_a_kind_without_composer_fails_without_retries(
 @pytest.mark.parametrize(
     "statement",
     [
-        "UPDATE notifications SET status = 'pending' WHERE id = :n",
+        # Con sent_at vacío, para que no lo pare antes el CHECK de sent_at: así
+        # lo único que lo impide es el trigger (lo vio qa-verifier al cerrar F5).
+        "UPDATE notifications SET status = 'pending', sent_at = NULL WHERE id = :n",
         (
             "UPDATE notifications SET status = 'claimed', attempts = attempts + 1,"
             " claimed_at = clock_timestamp(), sent_at = NULL WHERE id = :n"

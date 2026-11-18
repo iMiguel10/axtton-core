@@ -52,6 +52,7 @@ nav:
       - "Cierre de F2": arquitectura/f2-cierre.md
       - "Cierre de F3": arquitectura/f3-cierre.md
       - "Cierre de F4": arquitectura/f4-cierre.md
+      - "Cierre de F5": arquitectura/f5-cierre.md
   - Guías:
       - "Datos de demostración": guias/demo.md
       - "Versionado": guias/versionado.md
@@ -65,3 +66,4 @@ nav:
       - "0005 — El logotipo, la única imagen subida": decisiones/0005-logotipo-del-taller-como-unica-imagen-subida.md
       - "0006 — Enlaces mágicos propios, por taller": decisiones/0006-enlaces-magicos-propios-ligados-al-taller.md
       - "0007 — El nombre corto del taller en el portal": decisiones/0007-nombre-corto-del-taller-en-el-portal.md
+      - "0008 — El botón de un aviso no es un enlace mágico": decisiones/0008-el-boton-de-un-aviso-no-es-un-enlace-magico.md

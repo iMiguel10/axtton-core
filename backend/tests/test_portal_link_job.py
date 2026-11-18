@@ -238,7 +238,9 @@ async def test_a_link_that_did_not_go_out_is_revoked_and_retried_with_another(
     # llevaba el email.
     assert refused.value.smtp_code == 550
     assert email not in str(refused.value)
+    # Ni causa ni contexto encadenado: el traceback que guarda SAQ los incluiría.
     assert refused.value.__cause__ is None
+    assert refused.value.__suppress_context__
     [first] = await links_of(engines, email)
     assert first["revoked_at"] is not None
 

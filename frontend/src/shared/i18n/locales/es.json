@@ -1120,6 +1120,8 @@
     "methods": {
       "screen": "En pantalla",
       "paper": "En papel"
-    }
+    },
+    "pdfSigned": "Hoja firmada en PDF",
+    "pdfToSign": "Imprimir para firmar"
   }
 }

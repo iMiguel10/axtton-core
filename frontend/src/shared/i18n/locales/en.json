@@ -1120,6 +1120,8 @@
     "methods": {
       "screen": "On screen",
       "paper": "On paper"
-    }
+    },
+    "pdfSigned": "Signed sheet as PDF",
+    "pdfToSign": "Print to sign"
   }
 }

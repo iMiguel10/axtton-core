@@ -59,8 +59,9 @@ class Action(StrEnum):
     # son la prueba ante una disputa y datos personales, solo el administrador
     # (F4 paso 7, decidido por el usuario).
     VIEW_PORTAL_EVIDENCE = "view_portal_evidence"
-    # Recoger la firma de la hoja de recepción o marcarla firmada en papel
-    # (RF-52; especificación §3): solo el administrador, que atiende al cliente.
+    # Generar la hoja de recepción, recoger su firma o marcarla firmada en papel
+    # (RF-51, RF-52; especificación §3): solo el administrador, que atiende al
+    # cliente.
     SIGN_RECEPTION = "sign_reception"
 
 

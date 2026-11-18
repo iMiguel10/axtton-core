@@ -110,6 +110,7 @@ class WorkOrderDetailRead(WorkOrderRead):
     # La hoja de recepción firmada, o nada si aún no se firmó (RF-52).
     reception_sheet: ReceptionSheetRead | None
     can_sign_reception: bool
+    can_print_reception: bool
 
 
 class _ReceptionFields(BaseModel):

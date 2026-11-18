@@ -14,5 +14,5 @@ export function PdfButton({
   disabled?: boolean;
 }) {
   const { workshopId } = useActiveWorkshop();
-  return <SharedPdfButton load={() => quotesApi(workshopId).pdf(quoteId)} label={label} disabled={disabled} />;
+  return <SharedPdfButton load={() => quotesApi(workshopId).pdf(quoteId)} label={label} filename="presupuesto.pdf" disabled={disabled} />;
 }

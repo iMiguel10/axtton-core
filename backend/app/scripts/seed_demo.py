@@ -44,6 +44,7 @@ from datetime import date, datetime, timedelta
 from decimal import Decimal
 from typing import Any
 from uuid import UUID
+from zoneinfo import ZoneInfo
 
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
@@ -157,6 +158,10 @@ async def _purge_other_accounts(keep: set[str]) -> int:
 
 
 # --- Lo que se va creando ----------------------------------------------------
+
+
+# La zona de los talleres de la demo (la de la plataforma por defecto).
+DEMO_ZONE = ZoneInfo("Europe/Madrid")
 
 
 @dataclass
@@ -366,7 +371,9 @@ class Builder:
     def __init__(self, session: AsyncSession, shop: Shop) -> None:
         self.session = session
         self.shop = shop
-        self.today = date.today()
+        # El día del taller, no el del servidor (UTC): entre las 23:00 y las
+        # 24:00 UTC, en Madrid ya es mañana.
+        self.today = datetime.now(DEMO_ZONE).date()
 
     async def client(self, key: str, **fields: Any) -> None:
         self.shop.clients[key] = await client_service.create_client(
@@ -1330,10 +1337,8 @@ def line(
 
 def _at(today: date, days: int, hour: int) -> datetime:
     """Una hora en Madrid dentro de `days` días, para la entrega prevista."""
-    from zoneinfo import ZoneInfo
-
     moment = datetime.combine(today + timedelta(days=days), datetime.min.time())
-    return moment.replace(hour=hour, tzinfo=ZoneInfo("Europe/Madrid"))
+    return moment.replace(hour=hour, tzinfo=DEMO_ZONE)
 
 
 async def _fill(shop: Shop, build: Callable[[Builder], Awaitable[None]]) -> None:
@@ -1438,12 +1443,22 @@ async def _backdate_order(conn: Any, order_id: UUID, opened: int, last: int) -> 
             " SELECT id, row_number() OVER (ORDER BY seq) - 1 AS i,"
             " count(*) OVER () AS n"
             " FROM work_order_status_changes WHERE work_order_id = :o)"
-            " UPDATE work_order_status_changes c SET created_at = clock_timestamp()"
+            # Dos horas antes de ahora, pero nunca antes de la medianoche del
+            # taller: entre las 00:00 y las 02:00 de Madrid, restar dos horas
+            # pasaba la fecha al día anterior en su calendario, y "N días atrás"
+            # salía N + 1 (los días pendientes de cobro, RF-29). Lo vio la CI
+            # a las 23:07 UTC.
+            " , base AS (SELECT greatest("
+            "  clock_timestamp() - make_interval(hours => 2),"
+            "  (date_trunc('day', clock_timestamp() AT TIME ZONE w.timezone)"
+            "   + interval '1 minute') AT TIME ZONE w.timezone) AS at"
+            "  FROM work_orders o JOIN workshops w ON w.id = o.workshop_id"
+            "  WHERE o.id = :o)"
+            " UPDATE work_order_status_changes c SET created_at = base.at"
             " - make_interval(secs => 86400 * (CAST(:open AS float)"
             " - (CAST(:open AS float) - CAST(:last AS float))"
             " * CASE WHEN r.n = 1 THEN 0 ELSE r.i::float / (r.n - 1) END))"
-            " - make_interval(hours => 2)"
-            " FROM ranked r WHERE c.id = r.id"
+            " FROM ranked r, base WHERE c.id = r.id"
         ),
         params,
     )

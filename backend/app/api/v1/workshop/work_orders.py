@@ -174,6 +174,7 @@ async def get_order(order_id: UUID, workshop: Viewer) -> WorkOrderDetailRead:
             "fuel_level": order.fuel_level,
             "quote_waived": order.quote_waived,
             "delivered_at": order.delivered_at,
+            "delivered_odometer_km": order.delivered_odometer_km,
             "history": [
                 StatusChangeRead(
                     seq=entry.change.seq,
@@ -214,6 +215,7 @@ async def get_order(order_id: UUID, workshop: Viewer) -> WorkOrderDetailRead:
             and detail.reception is None
             and order.status not in CLOSED,
             "can_print_reception": can(workshop.role, Action.SIGN_RECEPTION),
+            "can_download_delivery_summary": detail.can_download_delivery_summary,
             "can_record_payment": can(workshop.role, Action.RECORD_PAYMENT)
             and order.status in CLOSED,
             "payment_status": order.payment_status,
@@ -286,6 +288,7 @@ async def change_status(order_id: UUID, body: StatusChange, workshop: Viewer) ->
         expected_version=body.version,
         to_status=body.to_status.value,
         note=body.note,
+        odometer_km=body.odometer_km,
     )
 
 

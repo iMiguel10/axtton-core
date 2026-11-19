@@ -5,6 +5,7 @@ from app.api.v1.deps import Staff, require_staff
 from app.api.v1.workshop import (
     audit,
     clients,
+    delivery,
     employees,
     limits,
     quotes,
@@ -40,6 +41,7 @@ router.include_router(vehicles.router)
 router.include_router(work_orders.router)
 router.include_router(worklog.router)
 router.include_router(reception.router)
+router.include_router(delivery.router)
 router.include_router(quotes.router)
 router.include_router(audit.router)
 router.include_router(account.router)

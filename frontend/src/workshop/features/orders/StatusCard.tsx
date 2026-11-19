@@ -3,6 +3,8 @@ import { useState } from "react";
 import { useTranslation } from "react-i18next";
 
 import { ConfirmButton } from "@/shared/components/ConfirmButton";
+import { Field } from "@/shared/components/form/Field";
+import { PdfButton } from "@/shared/components/PdfButton";
 import { Select } from "@/shared/components/form/Select";
 import { Textarea } from "@/shared/components/form/Textarea";
 import { Button } from "@/shared/components/ui/button";
@@ -35,6 +37,8 @@ export function StatusCard({
   // La transición que pide nota, mientras se escribe.
   const [pending, setPending] = useState<AllowedTransition | null>(null);
   const [note, setNote] = useState("");
+  // Los km al entregar (RF-53), empezando por los de entrada.
+  const [km, setKm] = useState("");
 
   const action = useMutation({
     mutationFn: (run: () => Promise<unknown>) => run(),
@@ -47,6 +51,11 @@ export function StatusCard({
   const run = (call: () => Promise<unknown>) => action.mutate(call);
 
   const choose = (transition: AllowedTransition) => {
+    if (transition.to_status === "delivered") {
+      setKm(order.odometer_km?.toString() ?? "");
+      setPending(transition);
+      return;
+    }
     if (transition.needs_note) {
       setPending(transition);
       return;
@@ -90,7 +99,34 @@ export function StatusCard({
             ))}
           </div>
         )}
-        {pending && (
+        {pending?.to_status === "delivered" && (
+          <form
+            className="grid gap-2 rounded-lg border p-3"
+            onSubmit={(event) => {
+              event.preventDefault();
+              run(() => api.changeStatus(order, "delivered", null, km.trim() ? Number(km) : null));
+            }}
+          >
+            <Field
+              id="delivered-km"
+              inputMode="numeric"
+              autoFocus
+              label={t("orders.deliveredKm")}
+              value={km}
+              onChange={(event) => setKm(event.target.value.replace(/\D/g, ""))}
+            />
+            <p className="text-muted-foreground text-xs">{t("orders.deliveredKmHint")}</p>
+            <div className="flex gap-2">
+              <Button type="submit" size="sm" disabled={action.isPending}>
+                {label(pending)}
+              </Button>
+              <Button type="button" size="sm" variant="ghost" onClick={() => setPending(null)}>
+                {t("common.cancel")}
+              </Button>
+            </div>
+          </form>
+        )}
+        {pending && pending.to_status !== "delivered" && (
           <form
             className="grid gap-2 rounded-lg border p-3"
             onSubmit={(event) => {
@@ -117,6 +153,15 @@ export function StatusCard({
               </Button>
             </div>
           </form>
+        )}
+        {order.can_download_delivery_summary && (
+          <div className="flex flex-wrap gap-2">
+            <PdfButton
+              load={() => api.deliverySummaryPdf(order.id)}
+              label={t("orders.deliverySummary")}
+              filename={`resumen-de-entrega-${order.code}.pdf`}
+            />
+          </div>
         )}
         {/* RF-63: se marca lista igual, pero el taller sabe antes que tiene que llamarle. */}
         {!order.client.has_email &&

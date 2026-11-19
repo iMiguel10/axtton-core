@@ -225,6 +225,8 @@ MECHANIC_ALLOWED = {
     ("GET", "/orders/{order_id}/quotes"),
     # Su PDF también; si el taller le oculta los importes, 403 (paso 7).
     ("GET", "/quotes/{quote_id}/pdf"),
+    # El resumen de entrega (F6 paso 4), con la misma regla de los importes.
+    ("GET", "/orders/{order_id}/delivery-summary/pdf"),
     ("GET", "/quotes"),
     ("POST", "/account/password"),
     ("GET", "/account/sessions"),

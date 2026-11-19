@@ -259,6 +259,12 @@ class WorkOrder(IdMixin, CreatedAtMixin, UpdatedAtMixin, Base):
             "warranty_of_id IS NULL OR type = 'warranty'", name="warranty_of_type"
         ),
         CheckConstraint("odometer_km >= 0", name="odometer_km"),
+        # Solo al entregar, y nunca menos que los de entrada (RF-53).
+        CheckConstraint(
+            "delivered_odometer_km IS NULL OR (status = 'delivered'"
+            " AND delivered_odometer_km >= coalesce(odometer_km, 0))",
+            name="delivered_odometer_km",
+        ),
         CheckConstraint(sql_in("fuel_level", FuelLevel), name="fuel_level"),
         CheckConstraint("number > 0", name="number"),
         # El cobro (RF-28): solo una orden cerrada deja de estar pendiente, y
@@ -319,6 +325,8 @@ class WorkOrder(IdMixin, CreatedAtMixin, UpdatedAtMixin, Base):
     # vale firmada: la que cuenta para RF-27 es la de la hoja firmada.
     quote_waived: Mapped[bool] = mapped_column(server_default="false")
     delivered_at: Mapped[datetime | None]
+    # Los km al entregar (F6 paso 4): de ellos sale la garantía en km (RF-53).
+    delivered_odometer_km: Mapped[int | None] = mapped_column(Integer)
     # El cobro (RF-28): una marca operativa, no una factura. El importe lo
     # escribe quien cobra (con F3 lo propondrá el presupuesto aceptado); la
     # fecha es el día en que se cobró, que puede ser anterior a anotarlo.

@@ -4,6 +4,20 @@ Lo mantiene [release-please](https://github.com/googleapis/release-please) a par
 
 Las dos primeras versiones se escribieron a mano, resumidas por fase, al empezar a versionar.
 
+## [0.7.0](https://github.com/iMiguel10/axtton-core/compare/v0.6.0...v0.7.0) (2026-11-19)
+
+
+### Novedades
+
+* **reception:** datos de recepción del resguardo y hoja firmada inmutable (F6 paso 1, RF-51, RF-52) ([#38](https://github.com/iMiguel10/axtton-core/issues/38)) ([ede845a](https://github.com/iMiguel10/axtton-core/commit/ede845a4aa1b5130283c54185a8ffa5890fbb0e8))
+* **reception:** firmar la hoja de recepción en pantalla o en papel (F6 paso 2, RF-52, RF-27) ([#40](https://github.com/iMiguel10/axtton-core/issues/40)) ([0df10b7](https://github.com/iMiguel10/axtton-core/commit/0df10b7a0e3040c997cc52b517eaa83e439d8185))
+* **reception:** PDF de la hoja de recepción, sin firmar o desde su copia firmada (F6 paso 3, RF-51, RF-55) ([#41](https://github.com/iMiguel10/axtton-core/issues/41)) ([b1e4a75](https://github.com/iMiguel10/axtton-core/commit/b1e4a75945794a29d4e27c0ac5bb038438181881))
+
+
+### Correcciones
+
+* **demo:** fechas de la demo en el calendario del taller, también a medianoche ([#42](https://github.com/iMiguel10/axtton-core/issues/42)) ([cc648a3](https://github.com/iMiguel10/axtton-core/commit/cc648a3a1ffb8f219599345ed00fe9ad4850f749))
+
 ## [0.6.0](https://github.com/iMiguel10/axtton-core/compare/v0.5.0...v0.6.0) (2026-11-18)
 
 

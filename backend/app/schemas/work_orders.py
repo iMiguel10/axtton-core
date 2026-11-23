@@ -94,6 +94,7 @@ class WorkOrderDetailRead(WorkOrderRead):
     fuel_level: FuelLevel | None
     quote_waived: bool
     delivered_at: datetime | None
+    delivered_odometer_km: int | None
     # El cobro (RF-28): solo una cobrada lleva forma, importe y fecha.
     payment_status: PaymentStatus
     payment_method: PaymentMethod | None
@@ -111,6 +112,7 @@ class WorkOrderDetailRead(WorkOrderRead):
     reception_sheet: ReceptionSheetRead | None
     can_sign_reception: bool
     can_print_reception: bool
+    can_download_delivery_summary: bool
 
 
 class _ReceptionFields(BaseModel):
@@ -158,6 +160,8 @@ class StatusChange(BaseModel):
     to_status: WorkOrderStatus
     # Obligatoria para cancelar y para "sin reparar" (§6).
     note: str | None = Field(default=None, max_length=2000)
+    # Los km al entregar (RF-53): solo al pasar a entregada.
+    odometer_km: int | None = Field(default=None, ge=0, le=9_999_999)
 
 
 class VersionOnly(BaseModel):

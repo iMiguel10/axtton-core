@@ -1,0 +1,202 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<title>Resumen de entrega {{ number }}</title>
+<style>
+  @page {
+    size: A4;
+    margin: 16mm 15mm 18mm;
+    @bottom-left {
+      content: "Resumen de entrega {{ number }} · No es una factura";
+      font: 8pt "DejaVu Sans", sans-serif;
+      color: #6b7280;
+    }
+    @bottom-right {
+      content: "Página " counter(page) " de " counter(pages);
+      font: 8pt "DejaVu Sans", sans-serif;
+      color: #6b7280;
+    }
+  }
+  * { box-sizing: border-box; }
+  body {
+    font: 9pt/1.4 "DejaVu Sans", sans-serif;
+    color: #111827;
+    margin: 0;
+  }
+  header { display: flex; justify-content: space-between; gap: 8mm; }
+  .logo img { max-height: 22mm; max-width: 70mm; }
+  .logo .name { font-size: 15pt; font-weight: bold; }
+  .issuer { text-align: right; font-size: 8pt; color: #374151; }
+  .issuer strong { font-size: 9.5pt; color: #111827; }
+  h1 { font-size: 17pt; margin: 7mm 0 1mm; letter-spacing: 0.3pt; }
+  .number { color: #374151; }
+  .not-invoice {
+    margin-top: 3mm;
+    padding: 2mm 3mm;
+    border: 0.6mm solid #b91c1c;
+    color: #991b1b;
+    font-size: 11pt;
+    font-weight: bold;
+    text-align: center;
+    letter-spacing: 0.3pt;
+  }
+  .boxes { display: flex; gap: 4mm; margin-top: 5mm; }
+  .box {
+    flex: 1;
+    border: 0.3mm solid #d1d5db;
+    border-radius: 1.5mm;
+    padding: 2.5mm 3mm;
+  }
+  h2 {
+    font-size: 7.5pt;
+    text-transform: uppercase;
+    letter-spacing: 0.5pt;
+    color: #6b7280;
+    margin: 0 0 1mm;
+  }
+  .box p { margin: 0; }
+  .section { margin-top: 6mm; }
+  table.list { width: 100%; border-collapse: collapse; }
+  .list td {
+    border-bottom: 0.2mm solid #e5e7eb;
+    padding: 1.6mm 1.5mm;
+    vertical-align: top;
+  }
+  .list tr { page-break-inside: avoid; }
+  .list .day, .list .qty { white-space: nowrap; color: #374151; width: 22mm; }
+  .list .qty { text-align: right; }
+  .ref { color: #6b7280; font-size: 7.5pt; }
+  .condition { color: #92400e; font-size: 7.5pt; font-weight: bold; }
+  .empty { color: #6b7280; }
+  .amount {
+    margin-top: 6mm;
+    display: flex;
+    justify-content: space-between;
+    border-top: 0.4mm solid #111827;
+    padding-top: 2mm;
+    font-size: 11pt;
+    font-weight: bold;
+    page-break-inside: avoid;
+  }
+  .warranty {
+    margin-top: 6mm;
+    padding: 3mm;
+    border-left: 1.2mm solid #15803d;
+    background: #f0fdf4;
+    page-break-inside: avoid;
+  }
+  .warranty.none { border-color: #6b7280; background: #f3f4f6; }
+  .warranty p { margin: 0.5mm 0; }
+  .notes { margin-top: 6mm; font-size: 7.5pt; color: #4b5563; }
+  .notes p { margin: 1mm 0; }
+</style>
+</head>
+<body>
+<header>
+  <div class="logo">
+    {% if has_logo %}<img src="axtton:logo" alt="">{% else %}<div class="name">{{ workshop.name }}</div>{% endif %}
+  </div>
+  <div class="issuer">
+    <strong>{{ workshop.legal_name or workshop.name }}</strong><br>
+    {% if workshop.tax_id %}NIF {{ workshop.tax_id }}<br>{% endif %}
+    {% if workshop.address %}{{ workshop.address }}<br>{% endif %}
+    {% if workshop.phone %}Tel. {{ workshop.phone }}{% endif %}{% if workshop.phone and workshop.email %} · {% endif %}{% if workshop.email %}{{ workshop.email }}{% endif %}<br>
+    {% if workshop.registry %}Registro industrial n.º {{ workshop.registry }}{% endif %}
+  </div>
+</header>
+
+<h1>Resumen de entrega</h1>
+<div class="number">Orden {{ number }} · {{ type }}{% if unrepaired %} · Entregado sin reparar{% endif %}</div>
+<div class="not-invoice">Este documento no es una factura</div>
+
+<div class="boxes">
+  <div class="box">
+    <h2>Cliente</h2>
+    <p>{{ client }}</p>
+  </div>
+  <div class="box">
+    <h2>Vehículo</h2>
+    <p><strong>{{ vehicle.plate }}</strong>{% if vehicle.make_model %} · {{ vehicle.make_model }}{% endif %}</p>
+    {% if vehicle.vin %}<p>Bastidor: {{ vehicle.vin }}</p>{% endif %}
+  </div>
+</div>
+
+<div class="boxes">
+  <div class="box">
+    <h2>Recibido</h2>
+    <p>{{ received_on }}</p>
+  </div>
+  <div class="box">
+    <h2>Entregado</h2>
+    <p>{{ delivered_on }}</p>
+  </div>
+  <div class="box">
+    <h2>Km a la entrada</h2>
+    <p>{{ odometer_in or "Sin anotar" }}</p>
+  </div>
+  <div class="box">
+    <h2>Km a la entrega</h2>
+    <p>{{ odometer_out or "Sin anotar" }}</p>
+  </div>
+</div>
+
+<div class="section">
+  <h2>Trabajos realizados</h2>
+  {% if works %}
+  <table class="list">
+    {% for work in works %}
+    <tr><td class="day">{{ work.day }}</td><td>{{ work.text }}</td></tr>
+    {% endfor %}
+  </table>
+  {% else %}
+  <p class="empty">Ninguno anotado.</p>
+  {% endif %}
+</div>
+
+<div class="section">
+  <h2>Piezas montadas</h2>
+  {% if parts %}
+  <table class="list">
+    {% for part in parts %}
+    <tr>
+      <td>
+        {{ part.description }}
+        {% if part.reference %}<div class="ref">Ref. {{ part.reference }}</div>{% endif %}
+        {% if part.condition %}<div class="condition">Pieza {{ part.condition | lower }}</div>{% endif %}
+      </td>
+      <td class="qty">{{ part.quantity }}</td>
+    </tr>
+    {% endfor %}
+  </table>
+  {% else %}
+  <p class="empty">Ninguna.</p>
+  {% endif %}
+</div>
+
+{% if quote %}
+<div class="amount">
+  <span>Importe del presupuesto aceptado (versión {{ quote.version }}), IVA incluido</span>
+  <span>{{ quote.total }}</span>
+</div>
+{% elif no_quote_reason %}
+<div class="section"><p>Sin presupuesto: {{ no_quote_reason }}.</p></div>
+{% endif %}
+
+{% if warranty %}
+<div class="warranty">
+  <p><strong>Garantía de la reparación</strong>: {{ warranty.months }} meses o {{ warranty.km }} desde la entrega, lo que llegue antes.</p>
+  <p>Hasta el {{ warranty.until }}{% if warranty.until_km %} o los {{ warranty.until_km }}{% endif %}.</p>
+</div>
+{% else %}
+<div class="warranty none">
+  <p>El vehículo se entrega sin reparar: no hay garantía de reparación.</p>
+</div>
+{% endif %}
+
+<div class="notes">
+  <p>Este resumen describe lo hecho en el vehículo. No es una factura ni un justificante de pago.</p>
+  {% if warranty %}<p>La garantía cubre la mano de obra y las piezas montadas en esta reparación. Para reclamarla, se abre una orden de garantía en el taller.</p>{% endif %}
+</div>
+</body>
+</html>

@@ -93,6 +93,9 @@ class OrderDetail:
     can_mark_no_quote: bool
     # La hoja de recepción, si ya se firmó (F6).
     reception: reception_repo.SignedSheet | None
+    # El resumen de entrega (RF-53): de una entregada, y solo para quien ve
+    # importes, que lleva el del presupuesto aprobado.
+    can_download_delivery_summary: bool
 
 
 def _blank_to_none(values: dict[str, Any]) -> dict[str, Any]:
@@ -256,6 +259,8 @@ async def get_order(session: AsyncSession, order_id: UUID, role: str) -> OrderDe
         can_mark_no_quote=can(role, Action.MARK_NO_QUOTE)
         and row.order.status in NO_QUOTE_STATUSES,
         reception=await reception_repo.of_order(session, order_id),
+        can_download_delivery_summary=row.order.status == WorkOrderStatus.DELIVERED
+        and not await prices_hidden(session, row.order.workshop_id, role),
     )
 
 
@@ -394,8 +399,10 @@ async def change_status(
     expected_version: int,
     to_status: str,
     note: str | None,
+    odometer_km: int | None = None,
 ) -> None:
-    """Un cambio de estado hecho a mano (causa `manual`)."""
+    """Un cambio de estado hecho a mano (causa `manual`). Al entregar, con los
+    km del coche, de los que sale la garantía en km (RF-53)."""
     order = await _locked(session, order_id, expected_version)
     note = note.strip() if note and note.strip() else None
     try:
@@ -418,6 +425,11 @@ async def change_status(
             raise ConflictError("work_order_has_work")
         if await quote_repo.count_not_draft(session, order_id) > 0:
             raise ConflictError("work_order_has_quotes")
+    if odometer_km is not None:
+        if transition.to_status != WorkOrderStatus.DELIVERED:
+            raise ValidationFailedError("odometer_only_on_delivery")
+        if order.odometer_km is not None and odometer_km < order.odometer_km:
+            raise ValidationFailedError("delivered_odometer_below_entry")
     if transition.unrepaired:
         order.unrepaired = True
     await record_status_change(
@@ -428,6 +440,12 @@ async def change_status(
         employee_id=employee_id,
         note=note,
     )
+    if odometer_km is not None:
+        # Después del cambio, ya entregada: escrito antes, la lectura de la hora
+        # dentro de record_status_change provocaría un autoflush con la orden aún
+        # lista, y el CHECK lo rechazaría.
+        order.delivered_odometer_km = odometer_km
+        await session.flush()
 
 
 async def undo_last_change(

@@ -81,6 +81,19 @@ async def latest(session: AsyncSession, order_id: UUID) -> Quote | None:
     return (await session.scalars(query)).one_or_none()
 
 
+async def last_approved(session: AsyncSession, order_id: UUID) -> Quote | None:
+    """La última versión aprobada: la que vale para el importe (RF-29) y para el
+    resumen de entrega (RF-53). Un adicional copia la anterior y le añade lo
+    nuevo, así que no se suman; rechazado el adicional, vale la anterior."""
+    query = (
+        select(Quote)
+        .where(Quote.work_order_id == order_id, Quote.status == QuoteStatus.APPROVED)
+        .order_by(Quote.version_no.desc())
+        .limit(1)
+    )
+    return (await session.scalars(query)).first()
+
+
 async def has_draft(session: AsyncSession, order_id: UUID) -> bool:
     query = select(Quote.id).where(
         Quote.work_order_id == order_id, Quote.status == QuoteStatus.DRAFT

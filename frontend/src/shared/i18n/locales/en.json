@@ -454,7 +454,10 @@
     },
     "noQuoteHint": "Lets the repair start without an approved quote. The client's waiver only appears if the reception sheet is signed with it.",
     "opened": "Order {{code}} opened.",
-    "noEmailReady": "The client has no email: they won't be notified when it's ready. Give them a call."
+    "noEmailReady": "The client has no email: they won't be notified when it's ready. Give them a call.",
+    "deliveredKm": "Mileage at delivery",
+    "deliveredKmHint": "The warranty in kilometres comes from it (3 months or 2,000 km). Without it, the warranty only gives the date.",
+    "deliverySummary": "Delivery summary"
   },
   "vehicles": {
     "title": "Vehicles",
@@ -822,7 +825,10 @@
     "signature_required": "The signature or the signer's name is missing.",
     "signature_invalid": "The signature could not be read. Clear it and sign again.",
     "signature_not_expected": "A sheet signed on paper has no on-screen signature.",
-    "reception_already_signed": "The reception sheet is already signed."
+    "reception_already_signed": "The reception sheet is already signed.",
+    "delivered_odometer_below_entry": "The mileage at delivery cannot be lower than at reception.",
+    "odometer_only_on_delivery": "The mileage is only noted at delivery.",
+    "work_order_not_delivered": "The order has not been delivered yet."
   },
   "palette": {
     "open": "Search the workshop",

@@ -94,6 +94,9 @@ export type OrderDetail = Order & {
   can_sign_reception: boolean;
   /** Generar la hoja en PDF, firmada o para firmarla en papel (RF-51). */
   can_print_reception: boolean;
+  /** El resumen de entrega (RF-53): de una entregada, si quien mira ve importes. */
+  can_download_delivery_summary: boolean;
+  delivered_odometer_km: number | null;
 };
 
 export type SignatureMethod = "screen" | "paper";
@@ -197,11 +200,13 @@ export function ordersApi(workshopId: string) {
       }),
     update: (order: Order, changes: Partial<ReceptionInput>) =>
       request<void>(`/${order.id}`, "PATCH", { version: order.version, ...changes }),
-    changeStatus: (order: Order, to: Status, note: string | null) =>
+    changeStatus: (order: Order, to: Status, note: string | null, odometerKm: number | null = null) =>
       request<void>(`/${order.id}/status`, "POST", {
         version: order.version,
         to_status: to,
         note,
+        // Los km al entregar (RF-53); en otro cambio, nada.
+        ...(odometerKm !== null ? { odometer_km: odometerKm } : {}),
       }),
     undo: (order: Order) =>
       request<void>(`/${order.id}/undo`, "POST", { version: order.version }),
@@ -212,6 +217,8 @@ export function ordersApi(workshopId: string) {
     unpaid: (offset = 0) =>
       request<UnpaidOrder[]>(`/unpaid?limit=${PAGE_SIZE}&offset=${offset}`, "GET"),
     notifications: (id: string) => request<OrderNotice[]>(`/${id}/notifications`, "GET"),
+    deliverySummaryPdf: (id: string) =>
+      apiBlob(`/workshop/orders/${id}/delivery-summary/pdf`, { workshopId }),
     receptionPdf: (id: string) =>
       apiBlob(`/workshop/orders/${id}/reception-sheet/pdf`, { workshopId }),
     signReception: (order: Order, input: SignInput) =>

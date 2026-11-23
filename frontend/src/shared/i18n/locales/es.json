@@ -454,7 +454,10 @@
     },
     "noQuoteHint": "Permite empezar a reparar sin presupuesto aprobado. La renuncia del cliente solo aparece si la hoja de recepción está firmada con ella.",
     "opened": "Orden {{code}} abierta.",
-    "noEmailReady": "El cliente no tiene email: no se le avisará cuando esté lista. Llámale."
+    "noEmailReady": "El cliente no tiene email: no se le avisará cuando esté lista. Llámale.",
+    "deliveredKm": "Kilómetros al entregar",
+    "deliveredKmHint": "De ellos sale la garantía en kilómetros (3 meses o 2.000 km). Si no se anotan, la garantía solo dice la fecha.",
+    "deliverySummary": "Resumen de entrega"
   },
   "vehicles": {
     "title": "Vehículos",
@@ -822,7 +825,10 @@
     "signature_required": "Falta la firma o el nombre de quien firma.",
     "signature_invalid": "La firma no se ha podido leer. Bórrela y vuelva a firmar.",
     "signature_not_expected": "Una hoja firmada en papel no lleva firma en pantalla.",
-    "reception_already_signed": "La hoja de recepción ya está firmada."
+    "reception_already_signed": "La hoja de recepción ya está firmada.",
+    "delivered_odometer_below_entry": "Los kilómetros al entregar no pueden ser menos que los de entrada.",
+    "odometer_only_on_delivery": "Los kilómetros solo se anotan al entregar.",
+    "work_order_not_delivered": "La orden aún no se ha entregado."
   },
   "palette": {
     "open": "Buscar en el taller",

@@ -355,6 +355,8 @@ async def test_rf43_internal_things_never_reach_the_client(
         "diagnosis",
         "quotes",
         "work",
+        "documents",
+        "warranty",
     }
     assert set(payload["work"][0]) == {"description", "worked_on"}
     assert set(payload["diagnosis"]) == {"text", "updated_at"}

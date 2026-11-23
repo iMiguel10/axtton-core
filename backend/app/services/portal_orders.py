@@ -9,10 +9,12 @@ from dataclasses import dataclass
 from datetime import UTC, date, datetime
 from decimal import Decimal
 from uuid import UUID
+from zoneinfo import ZoneInfo
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.errors import NotFoundError
+from app.domain.delivery import warranty_of
 from app.domain.portal import ClientProgress, client_progress
 from app.domain.quotes import (
     DecisionChannel,
@@ -25,6 +27,7 @@ from app.domain.work_orders import WorkOrderStatus, order_code
 from app.models import Quote, QuoteDecision, QuoteLine, Vehicle, WorkOrder
 from app.repositories import portal as portal_repo
 from app.repositories import quotes as quote_repo
+from app.repositories import reception as reception_repo
 from app.services.quotes import delivery_on, is_expired, totals_of
 
 
@@ -107,6 +110,25 @@ class WorkDone:
 
 
 @dataclass(frozen=True)
+class WarrantyView:
+    """Hasta cuándo dura la garantía de la reparación (RF-53): ese día incluido,
+    en el calendario del taller, o esos km si se anotaron al entregar."""
+
+    until: date
+    until_km: int | None
+
+
+@dataclass(frozen=True)
+class Documents:
+    """Los PDF que el cliente puede descargar de la orden, además de los del
+    presupuesto (RF-54): la hoja de recepción, solo firmada, y el resumen de
+    entrega, solo entregada."""
+
+    reception_sheet: bool
+    delivery_summary: bool
+
+
+@dataclass(frozen=True)
 class OrderDetail:
     id: UUID
     code: str
@@ -117,6 +139,9 @@ class OrderDetail:
     # La primera es la vigente; las demás, las versiones anteriores.
     quotes: list[QuoteView]
     work: list[WorkDone]
+    documents: Documents
+    # Solo entregada y reparada.
+    warranty: WarrantyView | None
 
 
 def _progress(order: WorkOrder, now: datetime) -> ClientProgress | None:
@@ -221,6 +246,17 @@ async def order_detail(
     lines = await quote_repo.lines_of(session, ids)
     decisions = await quote_repo.decisions_of(session, ids)
 
+    delivered = order.status == WorkOrderStatus.DELIVERED
+    warranty = (
+        warranty_of(
+            order.delivered_at.astimezone(ZoneInfo(timezone)).date(),
+            order.delivered_odometer_km,
+            unrepaired=order.unrepaired,
+        )
+        if delivered and order.delivered_at is not None
+        else None
+    )
+
     def decision_of(quote: Quote) -> QuoteDecision | None:
         found_decision = decisions.get(quote.id)
         return found_decision[0] if found_decision else None
@@ -244,4 +280,9 @@ async def order_detail(
             WorkDone(entry.description, entry.worked_on)
             for entry in await portal_repo.work_done(session, order.id)
         ],
+        documents=Documents(
+            reception_sheet=await reception_repo.is_signed(session, order.id),
+            delivery_summary=delivered,
+        ),
+        warranty=WarrantyView(warranty.until, warranty.until_km) if warranty else None,
     )

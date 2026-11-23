@@ -57,6 +57,10 @@ export type PortalOrderDetail = {
   /** La primera es la vigente; las demás, las versiones anteriores. */
   quotes: PortalQuote[];
   work: { description: string; worked_on: string }[];
+  /** Los PDF de la orden, además de los del presupuesto (RF-54). */
+  documents: { reception_sheet: boolean; delivery_summary: boolean };
+  /** Hasta cuándo dura la garantía (RF-53): solo entregada y reparada. */
+  warranty: { until: string; until_km: number | null } | null;
 };
 
 export function fetchVehicles(): Promise<PortalVehicle[]> {
@@ -70,6 +74,16 @@ export function fetchOrder(orderId: string): Promise<PortalOrderDetail> {
 /** El PDF de una versión enviada (RF-54): se genera al pedirlo. */
 export function fetchQuotePdf(quoteId: string): Promise<Blob> {
   return apiBlob(`/portal/quotes/${encodeURIComponent(quoteId)}/pdf`);
+}
+
+/** La hoja de recepción firmada (RF-54), con la firma mientras exista. */
+export function fetchReceptionSheetPdf(orderId: string): Promise<Blob> {
+  return apiBlob(`/portal/orders/${encodeURIComponent(orderId)}/reception-sheet/pdf`);
+}
+
+/** El resumen de entrega (RF-53, RF-54): solo de una orden entregada. */
+export function fetchDeliverySummaryPdf(orderId: string): Promise<Blob> {
+  return apiBlob(`/portal/orders/${encodeURIComponent(orderId)}/delivery-summary/pdf`);
 }
 
 export type DecisionOutcome = "approved" | "rejected";

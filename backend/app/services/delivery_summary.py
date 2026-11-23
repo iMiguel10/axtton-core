@@ -31,6 +31,7 @@ from app.domain.work_orders import (
     order_code,
 )
 from app.infra.pdf import Resource, render_pdf
+from app.repositories import portal as portal_repo
 from app.repositories import quotes as quote_repo
 from app.repositories import settings as settings_repo
 from app.repositories import work_orders as order_repo
@@ -69,6 +70,23 @@ async def delivery_summary_pdf(
         raise ConflictError("work_order_not_delivered")
     if await prices_hidden(session, workshop_id, role):
         raise ForbiddenError("quote_prices_hidden")
+    return await _render(session, workshop_id, row)
+
+
+async def client_delivery_summary_pdf(
+    session: AsyncSession, workshop_id: UUID, client_id: UUID, order_id: UUID
+) -> DeliveryPdf:
+    """El del cliente en el portal (F6 paso 6, RF-54): el mismo documento, solo
+    de una orden suya y entregada. No lleva nada interno (ni quién hizo cada
+    trabajo, ni notas), y el importe ya lo ve en el presupuesto. Una orden ajena
+    o inexistente es el mismo 404 (T4)."""
+    found = await portal_repo.order_of(session, client_id, order_id)
+    if found is None:
+        raise NotFoundError("work_order_not_found")
+    if found[0].status != WorkOrderStatus.DELIVERED:
+        raise ConflictError("work_order_not_delivered")
+    row = await order_repo.get_row(session, order_id)
+    assert row is not None, "la orden se acaba de leer"
     return await _render(session, workshop_id, row)
 
 

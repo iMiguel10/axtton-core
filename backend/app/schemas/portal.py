@@ -160,6 +160,16 @@ class PortalWorkDone(_FromView):
     worked_on: date
 
 
+class PortalWarranty(_FromView):
+    until: date
+    until_km: int | None
+
+
+class PortalDocuments(_FromView):
+    reception_sheet: bool
+    delivery_summary: bool
+
+
 class PortalOrderDetail(_FromView):
     id: UUID
     code: str
@@ -170,3 +180,7 @@ class PortalOrderDetail(_FromView):
     # La primera es la vigente; las demás, las versiones anteriores (RF-43).
     quotes: list[PortalQuote]
     work: list[PortalWorkDone]
+    # Los PDF de la orden que puede descargar, además de los del presupuesto
+    # (RF-54), y hasta cuándo dura la garantía (RF-53).
+    documents: PortalDocuments
+    warranty: PortalWarranty | None

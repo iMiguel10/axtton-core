@@ -728,7 +728,13 @@
           "quote_expired": "No se ha registrado tu respuesta: el presupuesto ha caducado. Pide al taller que te envíe uno nuevo."
         }
       },
-      "pdf": "Descargar en PDF"
+      "pdf": "Descargar en PDF",
+      "documents": "Documentos",
+      "noDocuments": "Todavía no hay documentos: la hoja de recepción aparece cuando se firma, y el resumen, al entregarte el vehículo.",
+      "receptionSheet": "Hoja de recepción firmada",
+      "deliverySummary": "Resumen de entrega",
+      "warranty": "La garantía de la reparación dura hasta el {{date}}.",
+      "warrantyKm": "La garantía de la reparación dura hasta el {{date}} o hasta los {{km}} km, lo que llegue antes."
     },
     "noWorkshop": {
       "title": "Entra desde tu taller",
@@ -840,7 +846,8 @@
     "delivered_odometer_below_entry": "Los kilómetros al entregar no pueden ser menos que los de entrada.",
     "odometer_only_on_delivery": "Los kilómetros solo se anotan al entregar.",
     "work_order_not_delivered": "La orden aún no se ha entregado.",
-    "vehicle_report_extended_forbidden": "Solo el administrador puede incluir los titulares o los importes en el informe."
+    "vehicle_report_extended_forbidden": "Solo el administrador puede incluir los titulares o los importes en el informe.",
+    "reception_sheet_not_found": "Esta orden no tiene hoja de recepción firmada."
   },
   "palette": {
     "open": "Buscar en el taller",

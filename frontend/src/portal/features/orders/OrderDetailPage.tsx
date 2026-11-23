@@ -12,9 +12,21 @@ import { formatEur, formatPercentBp } from "@/shared/money";
 
 import { ClientStatusBadge, ProgressDetails } from "./ClientProgress";
 import { DecisionPanel } from "./DecisionPanel";
-import { fetchOrder, fetchQuotePdf, makeAndModel, type PortalQuote, type QuoteLine } from "./api";
+import {
+  fetchDeliverySummaryPdf,
+  fetchOrder,
+  fetchQuotePdf,
+  fetchReceptionSheetPdf,
+  makeAndModel,
+  type PortalOrderDetail,
+  type PortalQuote,
+  type QuoteLine,
+} from "./api";
 
-/** El detalle de una orden: diagnóstico, presupuesto y trabajos. Nunca las notas (RF-43). */
+/**
+ * El detalle de una orden: diagnóstico, presupuesto, trabajos y documentos, con
+ * la garantía. Nunca las notas (RF-43).
+ */
 export function OrderDetailPage() {
   const { t } = useTranslation();
   const dates = useDates();
@@ -99,7 +111,54 @@ export function OrderDetailPage() {
           <p className="text-muted-foreground text-sm">{t("portal.order.noWork")}</p>
         )}
       </Section>
+
+      <Documents order={order.data} />
     </>
+  );
+}
+
+/** La hoja de recepción firmada y el resumen de entrega (RF-54), y hasta cuándo
+ * dura la garantía (RF-53). */
+function Documents({ order }: { order: PortalOrderDetail }) {
+  const { t, i18n } = useTranslation();
+  const dates = useDates();
+  const { documents, warranty } = order;
+  const none = !documents.reception_sheet && !documents.delivery_summary;
+  return (
+    <Section title={t("portal.order.documents")}>
+      <div className="grid gap-3">
+        {warranty && (
+          <p>
+            {warranty.until_km === null
+              ? t("portal.order.warranty", { date: dates.day(warranty.until) })
+              : t("portal.order.warrantyKm", {
+                  date: dates.day(warranty.until),
+                  km: new Intl.NumberFormat(i18n.language).format(warranty.until_km),
+                })}
+          </p>
+        )}
+        {none ? (
+          <p className="text-muted-foreground text-sm">{t("portal.order.noDocuments")}</p>
+        ) : (
+          <div className="flex flex-wrap gap-2">
+            {documents.reception_sheet && (
+              <PdfButton
+                load={() => fetchReceptionSheetPdf(order.id)}
+                label={t("portal.order.receptionSheet")}
+                filename={`hoja-de-recepcion-${order.code}.pdf`}
+              />
+            )}
+            {documents.delivery_summary && (
+              <PdfButton
+                load={() => fetchDeliverySummaryPdf(order.id)}
+                label={t("portal.order.deliverySummary")}
+                filename={`resumen-de-entrega-${order.code}.pdf`}
+              />
+            )}
+          </div>
+        )}
+      </div>
+    </Section>
   );
 }
 

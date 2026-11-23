@@ -26,8 +26,9 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.errors import NotFoundError
 from app.domain.reception import FuelLevel, SignatureMethod, signature_svg
-from app.domain.work_orders import WorkOrderType, order_code
+from app.domain.work_orders import WorkOrderStatus, WorkOrderType, order_code
 from app.infra.pdf import Resource, render_pdf
+from app.repositories import portal as portal_repo
 from app.repositories import reception as reception_repo
 from app.repositories import settings as settings_repo
 from app.repositories import work_orders as order_repo
@@ -61,6 +62,21 @@ def _when(value: str | datetime | None, zone: ZoneInfo, pattern: str) -> str | N
         return None
     moment = datetime.fromisoformat(value) if isinstance(value, str) else value
     return moment.astimezone(zone).strftime(pattern)
+
+
+async def client_reception_pdf(
+    session: AsyncSession, workshop_id: UUID, client_id: UUID, order_id: UUID
+) -> ReceptionPdf:
+    """La del cliente en el portal (F6 paso 6, RF-54): solo de una orden suya y
+    solo firmada (decidido por el usuario). La sin firmar es para imprimirla en el
+    mostrador y cambia mientras se corrige la recepción. Una orden ajena,
+    inexistente o cancelada es el mismo 404 que en el resto del portal (T4)."""
+    found = await portal_repo.order_of(session, client_id, order_id)
+    if found is None or found[0].status == WorkOrderStatus.CANCELLED:
+        raise NotFoundError("work_order_not_found")
+    if not await reception_repo.is_signed(session, order_id):
+        raise NotFoundError("reception_sheet_not_found")
+    return await reception_pdf(session, workshop_id, order_id, for_client=True)
 
 
 async def reception_pdf(

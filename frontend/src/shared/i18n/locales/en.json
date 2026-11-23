@@ -734,7 +734,8 @@
       "receptionSheet": "Signed reception sheet",
       "deliverySummary": "Delivery summary",
       "warranty": "The repair warranty lasts until {{date}}.",
-      "warrantyKm": "The repair warranty lasts until {{date}} or {{km}} km, whichever comes first."
+      "warrantyKm": "The repair warranty lasts until {{date}} or {{km}} km, whichever comes first.",
+      "warrantyEnded": "The repair warranty ended on {{date}}."
     },
     "noWorkshop": {
       "title": "Sign in from your workshop",

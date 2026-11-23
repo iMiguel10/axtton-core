@@ -124,12 +124,18 @@ function Documents({ order }: { order: PortalOrderDetail }) {
   const dates = useDates();
   const { documents, warranty } = order;
   const none = !documents.reception_sheet && !documents.delivery_summary;
+  // Hoy en el calendario del taller (en-CA da AAAA-MM-DD, comparable con `until`):
+  // pasada la fecha, la garantía terminó, llegara o no a los km.
+  const today = new Intl.DateTimeFormat("en-CA", { timeZone: dates.timeZone }).format(new Date());
+  const ended = warranty !== null && warranty.until < today;
   return (
     <Section title={t("portal.order.documents")}>
       <div className="grid gap-3">
         {warranty && (
           <p>
-            {warranty.until_km === null
+            {ended
+              ? t("portal.order.warrantyEnded", { date: dates.day(warranty.until) })
+              : warranty.until_km === null
               ? t("portal.order.warranty", { date: dates.day(warranty.until) })
               : t("portal.order.warrantyKm", {
                   date: dates.day(warranty.until),

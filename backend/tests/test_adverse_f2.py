@@ -235,6 +235,9 @@ MECHANIC_ALLOWED = {
     ("POST", "/account/sessions/revoke-others"),
     ("GET", "/me"),
     ("GET", "/active"),
+    # El catálogo de piezas (F7 paso 1): lo consulta, sin costes.
+    ("GET", "/parts"),
+    ("GET", "/parts/{part_id}"),
 }
 # Lo que es solo del administrador: empleados, límites, auditoría, crear y
 # editar clientes y vehículos, el titular, anonimizar, abrir y editar órdenes,
@@ -283,6 +286,11 @@ ADMIN_ONLY = {
     ("POST", "/quotes/{quote_id}/cancel"),
     ("POST", "/quotes/{quote_id}/renew"),
     ("POST", "/quotes/{quote_id}/decision"),
+    # Dar de alta piezas y fijar sus precios (F7 paso 1, RF-90).
+    ("POST", "/parts"),
+    ("PATCH", "/parts/{part_id}"),
+    ("POST", "/parts/{part_id}/archive"),
+    ("POST", "/parts/{part_id}/unarchive"),
 }
 
 

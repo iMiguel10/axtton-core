@@ -69,7 +69,9 @@
       "quote_decided": "Respuesta al presupuesto",
       "reception_signed": "Hoja de recepción firmada",
       "reception_corrected": "Recepción corregida tras firmar",
-      "vehicle_report_extended": "Informe de actuaciones con nombres o importes"
+      "vehicle_report_extended": "Informe de actuaciones con nombres o importes",
+      "part_created": "Alta de pieza",
+      "part_prices_changed": "Cambio de precios de una pieza"
     },
     "fields": {
       "email": "Email",
@@ -112,7 +114,12 @@
       "signature_method": "Firma",
       "fields": "Datos",
       "owners": "Titulares",
-      "amounts": "Importes"
+      "amounts": "Importes",
+      "part": "Pieza",
+      "cost_price_cents": "Precio de coste",
+      "sale_price_cents": "Precio de venta",
+      "vat_bp": "IVA",
+      "max_parts": "Límite de piezas"
     },
     "receptionFields": {
       "odometer_km": "Kilómetros",
@@ -140,7 +147,8 @@
     "signOut": "Cerrar sesión",
     "unpaid": "Pendientes de cobro",
     "settings": "Taller",
-    "quotes": "Presupuestos"
+    "quotes": "Presupuestos",
+    "parts": "Piezas"
   },
   "auth": {
     "tagline": "Gestión del taller y seguimiento de cada reparación, en un solo sitio.",
@@ -173,7 +181,9 @@
     "number": "Escribe un número entero dentro de lo razonable.",
     "percent": "Escribe un porcentaje entre 0 y 100, por ejemplo 21.",
     "validity": "Entre 12 y 120 días hábiles.",
-    "delivery": "Entre 1 y 250 días hábiles, o vacío."
+    "delivery": "Entre 1 y 250 días hábiles, o vacío.",
+    "quantity": "Escribe una cantidad, por ejemplo 2 o 1,5 (tres decimales como mucho).",
+    "warranty": "Entre 4 y 120 meses, o vacío."
   },
   "invitation": {
     "title": "Invitación",
@@ -849,7 +859,12 @@
     "work_order_not_delivered": "La orden aún no se ha entregado.",
     "vehicle_report_extended_forbidden": "Solo el administrador puede incluir los titulares o los importes en el informe.",
     "reception_sheet_not_found": "Esta orden no tiene hoja de recepción firmada.",
-    "signer_name_not_expected": "En papel no se guarda quién firmó: la firma y el nombre están en el papel."
+    "signer_name_not_expected": "En papel no se guarda quién firmó: la firma y el nombre están en el papel.",
+    "part_not_found": "Esa pieza no existe en este taller.",
+    "part_reference_taken": "Ya hay una pieza con esa referencia en el catálogo (puede estar archivada).",
+    "part_archived": "La pieza está archivada: desarchívala para cambiarla.",
+    "part_min_stock_without_stock": "Un stock mínimo solo tiene sentido si se cuenta el stock de la pieza.",
+    "part_limit_reached": "El taller ha llegado a su límite de piezas en el catálogo. Para ampliarlo, habla con quien administra la plataforma."
   },
   "palette": {
     "open": "Buscar en el taller",
@@ -868,7 +883,8 @@
       "employees": "Fichas de empleado",
       "clients": "Clientes",
       "vehicles": "Vehículos",
-      "orders_per_month": "Órdenes al mes"
+      "orders_per_month": "Órdenes al mes",
+      "parts": "Piezas del catálogo"
     }
   },
   "settings": {
@@ -1150,5 +1166,50 @@
     },
     "pdfSigned": "Hoja firmada en PDF",
     "pdfToSign": "Imprimir para firmar"
+  },
+  "parts": {
+    "new": "Nueva pieza",
+    "create": "Crear pieza",
+    "created": "Pieza creada.",
+    "saved": "Cambios guardados.",
+    "search": "Buscar piezas",
+    "searchPlaceholder": "Referencia, marca o descripción",
+    "showArchived": "Ver archivadas",
+    "empty": "Aún no hay piezas en el catálogo.",
+    "noArchived": "No hay piezas archivadas.",
+    "noResults": "Ninguna pieza coincide con la búsqueda.",
+    "loadMore": "Ver más",
+    "reference": "Referencia",
+    "description": "Descripción",
+    "brand": "Marca (opcional)",
+    "brandShort": "Marca",
+    "costPrice": "Precio de coste sin IVA (opcional)",
+    "costPriceShort": "Coste",
+    "salePrice": "Precio de venta sin IVA",
+    "salePriceShort": "Venta",
+    "vat": "IVA (%)",
+    "condition": "Estado de la pieza",
+    "conditionHint": "Una pieza que no es nueva sale marcada en el presupuesto: aprobarlo es la conformidad del cliente (RF-38).",
+    "conditions": {
+      "new": "Nueva",
+      "used": "Usada",
+      "reconditioned": "Reacondicionada",
+      "non_specific": "No específica del modelo"
+    },
+    "warranty": "Garantía propia en meses (opcional)",
+    "warrantyHint": "Solo si supera los 3 meses de la garantía de la reparación (de 4 a 120).",
+    "warrantyMonths_one": "{{count}} mes de garantía",
+    "warrantyMonths_other": "{{count}} meses de garantía",
+    "tracksStock": "Contar su stock",
+    "tracksStockHint": "Un tornillo suelto no se cuenta; una batería sí.",
+    "noStock": "Sin control de stock",
+    "minStock": "Stock mínimo (opcional)",
+    "minStockHint": "El listado destacará la pieza cuando quede por debajo.",
+    "archived": "Archivada",
+    "archive": "Archivar",
+    "unarchive": "Desarchivar",
+    "confirmArchive": "¿Archivar {{name}}? Dejará de salir al elegir piezas, pero no se borra nada.",
+    "pricesHidden": "El taller no deja ver los importes de venta.",
+    "readOnly": "Solo el administrador cambia el catálogo y sus precios."
   }
 }

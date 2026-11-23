@@ -67,6 +67,12 @@ class Action(StrEnum):
     # incluir en él los titulares y los importes es solo del administrador (F6
     # paso 5, decidido por el usuario), y queda en la auditoría (RNF-16).
     EXTEND_VEHICLE_REPORT = "extend_vehicle_report"
+    # El catálogo de piezas (RF-90, especificación §3): lo consultan los dos
+    # roles; darlo de alta, cambiarlo y fijar sus precios es del administrador.
+    # El precio de coste, solo con VIEW_COSTS; el de venta, como los demás
+    # importes (`mechanics_see_sale_prices`).
+    VIEW_PARTS = "view_parts"
+    MANAGE_PARTS = "manage_parts"
 
 
 ROLE_PERMISSIONS: dict[Role, frozenset[Action]] = {
@@ -77,6 +83,7 @@ ROLE_PERMISSIONS: dict[Role, frozenset[Action]] = {
             Action.VIEW_ORDERS,
             Action.MOVE_REPAIR_STATUS,
             Action.WRITE_WORKLOG,
+            Action.VIEW_PARTS,
         }
     ),
 }

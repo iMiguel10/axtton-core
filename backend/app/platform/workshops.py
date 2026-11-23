@@ -25,6 +25,7 @@ from app.models import (
     Client,
     Employee,
     Invitation,
+    Part,
     User,
     Vehicle,
     WorkOrder,
@@ -271,6 +272,7 @@ def _usage_columns() -> dict[Resource, Any]:
         Resource.EMPLOYEES: count(Employee, Employee.active),
         Resource.CLIENTS: count(Client),
         Resource.VEHICLES: count(Vehicle),
+        Resource.PARTS: count(Part),
         Resource.ORDERS_PER_MONTH: count(
             WorkOrder, WorkOrder.created_at >= month_start
         ),

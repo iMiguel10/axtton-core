@@ -227,6 +227,7 @@ async def test_the_admin_sees_the_usage_and_the_mechanic_does_not(
         "clients": (2, 1000),
         "vehicles": (1, 1500),
         "orders_per_month": (1, 200),
+        "parts": (0, 10000),
     }
     mechanic = await invite_and_accept(
         client, shop.admin, outbox, await add_mechanic(client, shop.admin)
@@ -274,6 +275,7 @@ async def test_the_superadmin_changes_limits_and_it_is_audited(
         "clients": (0, 50),
         "vehicles": (0, 1500),
         "orders_per_month": (0, 20),
+        "parts": (0, 10000),
     }
     async with engines.platform.connect() as conn:
         details = await conn.scalar(

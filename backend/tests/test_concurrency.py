@@ -1014,3 +1014,88 @@ async def test_two_diagnoses_from_the_same_version_keep_the_first(
             )
         ).all()
     assert texts == ["De Ana"]
+
+
+# --- El catálogo de piezas (F7 paso 1) ----------------------------------------
+
+PART = {"reference": "BAT-70", "description": "Batería", "sale_price_cents": 9500}
+
+
+@pytest.mark.asyncio
+async def test_two_parts_renamed_to_one_reference_at_once_give_a_409_not_a_500(
+    engines: Engines, two_workshops: TwoWorkshops, make_account: MakeAccount
+) -> None:
+    """RF-90: dos piezas distintas que se renombran a la vez a la misma
+    referencia no se bloquean entre sí (cada una bloquea su fila), así que las
+    dos pasan la comprobación previa; el índice único para a la segunda y
+    flush_or_conflict lo traduce al mismo 409, no a un 500. Dos altas a la vez
+    no llegan a eso: el límite del catálogo ya las pone en fila (la de abajo)."""
+    from app.services import parts as part_service
+
+    a = two_workshops.a
+    ana = await employee_with_access(engines, make_account, a, "admin")
+    async with open_transaction(a) as setup:
+        one = await part_service.create_part(setup, a, ana.user_id, dict(PART))
+        two = await part_service.create_part(
+            setup, a, ana.user_id, {**PART, "reference": "BAT-80"}
+        )
+        await setup.commit()
+
+    async def rename(session: AsyncSession, part_id: UUID, reference: str) -> None:
+        await part_service.update_part(
+            session,
+            a,
+            ana.user_id,
+            part_id,
+            expected_version=1,
+            changes={"reference": reference},
+        )
+
+    async with open_transaction(a) as first, open_transaction(a) as second:
+        await rename(first, one, "BAT-90")
+        work = asyncio.create_task(rename(second, two, "bat-90"))
+        await asyncio.sleep(GRACE)
+        assert not work.done(), "la segunda debería esperar al índice único"
+        await first.commit()
+        outcome = await finish(second, work)
+
+    assert isinstance(outcome, ConflictError), outcome
+    assert outcome.code == "part_reference_taken"
+    async with engines.platform.connect() as conn:
+        references = await conn.scalars(text("SELECT reference FROM parts ORDER BY 1"))
+        assert list(references) == ["BAT-80", "BAT-90"]
+
+
+@pytest.mark.asyncio
+async def test_two_parts_at_once_with_one_free_slot_leave_one_out(
+    engines: Engines, two_workshops: TwoWorkshops, make_account: MakeAccount
+) -> None:
+    """§10: el límite del catálogo pone en fila las altas, como el de clientes."""
+    from app.services import parts as part_service
+
+    a = two_workshops.a
+    ana = await employee_with_access(engines, make_account, a, "admin")
+    async with engines.platform.begin() as conn:
+        await conn.execute(
+            text("UPDATE workshops SET max_parts = 1 WHERE id = :w"), {"w": a}
+        )
+
+    async with open_transaction(a) as first, open_transaction(a) as second:
+        await part_service.create_part(first, a, ana.user_id, dict(PART))
+        work = asyncio.create_task(
+            part_service.create_part(
+                second, a, ana.user_id, {**PART, "reference": "OTRA"}
+            )
+        )
+        await asyncio.sleep(GRACE)
+        assert not work.done(), "la segunda debería esperar al recuento"
+        await first.commit()
+        outcome = await finish(second, work)
+
+    assert isinstance(outcome, ConflictError), outcome
+    assert outcome.code == "part_limit_reached"
+    async with engines.platform.connect() as conn:
+        count = await conn.scalar(
+            text("SELECT count(*) FROM parts WHERE workshop_id = :w"), {"w": a}
+        )
+    assert count == 1

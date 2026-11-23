@@ -10,7 +10,7 @@ from sqlalchemy import func, select, text
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.domain.limits import Resource, limit_column
-from app.models import Client, Employee, Vehicle, WorkOrder, Workshop
+from app.models import Client, Employee, Part, Vehicle, WorkOrder, Workshop
 
 
 async def lock(session: AsyncSession, workshop_id: UUID, resource: Resource) -> None:
@@ -48,6 +48,8 @@ async def usage(session: AsyncSession, workshop_id: UUID, resource: Resource) ->
             query = select(func.count()).select_from(Client)
         case Resource.VEHICLES:
             query = select(func.count()).select_from(Vehicle)
+        case Resource.PARTS:
+            query = select(func.count()).select_from(Part)
         case Resource.ORDERS_PER_MONTH:
             month_start = (
                 select(

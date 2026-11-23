@@ -8,6 +8,7 @@ from app.api.v1.workshop import (
     delivery,
     employees,
     limits,
+    parts,
     quotes,
     reception,
     search,
@@ -45,6 +46,7 @@ router.include_router(reception.router)
 router.include_router(delivery.router)
 router.include_router(vehicle_report.router)
 router.include_router(quotes.router)
+router.include_router(parts.router)
 router.include_router(audit.router)
 router.include_router(account.router)
 

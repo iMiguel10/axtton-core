@@ -7,7 +7,7 @@ from sqlalchemy import ColumnElement, String, and_, case, cast, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import aliased
 
-from app.models import AuditEntry, Client, Employee, Vehicle, WorkOrder
+from app.models import AuditEntry, Client, Employee, Part, Vehicle, WorkOrder
 
 
 @dataclass(frozen=True)
@@ -47,6 +47,7 @@ async def list_page(
             Vehicle.plate,
             _order_code(),
             Client.name,
+            Part.reference,
         )
         .outerjoin(actor, actor.user_id == AuditEntry.actor_user_id)
         .outerjoin(
@@ -79,6 +80,14 @@ async def list_page(
                 Client.id == AuditEntry.target_id,
             ),
         )
+        # Una pieza del catálogo (F7), por su referencia.
+        .outerjoin(
+            Part,
+            and_(
+                AuditEntry.target_type == "part",
+                Part.id == AuditEntry.target_id,
+            ),
+        )
         .order_by(AuditEntry.seq.desc())
         .limit(limit)
     )
@@ -96,11 +105,19 @@ async def list_page(
             target_name=(
                 client_name
                 if entry.target_type == "client"
-                else employee_name or plate or order_code
+                else employee_name or plate or order_code or part_reference
             ),
             details=_with_client_names(entry.details, client_names),
         )
-        for entry, actor_name, employee_name, plate, order_code, client_name in rows
+        for (
+            entry,
+            actor_name,
+            employee_name,
+            plate,
+            order_code,
+            client_name,
+            part_reference,
+        ) in rows
     ]
 
 

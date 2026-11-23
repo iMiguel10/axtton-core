@@ -9,7 +9,8 @@ export type LimitResource =
   | "employees"
   | "clients"
   | "vehicles"
-  | "orders_per_month";
+  | "orders_per_month"
+  | "parts";
 
 export type LimitUsage = { resource: LimitResource; used: number; limit: number };
 

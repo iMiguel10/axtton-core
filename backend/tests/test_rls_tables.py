@@ -45,6 +45,7 @@ WORKSHOP_TABLES = {
     "portal_links": "workshop_id",
     "notifications": "workshop_id",
     "reception_sheets": "workshop_id",
+    "parts": "workshop_id",
 }
 
 # Tablas sobre las que axtton_app no tiene DELETE: no se borran nunca, ni por un
@@ -69,6 +70,8 @@ NO_DELETE = {
     "notifications",
     # Una hoja firmada no se borra (0024receptionsheets).
     "reception_sheets",
+    # Una pieza se archiva, no se borra (0027parts).
+    "parts",
 }
 # La columna que axtton_app puede actualizar, si no puede todas.
 UPDATABLE_COLUMN = {
@@ -87,6 +90,8 @@ UPDATABLE_COLUMN = {
     "workshops": "name",
     # De una hoja firmada, solo lo personal, al anonimizar (0024receptionsheets).
     "reception_sheets": "signer_name",
+    # De una pieza, lo que edita el administrador, no su taller (0027parts).
+    "parts": "version",
 }
 
 
@@ -213,6 +218,13 @@ async def seeded(engines: Engines, two_workshops: TwoWorkshops) -> Seeded:
                 text(
                     "INSERT INTO labor_rates (workshop_id, name, hourly_price_cents)"
                     " VALUES (:w, 'Mecánica', 4500)"
+                ),
+                {"w": workshop},
+            )
+            await conn.execute(
+                text(
+                    "INSERT INTO parts (workshop_id, reference, description,"
+                    " sale_price_cents, vat_bp) VALUES (:w, 'BAT', 'Batería', 9500, 2100)"
                 ),
                 {"w": workshop},
             )
@@ -439,6 +451,23 @@ async def test_the_app_role_cannot_delete_clients(
         await set_workshops(conn, seeded.workshops.a)
         with pytest.raises(DBAPIError, match="permission denied"):
             await conn.execute(text(statement))
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("table", sorted(NO_DELETE))
+async def test_the_app_role_has_no_delete_on_the_tables_that_are_never_deleted(
+    engines: Engines, table: str
+) -> None:
+    """NO_DELETE no es solo la lista de tablas que se salta la prueba del DELETE
+    de otro taller: el permiso tiene que faltar de verdad. Sin esta prueba, una
+    tabla nueva que olvidara su REVOKE pasaría todo (lo vio el cierre de F7 paso
+    1, al romper el de `parts`)."""
+    async with engines.platform.connect() as conn:
+        allowed = await conn.scalar(
+            text("SELECT has_table_privilege('axtton_app', :t, 'DELETE')"),
+            {"t": table},
+        )
+    assert allowed is False, table
 
 
 @pytest.mark.asyncio

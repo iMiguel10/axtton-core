@@ -227,6 +227,8 @@ MECHANIC_ALLOWED = {
     ("GET", "/quotes/{quote_id}/pdf"),
     # El resumen de entrega (F6 paso 4), con la misma regla de los importes.
     ("GET", "/orders/{order_id}/delivery-summary/pdf"),
+    # El informe de actuaciones (F6 paso 5), sin titulares ni importes.
+    ("GET", "/vehicles/{vehicle_id}/report/pdf"),
     ("GET", "/quotes"),
     ("POST", "/account/password"),
     ("GET", "/account/sessions"),

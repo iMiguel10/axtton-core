@@ -26,10 +26,11 @@ import { usePageCrumb } from "../layout/PageCrumb";
 import { useActiveWorkshop } from "../session/ActiveWorkshop";
 import { vehiclesApi, type VehicleDetail, type VehicleInput } from "./api";
 import { VehicleForm } from "./VehicleForm";
+import { VehicleReportCard } from "./VehicleReportCard";
 
 /**
  * Ficha de un vehículo (RF-11, RF-13): sus datos, su titular actual y todos sus
- * periodos de titularidad, y todas sus órdenes.
+ * periodos de titularidad, todas sus órdenes y su informe de actuaciones (RF-18).
  */
 export function VehicleDetailPage() {
   const { t } = useTranslation();
@@ -121,6 +122,7 @@ export function VehicleDetailPage() {
           <RelatedOrders filters={{ vehicleId: current.id }} show={{ client: true }} />
         </CardContent>
       </Card>
+      <VehicleReportCard vehicle={current} />
     </section>
   );
 }

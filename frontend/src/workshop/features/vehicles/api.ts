@@ -1,4 +1,4 @@
-import { apiRequest } from "@/shared/lib/apiClient";
+import { apiBlob, apiRequest } from "@/shared/lib/apiClient";
 
 export const FUELS = [
   "gasoline",
@@ -70,6 +70,14 @@ export function vehiclesApi(workshopId: string) {
         version: vehicle.version,
         client_id: clientId,
       }),
+    /** El informe de actuaciones (RF-18); con titulares o importes, solo el administrador. */
+    reportPdf: (id: string, { owners, amounts }: { owners: boolean; amounts: boolean }) => {
+      const params = new URLSearchParams();
+      if (owners) params.set("owners", "true");
+      if (amounts) params.set("amounts", "true");
+      const query = params.size ? `?${params}` : "";
+      return apiBlob(`/workshop/vehicles/${id}/report/pdf${query}`, { workshopId });
+    },
     suggestions: (field: "make" | "model", q: string, make?: string) => {
       const params = new URLSearchParams({ field, q });
       if (make) params.set("make", make);

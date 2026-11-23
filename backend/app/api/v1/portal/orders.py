@@ -9,9 +9,11 @@ from app.schemas.portal import (
     PortalOrderDetail,
     PortalVehicle,
 )
+from app.services import delivery_summary as delivery_service
 from app.services import portal_orders as portal_orders_service
 from app.services import quote_pdf as quote_pdf_service
 from app.services import quotes as quote_service
+from app.services import reception_pdf as reception_pdf_service
 
 # El cliente sale siempre de la sesión: ninguna ruta lo recibe (T4, T10).
 router = APIRouter()
@@ -34,6 +36,18 @@ async def order(order_id: UUID, portal: Portal) -> PortalOrderDetail:
     return PortalOrderDetail.model_validate(detail)
 
 
+def _pdf(content: bytes, filename: str) -> Response:
+    return Response(
+        content=content,
+        media_type="application/pdf",
+        headers={
+            "Content-Disposition": f'inline; filename="{filename}"',
+            # La sesión va por cookie: que ningún proxy lo guarde para otro.
+            "Cache-Control": "private, no-store",
+        },
+    )
+
+
 @router.get("/quotes/{quote_id}/pdf")
 async def quote_pdf(quote_id: UUID, portal: Portal) -> Response:
     """El PDF de una versión enviada (RF-54). Se genera ahora y no se guarda, y
@@ -42,15 +56,28 @@ async def quote_pdf(quote_id: UUID, portal: Portal) -> Response:
     pdf = await quote_pdf_service.client_quote_pdf(
         portal.session, portal.workshop_id, portal.client_id, quote_id
     )
-    return Response(
-        content=pdf.content,
-        media_type="application/pdf",
-        headers={
-            "Content-Disposition": f'inline; filename="{pdf.filename}"',
-            # La sesión va por cookie: que ningún proxy lo guarde para otro.
-            "Cache-Control": "private, no-store",
-        },
+    return _pdf(pdf.content, pdf.filename)
+
+
+@router.get("/orders/{order_id}/reception-sheet/pdf")
+async def reception_sheet_pdf(order_id: UUID, portal: Portal) -> Response:
+    """La hoja de recepción firmada de una orden suya (RF-54), con la firma
+    mientras exista (RF-57). Comparte el límite con los demás PDF del portal."""
+    await limit_portal_pdf(portal.workshop_id, portal.client_id)
+    pdf = await reception_pdf_service.client_reception_pdf(
+        portal.session, portal.workshop_id, portal.client_id, order_id
     )
+    return _pdf(pdf.content, pdf.filename)
+
+
+@router.get("/orders/{order_id}/delivery-summary/pdf")
+async def delivery_summary_pdf(order_id: UUID, portal: Portal) -> Response:
+    """El resumen de entrega de una orden suya ya entregada (RF-53, RF-54)."""
+    await limit_portal_pdf(portal.workshop_id, portal.client_id)
+    pdf = await delivery_service.client_delivery_summary_pdf(
+        portal.session, portal.workshop_id, portal.client_id, order_id
+    )
+    return _pdf(pdf.content, pdf.filename)
 
 
 @router.post("/quotes/{quote_id}/decision", status_code=status.HTTP_204_NO_CONTENT)

@@ -728,7 +728,13 @@
           "quote_expired": "Your answer was not recorded: the quote has expired. Ask the workshop to send you a new one."
         }
       },
-      "pdf": "Download as PDF"
+      "pdf": "Download as PDF",
+      "documents": "Documents",
+      "noDocuments": "No documents yet: the reception sheet appears once it is signed, and the summary when the vehicle is handed back to you.",
+      "receptionSheet": "Signed reception sheet",
+      "deliverySummary": "Delivery summary",
+      "warranty": "The repair warranty lasts until {{date}}.",
+      "warrantyKm": "The repair warranty lasts until {{date}} or {{km}} km, whichever comes first."
     },
     "noWorkshop": {
       "title": "Sign in from your workshop",
@@ -840,7 +846,8 @@
     "delivered_odometer_below_entry": "The mileage at delivery cannot be lower than at reception.",
     "odometer_only_on_delivery": "The mileage is only noted at delivery.",
     "work_order_not_delivered": "The order has not been delivered yet.",
-    "vehicle_report_extended_forbidden": "Only the administrator can include owners or amounts in the report."
+    "vehicle_report_extended_forbidden": "Only the administrator can include owners or amounts in the report.",
+    "reception_sheet_not_found": "This order has no signed reception sheet."
   },
   "palette": {
     "open": "Search the workshop",

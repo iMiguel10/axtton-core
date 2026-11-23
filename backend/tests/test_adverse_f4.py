@@ -69,9 +69,11 @@ from tests.test_quote_decision import decide, sent_order
 from tests.test_quote_pdf import text_of
 from tests.test_quote_send import cancel, diagnosing_order, draft_with_lines, send
 from tests.test_quotes import ORDERS
+from tests.test_reception import sign
 from tests.test_rls import set_workshops
 from tests.test_vehicles import create as create_vehicle
 from tests.test_work_orders import Shop, new_shop, outbox
+from tests.test_work_orders import get as get_order
 from tests.test_worklog import add_work
 
 __all__ = ["demo_entry", "outbox", "portal", "shops"]
@@ -178,6 +180,15 @@ async def test_t4_no_portal_route_with_an_id_reaches_what_is_not_the_clients(
         client, outbox, UUID(other.invited.workshop_id), maria_email
     )
     nobody = Owned(str(uuid4()), str(uuid4()))
+    # Con la hoja firmada, lo que el portal descarga de la orden existe (F6 paso
+    # 6): un 404 de otro tipo delataría que la guarda no estaba.
+    for admin, theirs in (
+        (shop.headers, maria_a),
+        (shop.headers, luis_a),
+        (other.headers, maria_b),
+    ):
+        order = await get_order(client, admin, theirs.order)
+        assert (await sign(client, admin, order)).status_code == 204
 
     routes = portal_routes_with_ids()
     attacks = [
@@ -204,6 +215,11 @@ async def test_t4_no_portal_route_with_an_id_reaches_what_is_not_the_clients(
     for method, path in routes:
         for headers, own in ((portal.maria, maria_a), (twin_session, maria_b)):
             response = await call(client, method, path, headers, own)
+            if path.endswith("/delivery-summary/pdf"):
+                # La orden espera la decisión: llegó a la guarda de "entregada".
+                assert response.status_code == 409, (method, path, response.text)
+                assert response.json()["code"] == "work_order_not_delivered"
+                continue
             assert response.status_code < 300, (method, path, response.text)
 
 

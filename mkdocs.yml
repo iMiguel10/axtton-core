@@ -53,6 +53,7 @@ nav:
       - "Cierre de F3": arquitectura/f3-cierre.md
       - "Cierre de F4": arquitectura/f4-cierre.md
       - "Cierre de F5": arquitectura/f5-cierre.md
+      - "Cierre de F6": arquitectura/f6-cierre.md
   - Guías:
       - "Datos de demostración": guias/demo.md
       - "Versionado": guias/versionado.md

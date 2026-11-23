@@ -848,7 +848,8 @@
     "odometer_only_on_delivery": "Los kilómetros solo se anotan al entregar.",
     "work_order_not_delivered": "La orden aún no se ha entregado.",
     "vehicle_report_extended_forbidden": "Solo el administrador puede incluir los titulares o los importes en el informe.",
-    "reception_sheet_not_found": "Esta orden no tiene hoja de recepción firmada."
+    "reception_sheet_not_found": "Esta orden no tiene hoja de recepción firmada.",
+    "signer_name_not_expected": "En papel no se guarda quién firmó: la firma y el nombre están en el papel."
   },
   "palette": {
     "open": "Buscar en el taller",

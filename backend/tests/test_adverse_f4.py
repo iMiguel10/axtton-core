@@ -303,7 +303,7 @@ async def test_rf43_nothing_internal_reaches_the_client_on_any_portal_route(
         assert secret.lower() not in seen, secret
     # Las horas del trabajo, como número suelto: "7.25" también puede salir por azar
     # dentro de una fecha (los segundos de "…:57.254"), y la prueba fallaba a veces.
-    assert not re.search(r"(?<![d.,:])7[.,]25(?!d)", seen), "las horas del trabajo"
+    assert not re.search(r"(?<![\d.,:])7[.,]25(?!\d)", seen), "las horas del trabajo"
 
 
 # --- Carreras con dos transacciones reales -------------------------------------------

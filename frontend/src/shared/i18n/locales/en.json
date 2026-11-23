@@ -68,7 +68,8 @@
       "quote_renewed": "Quote renewed",
       "quote_decided": "Quote reply",
       "reception_signed": "Reception sheet signed",
-      "reception_corrected": "Reception corrected after signing"
+      "reception_corrected": "Reception corrected after signing",
+      "vehicle_report_extended": "Service history report with names or amounts"
     },
     "fields": {
       "email": "Email",
@@ -109,7 +110,9 @@
       "quote_outcome": "Reply",
       "decision_channel": "Channel",
       "signature_method": "Signature",
-      "fields": "Details"
+      "fields": "Details",
+      "owners": "Owners",
+      "amounts": "Amounts"
     },
     "receptionFields": {
       "odometer_km": "Mileage",
@@ -507,7 +510,15 @@
     "orders": "Work orders",
     "pickAnother": "Choose another",
     "pickResults": "Matching vehicles",
-    "created": "Vehicle added."
+    "created": "Vehicle added.",
+    "report": {
+      "title": "Service history report",
+      "hint": "Everything done to this vehicle at the workshop, under any owner: dates, mileage, diagnosis, work and parts. By default it has no names or amounts, because it often ends up with whoever buys the car.",
+      "owners": "Include the client of each order",
+      "amounts": "Include the amounts",
+      "audited": "With names or amounts, it is recorded in the audit log.",
+      "download": "Service history report (PDF)"
+    }
   },
   "employees": {
     "title": "Employees",
@@ -828,7 +839,8 @@
     "reception_already_signed": "The reception sheet is already signed.",
     "delivered_odometer_below_entry": "The mileage at delivery cannot be lower than at reception.",
     "odometer_only_on_delivery": "The mileage is only noted at delivery.",
-    "work_order_not_delivered": "The order has not been delivered yet."
+    "work_order_not_delivered": "The order has not been delivered yet.",
+    "vehicle_report_extended_forbidden": "Only the administrator can include owners or amounts in the report."
   },
   "palette": {
     "open": "Search the workshop",

@@ -68,7 +68,8 @@
       "quote_renewed": "Presupuesto renovado",
       "quote_decided": "Respuesta al presupuesto",
       "reception_signed": "Hoja de recepción firmada",
-      "reception_corrected": "Recepción corregida tras firmar"
+      "reception_corrected": "Recepción corregida tras firmar",
+      "vehicle_report_extended": "Informe de actuaciones con nombres o importes"
     },
     "fields": {
       "email": "Email",
@@ -109,7 +110,9 @@
       "quote_outcome": "Respuesta",
       "decision_channel": "Canal",
       "signature_method": "Firma",
-      "fields": "Datos"
+      "fields": "Datos",
+      "owners": "Titulares",
+      "amounts": "Importes"
     },
     "receptionFields": {
       "odometer_km": "Kilómetros",
@@ -507,7 +510,15 @@
     "orders": "Órdenes",
     "pickAnother": "Elegir otro",
     "pickResults": "Vehículos que coinciden",
-    "created": "Vehículo dado de alta."
+    "created": "Vehículo dado de alta.",
+    "report": {
+      "title": "Informe de actuaciones",
+      "hint": "Todo lo que se ha hecho a este vehículo en el taller, de cualquier titular: fechas, kilómetros, diagnóstico, trabajos y piezas. Por defecto no lleva nombres ni importes, porque suele acabar en manos de quien compra el coche.",
+      "owners": "Incluir el cliente de cada orden",
+      "amounts": "Incluir los importes",
+      "audited": "Con nombres o importes, queda anotado en el registro de auditoría.",
+      "download": "Informe de actuaciones en PDF"
+    }
   },
   "employees": {
     "title": "Empleados",
@@ -828,7 +839,8 @@
     "reception_already_signed": "La hoja de recepción ya está firmada.",
     "delivered_odometer_below_entry": "Los kilómetros al entregar no pueden ser menos que los de entrada.",
     "odometer_only_on_delivery": "Los kilómetros solo se anotan al entregar.",
-    "work_order_not_delivered": "La orden aún no se ha entregado."
+    "work_order_not_delivered": "La orden aún no se ha entregado.",
+    "vehicle_report_extended_forbidden": "Solo el administrador puede incluir los titulares o los importes en el informe."
   },
   "palette": {
     "open": "Buscar en el taller",

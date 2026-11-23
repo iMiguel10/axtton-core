@@ -1,0 +1,166 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<title>Informe de actuaciones {{ vehicle.plate }}</title>
+<style>
+  @page {
+    size: A4;
+    margin: 16mm 15mm 18mm;
+    @bottom-left {
+      content: "Informe de actuaciones {{ vehicle.plate }} · {{ generated_on }}";
+      font: 8pt "DejaVu Sans", sans-serif;
+      color: #6b7280;
+    }
+    @bottom-right {
+      content: "Página " counter(page) " de " counter(pages);
+      font: 8pt "DejaVu Sans", sans-serif;
+      color: #6b7280;
+    }
+  }
+  * { box-sizing: border-box; }
+  body {
+    font: 9pt/1.4 "DejaVu Sans", sans-serif;
+    color: #111827;
+    margin: 0;
+  }
+  header { display: flex; justify-content: space-between; gap: 8mm; }
+  .logo img { max-height: 22mm; max-width: 70mm; }
+  .logo .name { font-size: 15pt; font-weight: bold; }
+  .issuer { text-align: right; font-size: 8pt; color: #374151; }
+  .issuer strong { font-size: 9.5pt; color: #111827; }
+  h1 { font-size: 17pt; margin: 7mm 0 1mm; letter-spacing: 0.3pt; }
+  .subtitle { color: #374151; }
+  .box {
+    margin-top: 5mm;
+    border: 0.3mm solid #d1d5db;
+    border-radius: 1.5mm;
+    padding: 2.5mm 3mm;
+  }
+  h2 {
+    font-size: 7.5pt;
+    text-transform: uppercase;
+    letter-spacing: 0.5pt;
+    color: #6b7280;
+    margin: 0 0 1mm;
+  }
+  .box p { margin: 0; }
+  .scope { margin-top: 3mm; font-size: 7.5pt; color: #4b5563; }
+  .order {
+    margin-top: 6mm;
+    border-top: 0.4mm solid #111827;
+    padding-top: 2mm;
+  }
+  .order-head {
+    display: flex;
+    justify-content: space-between;
+    gap: 4mm;
+    font-weight: bold;
+    page-break-after: avoid;
+  }
+  .order-meta { color: #374151; margin-top: 0.5mm; }
+  .order h3 {
+    font-size: 7.5pt;
+    text-transform: uppercase;
+    letter-spacing: 0.5pt;
+    color: #6b7280;
+    margin: 2.5mm 0 0.5mm;
+    page-break-after: avoid;
+  }
+  .order p { margin: 0; }
+  .diagnosis { white-space: pre-line; }
+  table.list { width: 100%; border-collapse: collapse; }
+  .list td {
+    border-bottom: 0.2mm solid #e5e7eb;
+    padding: 1.2mm 1.5mm;
+    vertical-align: top;
+  }
+  .list tr { page-break-inside: avoid; }
+  .list .day, .list .qty { white-space: nowrap; color: #374151; width: 22mm; }
+  .list .qty { text-align: right; }
+  .ref { color: #6b7280; font-size: 7.5pt; }
+  .condition { color: #92400e; font-size: 7.5pt; font-weight: bold; }
+  .empty { color: #6b7280; }
+  .open { color: #92400e; }
+</style>
+</head>
+<body>
+<header>
+  <div class="logo">
+    {% if has_logo %}<img src="axtton:logo" alt="">{% else %}<div class="name">{{ workshop.name }}</div>{% endif %}
+  </div>
+  <div class="issuer">
+    <strong>{{ workshop.legal_name or workshop.name }}</strong><br>
+    {% if workshop.tax_id %}NIF {{ workshop.tax_id }}<br>{% endif %}
+    {% if workshop.address %}{{ workshop.address }}<br>{% endif %}
+    {% if workshop.phone %}Tel. {{ workshop.phone }}{% endif %}{% if workshop.phone and workshop.email %} · {% endif %}{% if workshop.email %}{{ workshop.email }}{% endif %}<br>
+    {% if workshop.registry %}Registro industrial n.º {{ workshop.registry }}{% endif %}
+  </div>
+</header>
+
+<h1>Informe de actuaciones</h1>
+<div class="subtitle">Generado el {{ generated_on }} · {{ orders | length }} {% if orders | length == 1 %}orden{% else %}órdenes{% endif %}</div>
+
+<div class="box">
+  <h2>Vehículo</h2>
+  <p><strong>{{ vehicle.plate }}</strong>{% if vehicle.make_model %} · {{ vehicle.make_model }}{% endif %}</p>
+  {% if vehicle.vin %}<p>Bastidor: {{ vehicle.vin }}</p>{% endif %}
+</div>
+<p class="scope">
+  Todo lo que se ha hecho a este vehículo en este taller, de la visita más antigua a la más reciente.
+  {% if not owners %}No incluye los nombres de sus titulares.{% endif %}
+  {% if not amounts %}No incluye importes.{% endif %}
+</p>
+
+{% for order in orders %}
+<div class="order">
+  <div class="order-head">
+    <span>Orden {{ order.code }} · {{ order.type }}</span>
+    <span>
+      {% if order.delivered_on %}Entregado el {{ order.delivered_on }}{% if order.unrepaired %}, sin reparar{% endif %}
+      {% else %}<span class="open">En curso</span>{% endif %}
+    </span>
+  </div>
+  <div class="order-meta">
+    Recibido el {{ order.received_on }}
+    · Km a la entrada: {{ order.odometer_in or "sin anotar" }}
+    {% if order.delivered_on %}· Km a la entrega: {{ order.odometer_out or "sin anotar" }}{% endif %}
+    {% if order.client %}<br>Cliente: {{ order.client }}{% endif %}
+    {% if order.amount %}<br>Importe del presupuesto aceptado, IVA incluido: {{ order.amount }}{% endif %}
+  </div>
+
+  <h3>Diagnóstico</h3>
+  {% if order.diagnosis %}<p class="diagnosis">{{ order.diagnosis }}</p>{% else %}<p class="empty">Sin diagnóstico.</p>{% endif %}
+
+  <h3>Trabajos realizados</h3>
+  {% if order.works %}
+  <table class="list">
+    {% for work in order.works %}
+    <tr><td class="day">{{ work.day }}</td><td>{{ work.text }}</td></tr>
+    {% endfor %}
+  </table>
+  {% else %}
+  <p class="empty">Ninguno anotado.</p>
+  {% endif %}
+
+  {% if order.parts %}
+  <h3>Piezas montadas</h3>
+  <table class="list">
+    {% for part in order.parts %}
+    <tr>
+      <td>
+        {{ part.description }}
+        {% if part.reference %}<div class="ref">Ref. {{ part.reference }}</div>{% endif %}
+        {% if part.condition %}<div class="condition">Pieza {{ part.condition | lower }}</div>{% endif %}
+      </td>
+      <td class="qty">{{ part.quantity }}</td>
+    </tr>
+    {% endfor %}
+  </table>
+  {% endif %}
+</div>
+{% else %}
+<p class="empty" style="margin-top: 6mm">Este vehículo no tiene ninguna orden en el taller.</p>
+{% endfor %}
+</body>
+</html>

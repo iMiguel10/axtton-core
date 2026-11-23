@@ -63,6 +63,10 @@ class Action(StrEnum):
     # (RF-51, RF-52; especificación §3): solo el administrador, que atiende al
     # cliente.
     SIGN_RECEPTION = "sign_reception"
+    # El informe de actuaciones de un vehículo (RF-18) lo generan los dos roles;
+    # incluir en él los titulares y los importes es solo del administrador (F6
+    # paso 5, decidido por el usuario), y queda en la auditoría (RNF-16).
+    EXTEND_VEHICLE_REPORT = "extend_vehicle_report"
 
 
 ROLE_PERMISSIONS: dict[Role, frozenset[Action]] = {

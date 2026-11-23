@@ -28,6 +28,8 @@ type ActiveWorkshopValue = {
   canManageSettings: boolean;
   /** Preparar, enviar y anular presupuestos: solo el administrador (especificación §3). */
   canManageQuotes: boolean;
+  /** Titulares e importes en el informe de actuaciones (RF-18): solo el administrador. */
+  canExtendVehicleReport: boolean;
   workshops: Membership[];
   select: (workshopId: string) => void;
 };
@@ -111,6 +113,7 @@ export function ActiveWorkshopProvider({ children }: { children: ReactNode }) {
     canManageOrders: active.data.role === "admin",
     canManageSettings: active.data.role === "admin",
     canManageQuotes: active.data.role === "admin",
+    canExtendVehicleReport: active.data.role === "admin",
     workshops,
     select,
   };

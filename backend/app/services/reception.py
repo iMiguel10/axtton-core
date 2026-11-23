@@ -97,9 +97,13 @@ async def sign(
         except InvalidSignature:
             raise ValidationFailedError("signature_invalid") from None
     else:
-        # En papel, la firma está en el papel; no se guarda ningún trazo.
+        # En papel, la firma está en el papel; no se guarda ningún trazo, ni el
+        # nombre de quien firmó, que el PDF no enseña: sería un dato personal
+        # guardado para nada (lo vio qa-verifier al cerrar F6).
         if signature is not None:
             raise ValidationFailedError("signature_not_expected")
+        if signer_name:
+            raise ValidationFailedError("signer_name_not_expected")
         strokes = None
 
     order = await order_repo.get_for_update(session, order_id)

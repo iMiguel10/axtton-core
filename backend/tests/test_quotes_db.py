@@ -81,7 +81,7 @@ SEND = (
     " global_discount_cents = 0, vat_breakdown = '[]', total_cents = :t,"
     " delivery_business_days = 5,"
     ' vehicle_snapshot = \'{"plate": "1234 ABC", "make": null,'
-    ' "model": null, "odometer_km": null}\''
+    ' "model": null, "odometer_km": 187410}\''
     " WHERE id = :q"
 )
 
@@ -187,6 +187,12 @@ async def test_r6_the_lines_of_a_sent_quote_are_frozen_for_every_role(
         "UPDATE quotes SET total_cents = 1 WHERE id = :sent",
         "UPDATE quotes SET valid_until = valid_until + interval '1 year' WHERE id = :sent",
         "UPDATE quotes SET vat_breakdown = '[{}]' WHERE id = :sent",
+        # En jsonb, 187410 = 187410.0, pero el PDF diría "187.410.0 km": lo
+        # congelado se compara como texto (0026frozenjson, cierre de F6).
+        (
+            "UPDATE quotes SET vehicle_snapshot = jsonb_set(vehicle_snapshot,"
+            " '{odometer_km}', '187410.0') WHERE id = :sent"
+        ),
         (
             "UPDATE quotes SET global_discount_kind = 'amount',"
             " global_discount_value = 0 WHERE id = :sent"

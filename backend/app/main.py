@@ -1,6 +1,8 @@
 from typing import Annotated
 
 from fastapi import Depends, FastAPI, Request
+from fastapi.encoders import jsonable_encoder
+from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -62,6 +64,23 @@ async def app_error_handler(request: Request, exc: AppError) -> JSONResponse:
             headers=retry_after_headers(exc.retry_after),
         )
     return JSONResponse(status_code=exc.status_code, content={"code": exc.code})
+
+
+@app.exception_handler(RequestValidationError)
+async def validation_error_handler(
+    request: Request, exc: RequestValidationError
+) -> JSONResponse:
+    """Un 422 como el de FastAPI, sin lo que mandó quien llama (`input`).
+
+    El manejador por defecto lo devuelve, y un `NaN` o un `Infinity` (que el
+    JSON de Python acepta) hacía estallar la respuesta: un 500 en vez del 422
+    (lo encontró qa-verifier al cerrar F6). Tampoco hace falta devolver a nadie
+    lo que escribió, que puede ser un dato personal."""
+    errors = [
+        {key: value for key, value in error.items() if key != "input"}
+        for error in exc.errors()
+    ]
+    return JSONResponse(status_code=422, content={"detail": jsonable_encoder(errors)})
 
 
 @app.exception_handler(StaleDataError)

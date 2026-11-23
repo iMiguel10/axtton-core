@@ -4,6 +4,25 @@ Lo mantiene [release-please](https://github.com/googleapis/release-please) a par
 
 Las dos primeras versiones se escribieron a mano, resumidas por fase, al empezar a versionar.
 
+## [0.7.0](https://github.com/iMiguel10/axtton-core/compare/v0.6.0...v0.7.0) (2026-11-23)
+
+
+### Novedades
+
+* **delivery:** km al entregar y resumen de entrega con su garantía (F6 paso 4, RF-53, RF-55) ([#43](https://github.com/iMiguel10/axtton-core/issues/43)) ([5117c50](https://github.com/iMiguel10/axtton-core/commit/5117c503cbedf51ddb391e4e4b0b9bf90da11957))
+* **demo:** hojas firmadas, km de entrega e informe con dos titulares en la demo (F6 paso 7) ([#46](https://github.com/iMiguel10/axtton-core/issues/46)) ([3eff600](https://github.com/iMiguel10/axtton-core/commit/3eff60031e449685f1effc0fb349f8360545916c))
+* **portal:** hoja firmada, resumen de entrega y garantía en el portal (F6 paso 6, RF-54, RF-53) ([#45](https://github.com/iMiguel10/axtton-core/issues/45)) ([5380e8f](https://github.com/iMiguel10/axtton-core/commit/5380e8f7b224ba670ba81411539582ecdca21349))
+* **reception:** datos de recepción del resguardo y hoja firmada inmutable (F6 paso 1, RF-51, RF-52) ([#38](https://github.com/iMiguel10/axtton-core/issues/38)) ([ede845a](https://github.com/iMiguel10/axtton-core/commit/ede845a4aa1b5130283c54185a8ffa5890fbb0e8))
+* **reception:** firmar la hoja de recepción en pantalla o en papel (F6 paso 2, RF-52, RF-27) ([#40](https://github.com/iMiguel10/axtton-core/issues/40)) ([0df10b7](https://github.com/iMiguel10/axtton-core/commit/0df10b7a0e3040c997cc52b517eaa83e439d8185))
+* **reception:** PDF de la hoja de recepción, sin firmar o desde su copia firmada (F6 paso 3, RF-51, RF-55) ([#41](https://github.com/iMiguel10/axtton-core/issues/41)) ([b1e4a75](https://github.com/iMiguel10/axtton-core/commit/b1e4a75945794a29d4e27c0ac5bb038438181881))
+* **vehicles:** informe de actuaciones del vehículo (F6 paso 5, RF-18, RNF-52) ([#44](https://github.com/iMiguel10/axtton-core/issues/44)) ([21c0497](https://github.com/iMiguel10/axtton-core/commit/21c04978c031d91406825bf97c58b21c58efb66d))
+
+
+### Correcciones
+
+* **demo:** fechas de la demo en el calendario del taller, también a medianoche ([#42](https://github.com/iMiguel10/axtton-core/issues/42)) ([cc648a3](https://github.com/iMiguel10/axtton-core/commit/cc648a3a1ffb8f219599345ed00fe9ad4850f749))
+* **reception:** cierre de F6, con lo que encontró qa-verifier (F6 paso 8) ([#47](https://github.com/iMiguel10/axtton-core/issues/47)) ([05a198f](https://github.com/iMiguel10/axtton-core/commit/05a198ff8843f3847db92340de76527065212ff4))
+
 ## [0.6.0](https://github.com/iMiguel10/axtton-core/compare/v0.5.0...v0.6.0) (2026-11-18)
 
 

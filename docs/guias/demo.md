@@ -50,7 +50,7 @@ Los talleres de la demo tienen **límites más bajos** que el plan básico (`DEM
 - una cancelada;
 - **presupuestos en cada estado** (F3): un borrador a medias en la orden parada; uno **corregido**, con la versión 1 sustituida y la 2 aprobada por teléfono; uno **rechazado** en persona, cuya orden acabó lista sin reparar; uno **anulado** por un precio equivocado y reenviado, que espera respuesta; un **trabajo adicional** enviado durante la reparación; uno **caducado** sin respuesta, enviado hace más de doce días hábiles; y uno aprobado en una orden ya entregada, que da el importe de "pendientes de cobro";
 - diagnósticos con varias versiones, notas internas y trabajos de varios mecánicos;
-- un vehículo que **cambió de titular** hace un mes (RF-12);
+- un vehículo que **cambió de titular** hace un mes (RF-12), el Clio, con una orden de cada titular;
 - una clienta **anonimizada** a petición suya (RF-15), con su orden conservada, y un cliente archivado.
 
 **Taller Rápido Levante** (Valencia) es pequeño, con dos clientes, dos órdenes y una tarifa: sirve para ver el cambio de taller.
@@ -62,6 +62,13 @@ Cada taller tiene su dirección corta ([decisión 0007](../decisiones/0007-nombr
 La demo desplegada **no tiene correo**, así que nadie recibiría el enlace mágico. Con `DEMO_PORTAL_ENTRY=true` (en desarrollo lo trae `.env.example`), la entrada de cada taller ofrece, debajo del formulario, entrar como hasta cuatro de sus clientes de la demo. Por dentro se emite un enlace de verdad y se consume en el acto: la sesión es la misma que la del correo, con sus 30 días y su cerradura. Sin la variable, esas dos rutas responden 404, y nunca sirven para un cliente con otro dominio. **No la actives en una instalación de verdad.**
 
 En Talleres Martínez, la revisión de la flota de Transportes Navarro (pendiente de cobro) se **aprobó desde el portal**: en su ficha, el administrador ve la IP (una de ejemplo, `203.0.113.24`) y el navegador. Los presupuestos que esperan respuesta se pueden aceptar o rechazar entrando como su cliente.
+
+## Los documentos (F6)
+
+- **Hojas de recepción firmadas** (RF-52): la del Clio cuando era de José y la del Model 3 de Miguel Ángel, que está listo para recoger, se firmaron **en pantalla** (la firma se ve en el PDF). La revisión de la flota de Transportes Navarro se marcó **firmada en papel**. Las demás órdenes tienen la hoja sin firmar, para imprimirla desde su ficha.
+- **Km al entregar** (RF-53): cada orden entregada con km a la entrada tiene los de la entrega, y su **resumen de entrega** da la garantía hasta una fecha o unos km, lo que llegue antes. La lista sin reparar que se entregó no tiene garantía de reparación.
+- **Informe de actuaciones** (RF-18): el del Clio (9014 GZX) tiene la orden de José, ya entregada con su presupuesto aprobado, y las dos de Elena. Con "Incluir el cliente de cada orden" se ve el cambio de titular.
+- **En el portal** (RF-54), entrando como José se descarga la hoja firmada y el resumen de su orden, con la garantía. Entrando como Elena no aparece: aquella orden no es suya (RF-44).
 
 ## Los avisos al cliente
 

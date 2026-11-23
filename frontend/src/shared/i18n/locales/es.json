@@ -734,7 +734,8 @@
       "receptionSheet": "Hoja de recepción firmada",
       "deliverySummary": "Resumen de entrega",
       "warranty": "La garantía de la reparación dura hasta el {{date}}.",
-      "warrantyKm": "La garantía de la reparación dura hasta el {{date}} o hasta los {{km}} km, lo que llegue antes."
+      "warrantyKm": "La garantía de la reparación dura hasta el {{date}} o hasta los {{km}} km, lo que llegue antes.",
+      "warrantyEnded": "La garantía de la reparación terminó el {{date}}."
     },
     "noWorkshop": {
       "title": "Entra desde tu taller",

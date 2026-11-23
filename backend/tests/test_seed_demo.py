@@ -18,6 +18,7 @@ from app.core.config import get_settings
 from app.scripts import seed_demo
 from tests.conftest import Account, Engines
 from tests.test_portal_demo import demo_entry
+from tests.test_quote_pdf import text_of
 
 MakeAccount = Callable[[str], Awaitable[Account]]
 __all__ = ["demo_entry"]
@@ -157,6 +158,44 @@ async def test_it_can_run_every_night_and_leaves_a_working_demo(
     rates = (await client.get("/api/v1/workshop/labor-rates", headers=main)).json()
     assert [r["is_default"] for r in rates].count(True) == 1
 
+    # F6: hojas firmadas en pantalla y en papel, las entregadas con sus km, y el
+    # Clio con órdenes de sus dos titulares para el informe de actuaciones.
+    details = [
+        (await client.get(f"/api/v1/workshop/orders/{o['id']}", headers=main)).json()
+        for o in orders
+    ]
+    methods = sorted(
+        d["reception_sheet"]["signature_method"]
+        for d in details
+        if d["reception_sheet"]
+    )
+    assert methods == ["paper", "screen", "screen"]
+    delivered = [d for d in details if d["status"] == "delivered"]
+    assert all(d["delivered_odometer_km"] for d in delivered if d["odometer_km"])
+    signed = next(
+        d
+        for d in delivered
+        if d["reception_sheet"] and d["reception_sheet"]["signature_method"] == "screen"
+    )
+    for document in ("reception-sheet/pdf", "delivery-summary/pdf"):
+        found = await client.get(
+            f"/api/v1/workshop/orders/{signed['id']}/{document}", headers=main
+        )
+        assert found.status_code == 200, (document, found.text)
+        # La copia congelada lleva el número de la orden ya renumerada.
+        assert signed["code"] in text_of(found)
+    clio = next(
+        d["vehicle"]["id"] for d in details if d["vehicle"]["plate"] == "9014 GZX"
+    )
+    report = text_of(
+        await client.get(
+            f"/api/v1/workshop/vehicles/{clio}/report/pdf",
+            params={"owners": "true"},
+            headers=main,
+        )
+    )
+    assert "José María Sánchez" in report and "Elena Romero Castillo" in report
+
     # F4: cada taller tiene su dirección corta, y la flota aprobó desde el portal:
     # el administrador ve su IP y su navegador (RF-36).
     for slug in ("talleres-martinez", "rapido-levante"):
@@ -215,11 +254,12 @@ async def test_it_can_run_every_night_and_leaves_a_working_demo(
             await conn.scalars(
                 text(
                     "SELECT tgenabled::text FROM pg_trigger WHERE tgname IN"
-                    " ('quotes_frozen_after_send', 'quote_decisions_frozen')"
+                    " ('quotes_frozen_after_send', 'quote_decisions_frozen',"
+                    " 'reception_sheets_frozen')"
                 )
             )
         ).all()
-    assert (anonymized, trigger, frozen) == (1, "O", ["O", "O"])
+    assert (anonymized, trigger, frozen) == (1, "O", ["O", "O", "O"])
 
 
 @pytest.mark.asyncio

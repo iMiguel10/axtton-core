@@ -37,6 +37,7 @@ docs/guias/demo.md.
 
 import argparse
 import asyncio
+import math
 import os
 from collections.abc import Awaitable, Callable
 from dataclasses import dataclass, field
@@ -72,6 +73,7 @@ from app.core.supertokens import init_supertokens
 from app.domain.business_days import quote_valid_until
 from app.domain.limits import DEMO_PLAN, limit_column
 from app.domain.quotes import DecisionChannel, LineKind, Outcome
+from app.domain.reception import SignatureMethod
 from app.models import Quote, WorkOrder
 from app.platform.db import platform_engine
 from app.repositories import quotes as quote_repo
@@ -79,6 +81,7 @@ from app.repositories import work_orders as order_repo
 from app.scripts.reset_data import truncate_all
 from app.services import clients as client_service
 from app.services import quotes as quote_service
+from app.services import reception as reception_service
 from app.services import settings as settings_service
 from app.services import vehicles as vehicle_service
 from app.services import work_orders as order_service
@@ -402,6 +405,21 @@ class Builder:
             )
             self.shop.ownerships.append((vehicle_id, self.shop.clients[owner], since))
 
+    async def transfer(self, vehicle: str, to: str, since: int) -> None:
+        """Cambia el titular después de abrirle órdenes al anterior: así el
+        vehículo tiene historia de dos titulares (RF-13, RF-18)."""
+        vehicle_id = self.shop.vehicles[vehicle]
+        current = await vehicle_service.get_vehicle(self.session, vehicle_id)
+        await vehicle_service.change_owner(
+            self.session,
+            self.shop.id,
+            self.shop.user("laura"),
+            vehicle_id,
+            expected_version=current.vehicle.version,
+            client_id=self.shop.clients[to],
+        )
+        self.shop.ownerships.append((vehicle_id, self.shop.clients[to], since))
+
     async def order(
         self,
         vehicle: str,
@@ -453,6 +471,42 @@ class Builder:
                 expected_version=await _version(session, order_id),
                 to_status=to,
                 note=note,
+            )
+
+        return step
+
+    def deliver(self, km: int | None = None) -> Step:
+        """Entregar, con los km del cuentakilómetros (RF-53)."""
+
+        async def step(session: AsyncSession, order_id: UUID) -> None:
+            await order_service.change_status(
+                session,
+                order_id,
+                self.shop.employee("laura"),
+                "admin",
+                expected_version=await _version(session, order_id),
+                to_status="delivered",
+                note=None,
+                odometer_km=km,
+            )
+
+        return step
+
+    def sign(self, signer: str | None = None) -> Step:
+        """Firmar la hoja de recepción (RF-52): en pantalla quien se nombra, con
+        unos trazos de verdad; sin nombre, marcada como firmada en papel."""
+
+        async def step(session: AsyncSession, order_id: UUID) -> None:
+            await reception_service.sign(
+                session,
+                self.shop.id,
+                self.shop.employee("laura"),
+                self.shop.user("laura"),
+                order_id,
+                expected_version=await _version(session, order_id),
+                method=SignatureMethod.SCREEN if signer else SignatureMethod.PAPER,
+                signer_name=signer,
+                signature=_signature() if signer else None,
             )
 
         return step
@@ -699,7 +753,14 @@ async def _main_workshop(b: Builder) -> None:
         address="Polígono Campollano, calle E, 8, Albacete",
         notes="Flota de furgonetas. Facturan a 30 días.",
     )
-    await b.client("jose", name="José María Sánchez", phone="633 445 566")
+    # Con email: en el portal de la demo descarga la hoja firmada y el resumen
+    # de la orden de su antiguo Clio (F6).
+    await b.client(
+        "jose",
+        name="José María Sánchez",
+        phone="633 445 566",
+        email="jose.sanchez@demo.example.com",
+    )
     await b.client(
         "elena",
         name="Elena Romero Castillo",
@@ -780,9 +841,10 @@ async def _main_workshop(b: Builder) -> None:
         fuel="diesel",
     )
     # Cambió de manos: era de José y se lo vendió a Elena hace un mes (RF-12).
+    # Su orden de cuando era de José, más abajo, antes del cambio.
     await b.vehicle(
         "clio",
-        [("jose", 1500), ("elena", 30)],
+        [("jose", 1500)],
         plate="9014 GZX",
         make="Renault",
         model="Clio",
@@ -853,6 +915,43 @@ async def _main_workshop(b: Builder) -> None:
         year=2020,
         fuel="diesel",
     )
+
+    # El Clio cuando era de José: la hoja firmada en pantalla, el presupuesto
+    # aprobado con sus piezas y la entrega con los km. Luego se lo vende a Elena:
+    # el informe de actuaciones (RF-18) tiene dos titulares que enseñar.
+    await b.order(
+        "clio",
+        opened=120,
+        last=116,
+        reason="Ruido metálico en la suspensión delantera al pasar baches.",
+        odometer_km=139800,
+        fuel_level="half",
+        visible_damage="Rayón en la aleta delantera izquierda.",
+        belongings="Gafas de sol en la guantera.",
+        steps=(
+            b.sign("José María Sánchez"),
+            b.move("diagnosing"),
+            b.diagnose(
+                "javier",
+                "Bieletas de la barra estabilizadora con holgura. Se cambian las dos.",
+            ),
+            b.quote(
+                line(
+                    "part", "Bieleta estabilizadora", "2", "28.50", reference="SB-2210"
+                ),
+                line("labor", "Mecánica", "1", "45.50"),
+                delivery=2,
+            ),
+            b.send(),
+            b.decide("approved", "in_person"),
+            b.move("in_repair", by="javier"),
+            b.work("javier", "Sustitución de las dos bieletas", 117, "1.0"),
+            b.move("ready", by="javier"),
+            b.deliver(139_820),
+            b.pay("paid", "card", 124, days_ago=116),
+        ),
+    )
+    await b.transfer("clio", "elena", 30)
 
     # Recibida hoy, sin tocar: la que acaba de llegar al mostrador.
     await b.order(
@@ -991,7 +1090,7 @@ async def _main_workshop(b: Builder) -> None:
                 "javier", "Sustitución del kit de embrague y volante bimasa", 36, "6.0"
             ),
             b.move("ready", by="javier"),
-            b.move("delivered"),
+            b.deliver(86_940),
             b.pay("paid", "transfer", 890, days_ago=30),
         ),
     )
@@ -1017,8 +1116,11 @@ async def _main_workshop(b: Builder) -> None:
         last=0,
         reason="Avisos intermitentes del sensor de presión de neumáticos.",
         odometer_km=41300,
+        fuel_level="three_quarters",
+        visible_damage="Sin daños visibles.",
         responsible_employee_id=b.shop.employee("sergio"),
         steps=(
+            b.sign("Miguel Ángel Torres"),
             b.move("diagnosing"),
             b.diagnose(
                 "sergio",
@@ -1073,6 +1175,8 @@ async def _main_workshop(b: Builder) -> None:
         type_="maintenance",
         odometer_km=165500,
         steps=(
+            # Firmada en papel por el conductor de la flota (RF-52).
+            b.sign(),
             b.move("diagnosing"),
             b.quote(
                 line("labor", "Mecánica", "2.5", "45.50"),
@@ -1086,7 +1190,7 @@ async def _main_workshop(b: Builder) -> None:
             b.move("in_repair", by="javier"),
             b.work("javier", "Revisión completa, filtros y aceite", 21, "2.5"),
             b.move("ready", by="javier"),
-            b.move("delivered"),
+            b.deliver(165_530),
             b.note(
                 "laura", "Transportes Navarro paga a 30 días: reclamar a fin de mes."
             ),
@@ -1110,7 +1214,7 @@ async def _main_workshop(b: Builder) -> None:
             b.work("sergio", "Medición de consumo en reposo", 5, "1.5"),
             b.work("sergio", "Sustitución del módulo del portón", 4, "1.0"),
             b.move("ready", by="sergio"),
-            b.move("delivered"),
+            b.deliver(119_812),
         ),
     )
     # Entregadas y cobradas, de cada forma de pago.
@@ -1128,7 +1232,7 @@ async def _main_workshop(b: Builder) -> None:
                 "sergio", "Revisión de luces y sustitución de dos lámparas", 11, "0.5"
             ),
             b.move("ready", by="sergio"),
-            b.move("delivered"),
+            b.deliver(142_905),
             b.pay("paid", "card", 65, days_ago=10),
         ),
     )
@@ -1144,7 +1248,7 @@ async def _main_workshop(b: Builder) -> None:
             b.move("in_repair", by="sergio"),
             b.work("sergio", "Revisión de mantenimiento", 196, "1.5"),
             b.move("ready", by="sergio"),
-            b.move("delivered"),
+            b.deliver(45_110),
             b.pay("paid", "cash", 180, days_ago=195),
         ),
     )
@@ -1161,7 +1265,7 @@ async def _main_workshop(b: Builder) -> None:
             b.move(
                 "ready", note="Sensor de temperatura exterior suelto: se reconecta."
             ),
-            b.move("delivered"),
+            b.deliver(185_900),
             b.pay("no_charge"),
         ),
     )
@@ -1236,7 +1340,7 @@ async def _main_workshop(b: Builder) -> None:
             b.move("in_repair", by="javier"),
             b.work("javier", "Sustitución de pastillas y discos delanteros", 86, "1.5"),
             b.move("ready", by="javier"),
-            b.move("delivered"),
+            b.deliver(132_115),
             b.pay("paid", "card", 210, days_ago=85),
         ),
     )
@@ -1306,7 +1410,7 @@ async def _small_workshop(b: Builder) -> None:
             b.no_quote("fixed_price"),
             b.move("in_repair", by="marta"),
             b.move("ready", by="marta"),
-            b.move("delivered"),
+            b.deliver(),
         ),
     )
 
@@ -1332,6 +1436,20 @@ def line(
         int(Decimal(euros) * 100),
         discount,
         vat,
+    )
+
+
+def _signature() -> reception_service.ScreenSignature:
+    """Una firma a mano alzada en un lienzo de 600 x 200: un bucle, un trazo
+    ondulado y la rúbrica de debajo."""
+    loop = [
+        [60 + 40 * math.cos(t / 6) + t * 2.2, 100 + 45 * math.sin(t / 6)]
+        for t in range(40)
+    ]
+    wave = [[150 + x * 5.5, 95 + 28 * math.sin(x / 3.2)] for x in range(60)]
+    flourish = [[120 + x * 7, 160 - 0.012 * (x - 30) ** 2] for x in range(55)]
+    return reception_service.ScreenSignature(
+        width=600, height=200, strokes=[loop, wave, flourish]
     )
 
 
@@ -1410,6 +1528,20 @@ async def _backdate(shops: tuple[Shop, ...]) -> None:
                 await conn.execute(
                     text(f"ALTER TABLE {table} ENABLE TRIGGER {trigger}")
                 )
+            # Las hojas firmadas (F6), unos minutos después de abrir su orden:
+            # la hoja firmada no cambia con ningún rol (`reception_sheets_frozen`).
+            await conn.execute(
+                text(
+                    "ALTER TABLE reception_sheets DISABLE TRIGGER reception_sheets_frozen"
+                )
+            )
+            for shop in shops:
+                await _backdate_sheets(conn, shop)
+            await conn.execute(
+                text(
+                    "ALTER TABLE reception_sheets ENABLE TRIGGER reception_sheets_frozen"
+                )
+            )
             # Los avisos (F5), a la hora del cambio que los provocó: su hora de
             # creación no cambia con cualquier rol, y uno que el worker ya
             # terminó tampoco cambia nada (`notifications_transitions` y
@@ -1485,6 +1617,25 @@ async def _backdate_order(conn: Any, order_id: UUID, opened: int, last: int) -> 
             " WHERE o.id = :o"
         ),
         {"o": order_id},
+    )
+
+
+async def _backdate_sheets(conn: Any, shop: Shop) -> None:
+    """La firma, seis minutos después de recibir el coche, y en su copia
+    congelada la hora de recepción y el número de la orden ya movida y
+    renumerada: el PDF de la hoja firmada sale de esa copia (RF-55)."""
+    await conn.execute(
+        text(
+            "UPDATE reception_sheets r SET"
+            " signed_at = o.created_at + interval '6 minutes',"
+            " snapshot = jsonb_set(jsonb_set(jsonb_set(r.snapshot,"
+            "  '{order,opened_at}', to_jsonb(o.created_at)),"
+            "  '{order,number}', to_jsonb(o.number)),"
+            "  '{order,year}', to_jsonb(o.year))"
+            " FROM work_orders o"
+            " WHERE o.id = r.work_order_id AND r.workshop_id = :w"
+        ),
+        {"w": shop.id},
     )
 
 

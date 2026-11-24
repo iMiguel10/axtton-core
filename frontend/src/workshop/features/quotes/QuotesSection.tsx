@@ -25,6 +25,7 @@ import {
   parseEurToCents,
   parsePercentToBp,
 } from "@/shared/money";
+import { formatQuantity, parseQuantity } from "@/shared/quantity";
 
 import { useActiveWorkshop } from "../session/ActiveWorkshop";
 import { settingsApi } from "../settings/api";
@@ -509,18 +510,6 @@ type LineDraft = {
 
 let nextKey = 0;
 const newKey = () => `line-${nextKey++}`;
-
-/** "1.500" → "1,5": la cantidad como se escribiría. */
-function formatQuantity(value: string): string {
-  return String(Number(value)).replace(".", ",");
-}
-
-/** "1,5" → "1.5"; nulo si no es una cantidad positiva con tres decimales como mucho. */
-function parseQuantity(value: string): string | null {
-  const normalized = value.trim().replace(",", ".");
-  if (!/^\d{1,7}(\.\d{1,3})?$/.test(normalized) || Number(normalized) <= 0) return null;
-  return normalized;
-}
 
 function toDraftLines(quote: Quote): LineDraft[] {
   return quote.lines.map((line) => ({

@@ -6,6 +6,7 @@ import {
   FileText,
   IdCard,
   LayoutDashboard,
+  Package,
   ScrollText,
   ShieldCheck,
   Store,
@@ -46,6 +47,9 @@ const HomePage = lazy(() => import("./features/home/HomePage").then((m) => ({ de
 const OrderDetailPage = lazy(() => import("./features/orders/OrderDetailPage").then((m) => ({ default: m.OrderDetailPage })));
 const UnpaidOrdersPage = lazy(() => import("./features/orders/UnpaidOrdersPage").then((m) => ({ default: m.UnpaidOrdersPage })));
 const OrderNewPage = lazy(() => import("./features/orders/OrderNewPage").then((m) => ({ default: m.OrderNewPage })));
+const PartDetailPage = lazy(() => import("./features/parts/PartDetailPage").then((m) => ({ default: m.PartDetailPage })));
+const PartNewPage = lazy(() => import("./features/parts/PartNewPage").then((m) => ({ default: m.PartNewPage })));
+const PartsPage = lazy(() => import("./features/parts/PartsPage").then((m) => ({ default: m.PartsPage })));
 const OrdersPage = lazy(() => import("./features/orders/OrdersPage").then((m) => ({ default: m.OrdersPage })));
 const VehicleDetailPage = lazy(() => import("./features/vehicles/VehicleDetailPage").then((m) => ({ default: m.VehicleDetailPage })));
 const VehicleNewPage = lazy(() => import("./features/vehicles/VehicleNewPage").then((m) => ({ default: m.VehicleNewPage })));
@@ -131,6 +135,7 @@ function StaffRoutes() {
     canManageClients,
     canManageOrders,
     canManageSettings,
+    canManageParts,
   } = useActiveWorkshop();
   const groups: NavGroup[] = [
     {
@@ -142,6 +147,7 @@ function StaffRoutes() {
         { to: "/orders/unpaid", label: t("nav.unpaid"), icon: Wallet },
         { to: "/clients", label: t("nav.clients"), icon: Users },
         { to: "/vehicles", label: t("nav.vehicles"), icon: Car },
+        { to: "/parts", label: t("nav.parts"), icon: Package },
       ],
     },
     ...(canManageEmployees || canViewAudit || canManageSettings
@@ -185,6 +191,7 @@ function StaffRoutes() {
                   { to: "/vehicles/new", label: t("vehicles.new") },
                 ]
               : []),
+            ...(canManageParts ? [{ to: "/parts/new", label: t("parts.new") }] : []),
             { to: "/account", label: t("nav.account") },
           ]}
         />
@@ -205,6 +212,9 @@ function StaffRoutes() {
         <Route path="/vehicles" element={<VehiclesPage />} />
         {canManageClients && <Route path="/vehicles/new" element={<VehicleNewPage />} />}
         <Route path="/vehicles/:vehicleId" element={<VehicleDetailPage />} />
+        <Route path="/parts" element={<PartsPage />} />
+        {canManageParts && <Route path="/parts/new" element={<PartNewPage />} />}
+        <Route path="/parts/:partId" element={<PartDetailPage />} />
         {canManageSettings && <Route path="/settings" element={<SettingsPage />} />}
         {canManageEmployees && <Route path="/employees" element={<EmployeesPage />} />}
         {canViewAudit && (

@@ -23,6 +23,10 @@ class Resource(StrEnum):
     VEHICLES = "vehicles"
     # Las órdenes se acumulan sin fin: se limitan por mes, el del taller.
     ORDERS_PER_MONTH = "orders_per_month"
+    # Las piezas del catálogo (F7, RF-90), acumuladas como los clientes: una
+    # archivada ocupa su fila. Más de 10.000 indica una importación masiva, que
+    # no está soportada (especificación §10).
+    PARTS = "parts"
 
 
 def limit_column(resource: Resource) -> str:
@@ -37,6 +41,7 @@ BASIC_PLAN: dict[Resource, int] = {
     Resource.CLIENTS: 1000,
     Resource.VEHICLES: 1500,
     Resource.ORDERS_PER_MONTH: 200,
+    Resource.PARTS: 10000,
 }
 
 # La demo pública (app/scripts/seed_demo.py): basta para probarlo todo y no deja
@@ -47,6 +52,7 @@ DEMO_PLAN: dict[Resource, int] = {
     Resource.CLIENTS: 200,
     Resource.VEHICLES: 300,
     Resource.ORDERS_PER_MONTH: 100,
+    Resource.PARTS: 300,
 }
 
 # El tope de lo que el superadministrador puede poner: más es un error al
@@ -60,6 +66,7 @@ LIMIT_REACHED: dict[Resource, str] = {
     Resource.CLIENTS: "client_limit_reached",
     Resource.VEHICLES: "vehicle_limit_reached",
     Resource.ORDERS_PER_MONTH: "order_limit_reached",
+    Resource.PARTS: "part_limit_reached",
 }
 
 

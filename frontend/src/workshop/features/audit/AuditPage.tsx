@@ -137,6 +137,9 @@ function show(t: TFunction, field: string, value: unknown): string {
   if (field === "paid_amount_cents" && typeof value === "number") return formatEur(value);
   if (field === "total_cents" && typeof value === "number") return formatEur(value);
   if (field === "hourly_price_cents" && typeof value === "number") return formatEur(value);
+  if (field === "cost_price_cents" && typeof value === "number") return formatEur(value);
+  if (field === "sale_price_cents" && typeof value === "number") return formatEur(value);
+  if (field === "vat_bp" && typeof value === "number") return formatPercentBp(value);
   if (field === "default_vat_bp" && typeof value === "number") return formatPercentBp(value);
   if (field === "payment_status") return t(`payment.statuses.${String(value)}`);
   if (field === "payment_method") return t(`payment.methods.${String(value)}`);

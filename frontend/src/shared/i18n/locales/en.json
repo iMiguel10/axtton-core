@@ -69,7 +69,9 @@
       "quote_decided": "Quote reply",
       "reception_signed": "Reception sheet signed",
       "reception_corrected": "Reception corrected after signing",
-      "vehicle_report_extended": "Service history report with names or amounts"
+      "vehicle_report_extended": "Service history report with names or amounts",
+      "part_created": "Part added",
+      "part_prices_changed": "Part prices changed"
     },
     "fields": {
       "email": "Email",
@@ -112,7 +114,12 @@
       "signature_method": "Signature",
       "fields": "Details",
       "owners": "Owners",
-      "amounts": "Amounts"
+      "amounts": "Amounts",
+      "part": "Part",
+      "cost_price_cents": "Cost price",
+      "sale_price_cents": "Sale price",
+      "vat_bp": "VAT",
+      "max_parts": "Part limit"
     },
     "receptionFields": {
       "odometer_km": "Mileage",
@@ -140,7 +147,8 @@
     "signOut": "Sign out",
     "unpaid": "Awaiting payment",
     "settings": "Workshop",
-    "quotes": "Quotes"
+    "quotes": "Quotes",
+    "parts": "Parts"
   },
   "auth": {
     "tagline": "Run the workshop and follow every repair, in one place.",
@@ -173,7 +181,9 @@
     "number": "Enter a whole number within a sensible range.",
     "percent": "Enter a percentage between 0 and 100, for example 21.",
     "validity": "Between 12 and 120 business days.",
-    "delivery": "Between 1 and 250 business days, or empty."
+    "delivery": "Between 1 and 250 business days, or empty.",
+    "quantity": "Enter a quantity, for example 2 or 1.5 (three decimals at most).",
+    "warranty": "Between 4 and 120 months, or empty."
   },
   "invitation": {
     "title": "Invitation",
@@ -849,7 +859,12 @@
     "work_order_not_delivered": "The order has not been delivered yet.",
     "vehicle_report_extended_forbidden": "Only the administrator can include owners or amounts in the report.",
     "reception_sheet_not_found": "This order has no signed reception sheet.",
-    "signer_name_not_expected": "On paper, the signer's name is not stored: the signature and the name are on the paper."
+    "signer_name_not_expected": "On paper, the signer's name is not stored: the signature and the name are on the paper.",
+    "part_not_found": "That part does not exist in this workshop.",
+    "part_reference_taken": "There is already a part with that reference in the catalog (it may be archived).",
+    "part_archived": "The part is archived: unarchive it to change it.",
+    "part_min_stock_without_stock": "A minimum stock only makes sense if the part's stock is counted.",
+    "part_limit_reached": "The workshop has reached its catalog part limit. To raise it, contact whoever runs the platform."
   },
   "palette": {
     "open": "Search the workshop",
@@ -868,7 +883,8 @@
       "employees": "Staff records",
       "clients": "Clients",
       "vehicles": "Vehicles",
-      "orders_per_month": "Orders per month"
+      "orders_per_month": "Orders per month",
+      "parts": "Catalog parts"
     }
   },
   "settings": {
@@ -1150,5 +1166,50 @@
     },
     "pdfSigned": "Signed sheet as PDF",
     "pdfToSign": "Print to sign"
+  },
+  "parts": {
+    "new": "New part",
+    "create": "Create part",
+    "created": "Part created.",
+    "saved": "Changes saved.",
+    "search": "Search parts",
+    "searchPlaceholder": "Reference, brand or description",
+    "showArchived": "Show archived",
+    "empty": "There are no parts in the catalog yet.",
+    "noArchived": "There are no archived parts.",
+    "noResults": "No part matches the search.",
+    "loadMore": "Show more",
+    "reference": "Reference",
+    "description": "Description",
+    "brand": "Brand (optional)",
+    "brandShort": "Brand",
+    "costPrice": "Cost price before VAT (optional)",
+    "costPriceShort": "Cost",
+    "salePrice": "Sale price before VAT",
+    "salePriceShort": "Price",
+    "vat": "VAT (%)",
+    "condition": "Part condition",
+    "conditionHint": "A part that is not new is flagged in the quote: approving it is the client's consent (RF-38).",
+    "conditions": {
+      "new": "New",
+      "used": "Used",
+      "reconditioned": "Reconditioned",
+      "non_specific": "Not model-specific"
+    },
+    "warranty": "Own warranty in months (optional)",
+    "warrantyHint": "Only if it exceeds the 3 months of the repair warranty (4 to 120).",
+    "warrantyMonths_one": "{{count}} month warranty",
+    "warrantyMonths_other": "{{count}} months warranty",
+    "tracksStock": "Count its stock",
+    "tracksStockHint": "A loose screw is not counted; a battery is.",
+    "noStock": "Stock not tracked",
+    "minStock": "Minimum stock (optional)",
+    "minStockHint": "The list will flag the part when it falls below.",
+    "archived": "Archived",
+    "archive": "Archive",
+    "unarchive": "Unarchive",
+    "confirmArchive": "Archive {{name}}? It will no longer be offered when picking parts, but nothing is deleted.",
+    "pricesHidden": "The workshop does not show sale prices.",
+    "readOnly": "Only the administrator changes the catalog and its prices."
   }
 }

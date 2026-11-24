@@ -281,7 +281,7 @@ Taller (organización, el "tenant")
 
 ### Inventario (RF-90…)
 
-- **RF-90** Mantener un catálogo de piezas: referencia, descripción, marca, precio de coste, precio de venta, IVA y si se controla su stock.
+- **RF-90** Mantener un catálogo de piezas: referencia, descripción, marca, precio de coste, precio de venta, IVA y si se controla su stock. *Precisión al construirlo (F7 paso 1, decidido por el usuario):* la referencia es única en el taller sin distinguir mayúsculas, también entre las archivadas (identifica la pieza en su historial); la pieza lleva además su estado (nueva, usada, reacondicionada o no específica, RF-38), que copiarán las líneas de presupuesto, y una garantía propia opcional, de 4 a 120 meses, solo si supera la de la reparación (RF-53). Sin IVA, toma el del taller. No se borra: se archiva. Su alta y cada cambio de precio o de IVA quedan en la auditoría (RNF-16); el precio de coste solo lo ve el administrador, y el de venta, el mecánico si el taller no lo desactiva.
 - **RF-91** Registrar entradas de stock (llega mercancía) con cantidad, coste unitario y nota.
 - **RF-92** Registrar ajustes de stock (recuento, rotura, pérdida) con cantidad positiva o negativa y motivo obligatorio.
 - **RF-93** Registrar en una orden las piezas usadas. Si la pieza controla stock, genera una salida ligada a la orden. Quitar una pieza usada por error genera el movimiento contrario; nunca se borra el original.
@@ -503,7 +503,7 @@ Existen desde el primer día, aunque no se cobre por ellos. Los de cuenta los pu
 
 | Otros límites | Valor inicial | Motivo |
 |---|---|---|
-| Piezas en el catálogo | 10.000 | Un catálogo básico; más indica una importación masiva que no está soportada |
+| Piezas en el catálogo | 10.000 | Un catálogo básico; más indica una importación masiva que no está soportada. *Al construirlo (F7 paso 1):* es un límite más del plan (`max_parts`), que el superadministrador ajusta por taller como los de la tabla de arriba; las archivadas cuentan, como los clientes, y la demo tiene 300 |
 | Líneas por versión de presupuesto | 200 | Un presupuesto de taller no tiene más; protege el PDF y el cálculo de totales |
 | Versiones de presupuesto por orden | 20 | Más indica un uso anómalo |
 | Intentos de inicio de sesión | 10 por hora por email y 30 por minuto por IP | Frenar el ataque por fuerza bruta sin bloquear al usuario legítimo: se frena, nunca se bloquea la cuenta. *Al construirlo en F1 se fijó por hora y se añadió la IP, holgada porque el personal de un taller comparte la suya* |

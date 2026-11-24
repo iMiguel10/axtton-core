@@ -64,6 +64,7 @@ class Workshop(IdMixin, CreatedAtMixin, UpdatedAtMixin, Base):
         CheckConstraint("max_clients > 0", name="max_clients"),
         CheckConstraint("max_vehicles > 0", name="max_vehicles"),
         CheckConstraint("max_orders_per_month > 0", name="max_orders_per_month"),
+        CheckConstraint("max_parts > 0", name="max_parts"),
         # El nombre corto del portal (decisión 0007): una dirección válida, en
         # minúsculas. Las palabras reservadas, en domain/portal.py.
         CheckConstraint(
@@ -109,6 +110,8 @@ class Workshop(IdMixin, CreatedAtMixin, UpdatedAtMixin, Base):
     max_clients: Mapped[int] = mapped_column(Integer, server_default="1000")
     max_vehicles: Mapped[int] = mapped_column(Integer, server_default="1500")
     max_orders_per_month: Mapped[int] = mapped_column(Integer, server_default="200")
+    # F7, migración 0027parts: las piezas del catálogo.
+    max_parts: Mapped[int] = mapped_column(Integer, server_default="10000")
     version: Mapped[int] = mapped_column(server_default="1")
 
     __mapper_args__ = {"version_id_col": version}  # noqa: RUF012

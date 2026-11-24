@@ -1,6 +1,7 @@
 """Importa todos los modelos para que queden registrados en Base.metadata."""
 
 from app.models.documents import ReceptionSheet
+from app.models.inventory import Part
 from app.models.notifications import Notification
 from app.models.operations import (
     Client,
@@ -34,6 +35,7 @@ __all__ = [
     "Invitation",
     "LaborRate",
     "Notification",
+    "Part",
     "PortalLink",
     "Quote",
     "QuoteDecision",

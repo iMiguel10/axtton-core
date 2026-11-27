@@ -46,6 +46,7 @@ WORKSHOP_TABLES = {
     "notifications": "workshop_id",
     "reception_sheets": "workshop_id",
     "parts": "workshop_id",
+    "stock_movements": "workshop_id",
 }
 
 # Tablas sobre las que axtton_app no tiene DELETE: no se borran nunca, ni por un
@@ -72,6 +73,8 @@ NO_DELETE = {
     "reception_sheets",
     # Una pieza se archiva, no se borra (0027parts).
     "parts",
+    # El libro de stock solo crece (0028stockmovements, RNF-12).
+    "stock_movements",
 }
 # La columna que axtton_app puede actualizar, si no puede todas.
 UPDATABLE_COLUMN = {
@@ -230,6 +233,14 @@ async def seeded(engines: Engines, two_workshops: TwoWorkshops) -> Seeded:
             )
             await conn.execute(
                 text(
+                    "INSERT INTO stock_movements (workshop_id, part_id, kind,"
+                    " quantity, unit_cost_cents, employee_id)"
+                    " SELECT :w, id, 'in', 1, 100, :e FROM parts WHERE workshop_id = :w"
+                ),
+                {"w": workshop, "e": worklog["e"]},
+            )
+            await conn.execute(
+                text(
                     "INSERT INTO workshop_logos (workshop_id, content, width, height)"
                     " VALUES (:w, 'png', 1, 1)"
                 ),
@@ -338,6 +349,7 @@ async def test_r2_with_workshop_a_every_table_returns_only_rows_of_a(
             "diagnosis_versions",
             "internal_notes",
             "quote_decisions",
+            "stock_movements",
         }
     ],
 )

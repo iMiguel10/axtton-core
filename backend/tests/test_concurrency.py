@@ -1099,3 +1099,208 @@ async def test_two_parts_at_once_with_one_free_slot_leave_one_out(
             text("SELECT count(*) FROM parts WHERE workshop_id = :w"), {"w": a}
         )
     assert count == 1
+
+
+# --- El libro de stock (F7 paso 2) -------------------------------------------
+
+
+async def stock_part(engines: Engines, workshop: UUID, initial: str) -> UUID:
+    """Una pieza que se cuenta, con una entrada inicial."""
+    async with engines.platform.begin() as conn:
+        part: UUID = await conn.scalar(
+            text(
+                "INSERT INTO parts (workshop_id, reference, description,"
+                " sale_price_cents, vat_bp) VALUES (:w, 'BAT', 'Batería', 9500, 2100)"
+                " RETURNING id"
+            ),
+            {"w": workshop},
+        )
+        employee = await conn.scalar(
+            text("SELECT id FROM employees WHERE workshop_id = :w"), {"w": workshop}
+        )
+        await conn.execute(
+            text(
+                "INSERT INTO stock_movements (workshop_id, part_id, kind, quantity,"
+                " unit_cost_cents, employee_id) VALUES (:w, :p, 'in', :q, 6000, :e)"
+            ),
+            {"w": workshop, "p": part, "q": initial, "e": employee},
+        )
+    return part
+
+
+async def stock_now(engines: Engines, part: UUID) -> object:
+    async with engines.platform.connect() as conn:
+        return await conn.scalar(
+            text("SELECT sum(quantity) FROM stock_movements WHERE part_id = :p"),
+            {"p": part},
+        )
+
+
+@pytest.mark.asyncio
+async def test_rnf13_two_entries_at_once_both_count_and_never_wait(
+    engines: Engines, two_workshops: TwoWorkshops
+) -> None:
+    """RNF-13: el stock se calcula, no se lee, se resta y se escribe. Dos
+    movimientos a la vez ni se esperan ni se pisan: los dos quedan."""
+    from decimal import Decimal
+
+    from app.services import stock as stock_service
+
+    a, ana = two_workshops.a, two_workshops.admin_a
+    part = await stock_part(engines, a, "5")
+    async with open_transaction(a) as first, open_transaction(a) as second:
+        await stock_service.record_entry(
+            first, a, ana, part, quantity=Decimal(2), unit_cost_cents=1, note=None
+        )
+        work = asyncio.create_task(
+            stock_service.record_adjustment(
+                second, a, ana, part, quantity=Decimal(-1), note="Rotura"
+            )
+        )
+        await asyncio.sleep(GRACE)
+        assert work.done(), "dos movimientos no deberían esperarse entre sí"
+        await first.commit()
+        await finish(second, work)
+
+    assert await stock_now(engines, part) == Decimal("6.000")
+
+
+@pytest.mark.asyncio
+async def test_a_count_waits_for_a_movement_in_flight_and_sees_it(
+    engines: Engines, two_workshops: TwoWorkshops
+) -> None:
+    """RF-92. Laura cuenta 3 viendo un stock de 5, mientras se anota una
+    entrada de 2 sin confirmar. Si el recuento no la esperara, sumaría 5,
+    ajustaría -2 y, al confirmarse la entrada, el stock quedaría en 5 en vez de
+    lo contado. Con el bloqueo exclusivo de la pieza espera, suma 7 y responde
+    409: lo que vio ya no es el stock."""
+    from decimal import Decimal
+
+    from app.services import stock as stock_service
+
+    a, ana = two_workshops.a, two_workshops.admin_a
+    part = await stock_part(engines, a, "5")
+    async with open_transaction(a) as first, open_transaction(a) as second:
+        await stock_service.record_entry(
+            first, a, ana, part, quantity=Decimal(2), unit_cost_cents=1, note=None
+        )
+        work = asyncio.create_task(
+            stock_service.record_count(
+                second,
+                a,
+                ana,
+                part,
+                counted=Decimal(3),
+                expected=Decimal(5),
+                note=None,
+            )
+        )
+        await asyncio.sleep(GRACE)
+        assert not work.done(), "el recuento debería esperar a la entrada en vuelo"
+        await first.commit()
+        outcome = await finish(second, work)
+
+    assert isinstance(outcome, ConflictError), outcome
+    assert outcome.code == "stock_changed"
+    assert await stock_now(engines, part) == Decimal("7.000")
+
+
+@pytest.mark.asyncio
+async def test_a_movement_during_a_count_waits_and_lands_after_it(
+    engines: Engines, two_workshops: TwoWorkshops
+) -> None:
+    """Al revés: el recuento va primero y deja el stock en 3; una entrada de 2 a
+    la vez espera a que termine (la FK de su movimiento choca con el bloqueo
+    exclusivo de la pieza) y se suma después: 5, no se pierde."""
+    from decimal import Decimal
+
+    from app.services import stock as stock_service
+
+    a, ana = two_workshops.a, two_workshops.admin_a
+    part = await stock_part(engines, a, "5")
+    async with open_transaction(a) as first, open_transaction(a) as second:
+        await stock_service.record_count(
+            first, a, ana, part, counted=Decimal(3), expected=Decimal(5), note=None
+        )
+        work = asyncio.create_task(
+            stock_service.record_entry(
+                second, a, ana, part, quantity=Decimal(2), unit_cost_cents=1, note=None
+            )
+        )
+        await asyncio.sleep(GRACE)
+        assert not work.done(), "la entrada debería esperar al recuento"
+        await first.commit()
+        await finish(second, work)
+
+    assert await stock_now(engines, part) == Decimal("5.000")
+
+
+@pytest.mark.asyncio
+async def test_two_counts_at_once_apply_one_and_the_other_looks_again(
+    engines: Engines, two_workshops: TwoWorkshops
+) -> None:
+    """Dos personas cuentan la misma estantería a la vez, las dos viendo 5. La
+    segunda espera; al llegar, el stock ya no es el que vio: 409."""
+    from decimal import Decimal
+
+    from app.services import stock as stock_service
+
+    a, ana = two_workshops.a, two_workshops.admin_a
+    part = await stock_part(engines, a, "5")
+
+    async def count(session: AsyncSession, counted: int) -> object:
+        return await stock_service.record_count(
+            session,
+            a,
+            ana,
+            part,
+            counted=Decimal(counted),
+            expected=Decimal(5),
+            note=None,
+        )
+
+    async with open_transaction(a) as first, open_transaction(a) as second:
+        await count(first, 3)
+        work = asyncio.create_task(count(second, 4))
+        await asyncio.sleep(GRACE)
+        assert not work.done(), "el segundo recuento debería esperar al primero"
+        await first.commit()
+        outcome = await finish(second, work)
+
+    assert isinstance(outcome, ConflictError), outcome
+    assert outcome.code == "stock_changed"
+    assert await stock_now(engines, part) == Decimal("3.000")
+
+
+@pytest.mark.asyncio
+async def test_two_reversals_of_one_movement_at_once_give_a_409_not_a_500(
+    engines: Engines, two_workshops: TwoWorkshops
+) -> None:
+    """RNF-12: dos personas anulan a la vez la misma entrada. Nada las pone en
+    fila (ninguna bloquea el original), así que las dos pasan la comprobación
+    previa; el índice único de `reverses_id` para a la segunda, y
+    flush_or_conflict lo traduce a un 409."""
+    from decimal import Decimal
+
+    from app.services import stock as stock_service
+
+    a, ana = two_workshops.a, two_workshops.admin_a
+    part = await stock_part(engines, a, "5")
+    async with engines.platform.connect() as conn:
+        entry = await conn.scalar(
+            text("SELECT id FROM stock_movements WHERE part_id = :p"), {"p": part}
+        )
+
+    async with open_transaction(a) as first, open_transaction(a) as second:
+        await stock_service.reverse(first, a, ana, entry, note="Error")
+        work = asyncio.create_task(
+            stock_service.reverse(second, a, ana, entry, note="Error también")
+        )
+        await asyncio.sleep(GRACE)
+        assert not work.done(), "la segunda debería esperar al índice único"
+        await first.commit()
+        outcome = await finish(second, work)
+
+    assert isinstance(outcome, ConflictError), outcome
+    assert outcome.code == "stock_movement_already_reversed"
+    assert await stock_now(engines, part) == Decimal("0.000")

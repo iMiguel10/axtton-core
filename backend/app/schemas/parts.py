@@ -6,7 +6,11 @@ from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
-from app.domain.inventory import PART_WARRANTY_MAX_MONTHS, PART_WARRANTY_MIN_MONTHS
+from app.domain.inventory import (
+    PART_WARRANTY_MAX_MONTHS,
+    PART_WARRANTY_MIN_MONTHS,
+    StockAlert,
+)
 from app.domain.quotes import PartCondition
 
 # El mismo tope que una línea de presupuesto: diez millones de euros.
@@ -27,6 +31,9 @@ class PartRead(BaseModel):
     warranty_months: int | None
     tracks_stock: bool
     min_stock: Decimal | None
+    # La suma de sus movimientos (invariante 9); nulo si no se cuenta.
+    stock: Decimal | None
+    stock_alert: StockAlert | None
     archived_at: datetime | None
     created_at: datetime
     # El bloqueo optimista (RNF-15).

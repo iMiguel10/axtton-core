@@ -16,6 +16,7 @@ import { usePageCrumb } from "../layout/PageCrumb";
 import { useActiveWorkshop } from "../session/ActiveWorkshop";
 import { partsApi, type Part, type PartInput } from "./api";
 import { PartForm } from "./PartForm";
+import { StockCard } from "./StockCard";
 
 /** Ficha de una pieza del catálogo (RF-90): editable para el administrador, de
  * solo lectura para el mecánico (especificación §3). */
@@ -105,6 +106,7 @@ export function PartDetailPage() {
           )}
         </CardContent>
       </Card>
+      {current.tracks_stock && <StockCard part={current} />}
     </section>
   );
 }

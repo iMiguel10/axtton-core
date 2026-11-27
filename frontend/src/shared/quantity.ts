@@ -21,3 +21,17 @@ export function parseQuantityOrZero(value: string): string | null {
   if (!/^\d{1,7}(\.\d{1,3})?$/.test(normalized)) return null;
   return normalized;
 }
+
+/** "-1,5" → "-1.5": un ajuste, de cualquier signo pero nunca 0. */
+export function parseSignedQuantity(value: string): string | null {
+  const trimmed = value.trim();
+  const negative = trimmed.startsWith("-");
+  const magnitude = parseQuantity(negative ? trimmed.slice(1) : trimmed.replace(/^\+/, ""));
+  return magnitude === null ? null : `${negative ? "-" : ""}${magnitude}`;
+}
+
+/** "2.000" → "+2"; "-1.500" → "−1,5": un movimiento, con su signo siempre a la vista. */
+export function formatSignedQuantity(value: string): string {
+  const number = Number(value);
+  return `${number > 0 ? "+" : number < 0 ? "−" : ""}${formatQuantity(String(Math.abs(number)))}`;
+}

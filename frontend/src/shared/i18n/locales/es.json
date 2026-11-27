@@ -183,7 +183,8 @@
     "validity": "Entre 12 y 120 días hábiles.",
     "delivery": "Entre 1 y 250 días hábiles, o vacío.",
     "quantity": "Escribe una cantidad, por ejemplo 2 o 1,5 (tres decimales como mucho).",
-    "warranty": "Entre 4 y 120 meses, o vacío."
+    "warranty": "Entre 4 y 120 meses, o vacío.",
+    "signedQuantity": "Escribe una cantidad distinta de 0, con signo si resta: -2 o 1,5."
   },
   "invitation": {
     "title": "Invitación",
@@ -864,7 +865,12 @@
     "part_reference_taken": "Ya hay una pieza con esa referencia en el catálogo (puede estar archivada).",
     "part_archived": "La pieza está archivada: desarchívala para cambiarla.",
     "part_min_stock_without_stock": "Un stock mínimo solo tiene sentido si se cuenta el stock de la pieza.",
-    "part_limit_reached": "El taller ha llegado a su límite de piezas en el catálogo. Para ampliarlo, habla con quien administra la plataforma."
+    "part_limit_reached": "El taller ha llegado a su límite de piezas en el catálogo. Para ampliarlo, habla con quien administra la plataforma.",
+    "part_stock_not_tracked": "Esta pieza no cuenta su stock: actívalo en su ficha para anotar movimientos.",
+    "stock_changed": "El stock ha cambiado mientras contabas (alguien anotó un movimiento). Mira el stock de ahora y vuelve a contar.",
+    "stock_movement_not_found": "Ese movimiento no existe en este taller.",
+    "stock_movement_not_reversible": "Ese movimiento no se anula aquí: una salida se deshace quitando la pieza de su orden, y una anulación no se anula.",
+    "stock_movement_already_reversed": "Ese movimiento ya estaba anulado."
   },
   "palette": {
     "open": "Buscar en el taller",
@@ -1210,6 +1216,63 @@
     "unarchive": "Desarchivar",
     "confirmArchive": "¿Archivar {{name}}? Dejará de salir al elegir piezas, pero no se borra nada.",
     "pricesHidden": "El taller no deja ver los importes de venta.",
-    "readOnly": "Solo el administrador cambia el catálogo y sus precios."
+    "readOnly": "Solo el administrador cambia el catálogo y sus precios.",
+    "onlyAlerts": "Solo con aviso de stock",
+    "noAlerts": "Ninguna pieza en negativo ni por debajo de su mínimo.",
+    "stockShort": "Stock",
+    "noStockShort": "No se cuenta"
+  },
+  "stock": {
+    "title": "Stock",
+    "minimum": "Mínimo: {{quantity}}",
+    "alerts": {
+      "negative": "En negativo",
+      "below_minimum": "Bajo mínimo"
+    },
+    "actions": {
+      "entry": "Entrada de mercancía",
+      "adjust": "Ajuste",
+      "count": "Recuento"
+    },
+    "hints": {
+      "entry": "Llega mercancía: cuántas unidades y lo que costó cada una.",
+      "adjust": "Una rotura, una pérdida o algo que apareció: en negativo si resta. El motivo es obligatorio.",
+      "count": "Escribe cuántas hay de verdad. Se ajustará la diferencia con el stock que ves ahora."
+    },
+    "quantity": {
+      "entry": "Unidades que llegan",
+      "adjust": "Cantidad (con signo)",
+      "count": "Unidades contadas"
+    },
+    "unitCost": "Coste por unidad sin IVA",
+    "reason": "Motivo",
+    "noteOptional": "Nota (opcional)",
+    "save": {
+      "entry": "Anotar la entrada",
+      "adjust": "Anotar el ajuste",
+      "count": "Anotar el recuento"
+    },
+    "saved": "Movimiento anotado.",
+    "countMatches": "El recuento coincide con el stock: no hace falta ajustar nada.",
+    "history": "Movimientos",
+    "noMovements": "Todavía no hay movimientos de esta pieza.",
+    "when": "Cuándo",
+    "what": "Qué",
+    "quantityShort": "Cantidad",
+    "detail": "Detalle",
+    "who": "Quién",
+    "kinds": {
+      "in": "Entrada",
+      "out": "Salida",
+      "adjustment": "Ajuste",
+      "reversal": "Anulación"
+    },
+    "counted": "recuento: {{quantity}}",
+    "atCost": "a {{cost}} la unidad",
+    "reversed": "Anulado",
+    "reverse": "Anular",
+    "reverseHint": "Se anota el movimiento contrario; el original no se borra. Escribe por qué.",
+    "reversedDone": "Movimiento anulado.",
+    "loadMore": "Ver anteriores"
   }
 }

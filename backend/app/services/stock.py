@@ -6,7 +6,7 @@ editando o borrando. Dos movimientos a la vez nunca se pisan, porque ninguno
 lee el stock para escribirlo (RNF-13). La única excepción es el recuento, que sí
 lo lee: bloquea la pieza y compara con lo que vio quien contó.
 
-Las salidas de una orden llegan en el paso 3 (piezas usadas).
+Las salidas de una orden las anota services/used_parts.py (paso 3).
 """
 
 from dataclasses import dataclass
@@ -18,6 +18,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.errors import ConflictError, NotFoundError
 from app.domain.inventory import REVERSIBLE_BY_HAND, MovementKind, count_adjustment
+from app.domain.work_orders import order_code
 from app.models import Part, StockMovement
 from app.repositories import parts as part_repo
 from app.repositories import stock as stock_repo
@@ -185,6 +186,9 @@ class MovementView:
     counted_stock: Decimal | None
     reverses_id: UUID | None
     reversed_by_id: UUID | None
+    # La orden de una salida o de su anulación (RF-96), y su código.
+    work_order_id: UUID | None
+    work_order_code: str | None
     employee_name: str
     created_at: datetime
 
@@ -214,6 +218,12 @@ async def history(
             counted_stock=row.movement.counted_stock,
             reverses_id=row.movement.reverses_id,
             reversed_by_id=row.reversed_by_id,
+            work_order_id=row.movement.work_order_id,
+            work_order_code=(
+                order_code(row.order_year, row.order_number)
+                if row.order_year is not None and row.order_number is not None
+                else None
+            ),
             employee_name=row.employee_name,
             created_at=row.movement.created_at,
         )

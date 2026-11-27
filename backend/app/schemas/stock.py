@@ -75,6 +75,8 @@ class MovementRead(BaseModel):
     counted_stock: Decimal | None
     reverses_id: UUID | None
     reversed_by_id: UUID | None
+    work_order_id: UUID | None
+    work_order_code: str | None
     employee_name: str
     created_at: datetime
 

@@ -240,6 +240,10 @@ MECHANIC_ALLOWED = {
     ("GET", "/parts/{part_id}"),
     # El stock y su historial (F7 paso 2, RF-96), sin costes.
     ("GET", "/parts/{part_id}/movements"),
+    # Las piezas montadas (F7 paso 3, RF-93): las anota y quita también él.
+    ("GET", "/orders/{order_id}/used-parts"),
+    ("POST", "/orders/{order_id}/used-parts"),
+    ("POST", "/orders/{order_id}/used-parts/{used_part_id}/remove"),
 }
 # Lo que es solo del administrador: empleados, límites, auditoría, crear y
 # editar clientes y vehículos, el titular, anonimizar, abrir y editar órdenes,

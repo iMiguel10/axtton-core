@@ -1,7 +1,7 @@
 """Importa todos los modelos para que queden registrados en Base.metadata."""
 
 from app.models.documents import ReceptionSheet
-from app.models.inventory import Part, StockMovement
+from app.models.inventory import Part, StockMovement, UsedPart
 from app.models.notifications import Notification
 from app.models.operations import (
     Client,
@@ -43,6 +43,7 @@ __all__ = [
     "ReceptionSheet",
     "StockMovement",
     "SuperadminInvitation",
+    "UsedPart",
     "User",
     "Vehicle",
     "VehicleOwnership",

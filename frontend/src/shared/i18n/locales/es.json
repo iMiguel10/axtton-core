@@ -870,7 +870,10 @@
     "stock_changed": "El stock ha cambiado mientras contabas (alguien anotó un movimiento). Mira el stock de ahora y vuelve a contar.",
     "stock_movement_not_found": "Ese movimiento no existe en este taller.",
     "stock_movement_not_reversible": "Ese movimiento no se anula aquí: una salida se deshace quitando la pieza de su orden, y una anulación no se anula.",
-    "stock_movement_already_reversed": "Ese movimiento ya estaba anulado."
+    "stock_movement_already_reversed": "Ese movimiento ya estaba anulado.",
+    "used_part_not_found": "Esa pieza no está anotada en esta orden.",
+    "used_part_already_removed": "Esa pieza ya estaba quitada de la orden.",
+    "work_order_has_parts": "La orden tiene piezas montadas: una orden con piezas no se cancela. Si se anotaron por error, quítalas antes."
   },
   "palette": {
     "open": "Buscar en el taller",
@@ -1274,5 +1277,23 @@
     "reverseHint": "Se anota el movimiento contrario; el original no se borra. Escribe por qué.",
     "reversedDone": "Movimiento anulado.",
     "loadMore": "Ver anteriores"
+  },
+  "usedParts": {
+    "tab": "Piezas",
+    "empty": "Todavía no hay piezas montadas en esta orden.",
+    "search": "Buscar una pieza del catálogo",
+    "searchPlaceholder": "Busca la pieza por referencia, marca o descripción",
+    "noResults": "Ninguna pieza del catálogo coincide. Si falta, pídele al administrador que la dé de alta.",
+    "inStock": "Stock: {{quantity}}",
+    "quantity": "Cantidad",
+    "mount": "Anotar la pieza",
+    "pickAnother": "Elegir otra",
+    "mounted": "Pieza anotada en la orden.",
+    "mountedBy": "La anotó {{name}} el {{date}}",
+    "removedBy": "La quitó {{name}} el {{date}}",
+    "removedBadge": "Quitada",
+    "remove": "Quitar",
+    "confirmRemove": "¿Quitar {{name}} de la orden? Se marca como quitada y, si se contaba, vuelve al stock. No se borra nada.",
+    "removed": "Pieza quitada de la orden."
   }
 }

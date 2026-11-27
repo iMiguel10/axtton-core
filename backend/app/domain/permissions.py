@@ -77,6 +77,10 @@ class Action(StrEnum):
     # RF-92; especificación §3): solo el administrador. Ver el stock y su
     # historial es de VIEW_PARTS.
     MANAGE_STOCK = "manage_stock"
+    # Registrar las piezas montadas en una orden, con su salida de stock (RF-93;
+    # especificación §3): los dos roles. Quitar una que anotó otro es de quien
+    # gestiona órdenes (MANAGE_ORDERS), como anular un trabajo.
+    RECORD_USED_PARTS = "record_used_parts"
 
 
 ROLE_PERMISSIONS: dict[Role, frozenset[Action]] = {
@@ -88,6 +92,7 @@ ROLE_PERMISSIONS: dict[Role, frozenset[Action]] = {
             Action.MOVE_REPAIR_STATUS,
             Action.WRITE_WORKLOG,
             Action.VIEW_PARTS,
+            Action.RECORD_USED_PARTS,
         }
     ),
 }

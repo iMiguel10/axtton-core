@@ -11,7 +11,7 @@ from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import aliased
 
-from app.models import Employee, Part, StockMovement
+from app.models import Employee, Part, StockMovement, WorkOrder
 
 
 async def lock_part(session: AsyncSession, part_id: UUID) -> Part | None:
@@ -63,6 +63,9 @@ class HistoryRow:
     employee_name: str
     # La anulación que lo deshizo, si la tiene.
     reversed_by_id: UUID | None
+    # La orden de una salida o de su anulación (RF-96): año y número.
+    order_year: int | None
+    order_number: int | None
 
 
 async def history(
@@ -72,9 +75,12 @@ async def history(
     paginados por `seq`, nunca por fecha."""
     reversal = aliased(StockMovement)
     query = (
-        select(StockMovement, Employee.name, reversal.id)
+        select(
+            StockMovement, Employee.name, reversal.id, WorkOrder.year, WorkOrder.number
+        )
         .join(Employee, Employee.id == StockMovement.employee_id)
         .outerjoin(reversal, reversal.reverses_id == StockMovement.id)
+        .outerjoin(WorkOrder, WorkOrder.id == StockMovement.work_order_id)
         .where(StockMovement.part_id == part_id)
         .order_by(StockMovement.seq.desc())
         .limit(limit)
@@ -83,5 +89,6 @@ async def history(
         query = query.where(StockMovement.seq < before_seq)
     rows = await session.execute(query)
     return [
-        HistoryRow(movement, name, reversed_by) for movement, name, reversed_by in rows
+        HistoryRow(movement, name, reversed_by, year, number)
+        for movement, name, reversed_by, year, number in rows
     ]

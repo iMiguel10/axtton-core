@@ -43,6 +43,7 @@ from app.repositories import clients as client_repo
 from app.repositories import employees as employee_repo
 from app.repositories import quotes as quote_repo
 from app.repositories import reception as reception_repo
+from app.repositories import used_parts as used_part_repo
 from app.repositories import vehicles as vehicle_repo
 from app.repositories import work_orders as order_repo
 from app.repositories import worklog as worklog_repo
@@ -418,11 +419,14 @@ async def change_status(
     # Cancelar es solo para órdenes abiertas por error: sin trabajos, piezas
     # usadas ni presupuestos enviados (§6). La orden está bloqueada FOR UPDATE:
     # un trabajo que se esté anotando a la vez espera, y luego la ve cancelada.
-    # Las piezas (F7) se comprobarán aquí al llegar. Un borrador nunca enviado
-    # no cuenta: se queda en la orden cancelada sin salir en ningún listado.
+    # Lo mismo una pieza que se esté montando (F7 paso 3). Un borrador nunca
+    # enviado no cuenta: se queda en la orden cancelada sin salir en ningún
+    # listado.
     if transition.to_status == WorkOrderStatus.CANCELLED:
         if await worklog_repo.count_active_entries(session, order_id) > 0:
             raise ConflictError("work_order_has_work")
+        if await used_part_repo.count_mounted(session, order_id) > 0:
+            raise ConflictError("work_order_has_parts")
         if await quote_repo.count_not_draft(session, order_id) > 0:
             raise ConflictError("work_order_has_quotes")
     if odometer_km is not None:

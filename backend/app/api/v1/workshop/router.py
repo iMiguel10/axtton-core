@@ -15,6 +15,7 @@ from app.api.v1.workshop import (
     settings,
     staff,
     stock,
+    used_parts,
     vehicle_report,
     vehicles,
     work_orders,
@@ -49,6 +50,7 @@ router.include_router(vehicle_report.router)
 router.include_router(quotes.router)
 router.include_router(parts.router)
 router.include_router(stock.router)
+router.include_router(used_parts.router)
 router.include_router(audit.router)
 router.include_router(account.router)
 

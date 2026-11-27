@@ -1304,3 +1304,177 @@ async def test_two_reversals_of_one_movement_at_once_give_a_409_not_a_500(
     assert isinstance(outcome, ConflictError), outcome
     assert outcome.code == "stock_movement_already_reversed"
     assert await stock_now(engines, part) == Decimal("0.000")
+
+
+# --- Las piezas usadas (F7 paso 3) --------------------------------------------
+
+
+async def order_with_battery(
+    engines: Engines, two_workshops: TwoWorkshops
+) -> tuple[UUID, UUID]:
+    """La orden de María (recibida) y una batería con 5 en stock."""
+    from tests.test_work_orders_db import seed_order
+
+    order = await seed_order(engines, two_workshops)
+    part = await stock_part(engines, two_workshops.a, "5")
+    return order.order_id, part
+
+
+@pytest.mark.asyncio
+async def test_a_part_mounted_while_the_order_is_cancelled_never_lands_in_it(
+    engines: Engines, two_workshops: TwoWorkshops
+) -> None:
+    """§6: una orden cancelada no tiene piezas. Ana la cancela mientras Javier
+    monta una batería: montar bloquea la orden como un trabajo, así que espera
+    a la cancelación y luego la ve cerrada."""
+    from decimal import Decimal
+
+    from app.services import used_parts as used_service
+    from app.services import work_orders as order_service
+
+    a, ana = two_workshops.a, two_workshops.admin_a
+    order, part = await order_with_battery(engines, two_workshops)
+    async with open_transaction(a) as first, open_transaction(a) as second:
+        await order_service.change_status(
+            first,
+            order,
+            ana,
+            "admin",
+            expected_version=1,
+            to_status="cancelled",
+            note="Abierta por error",
+        )
+        work = asyncio.create_task(
+            used_service.mount(second, a, ana, order, part_id=part, quantity=Decimal(1))
+        )
+        await asyncio.sleep(GRACE)
+        assert not work.done(), "montar debería esperar a la cancelación"
+        await first.commit()
+        outcome = await finish(second, work)
+
+    assert isinstance(outcome, ConflictError), outcome
+    assert outcome.code == "work_order_closed"
+    async with engines.platform.connect() as conn:
+        assert await conn.scalar(text("SELECT count(*) FROM used_parts")) == 0
+    assert await stock_now(engines, part) == Decimal("5.000")
+
+
+@pytest.mark.asyncio
+async def test_an_order_is_not_cancelled_while_a_part_is_being_mounted(
+    engines: Engines, two_workshops: TwoWorkshops
+) -> None:
+    """Al revés: la batería se está montando; la cancelación espera, cuenta la
+    pieza y responde 409."""
+    from decimal import Decimal
+
+    from app.services import used_parts as used_service
+    from app.services import work_orders as order_service
+
+    a, ana = two_workshops.a, two_workshops.admin_a
+    order, part = await order_with_battery(engines, two_workshops)
+    async with open_transaction(a) as first, open_transaction(a) as second:
+        await used_service.mount(
+            first, a, ana, order, part_id=part, quantity=Decimal(1)
+        )
+        work = asyncio.create_task(
+            order_service.change_status(
+                second,
+                order,
+                ana,
+                "admin",
+                expected_version=1,
+                to_status="cancelled",
+                note="Abierta por error",
+            )
+        )
+        await asyncio.sleep(GRACE)
+        assert not work.done(), "cancelar debería esperar a la pieza en vuelo"
+        await first.commit()
+        outcome = await finish(second, work)
+
+    assert isinstance(outcome, ConflictError), outcome
+    assert outcome.code == "work_order_has_parts"
+    assert await stock_now(engines, part) == Decimal("4.000")
+
+
+@pytest.mark.asyncio
+async def test_two_removals_of_one_part_at_once_reverse_its_outflow_once(
+    engines: Engines, two_workshops: TwoWorkshops
+) -> None:
+    """RNF-12: Ana y Javier quitan a la vez la misma batería. La segunda espera
+    al bloqueo de la pieza usada, la ve quitada y recibe un 409: el stock vuelve
+    una sola vez."""
+    from decimal import Decimal
+
+    from app.services import used_parts as used_service
+
+    a, ana = two_workshops.a, two_workshops.admin_a
+    order, part = await order_with_battery(engines, two_workshops)
+    async with open_transaction(a) as setup:
+        used = await used_service.mount(
+            setup, a, ana, order, part_id=part, quantity=Decimal(2)
+        )
+        await setup.commit()
+
+    async with open_transaction(a) as first, open_transaction(a) as second:
+        await used_service.remove(first, ana, "admin", order, used)
+        work = asyncio.create_task(
+            used_service.remove(second, ana, "admin", order, used)
+        )
+        await asyncio.sleep(GRACE)
+        assert not work.done(), "la segunda debería esperar a la primera"
+        await first.commit()
+        outcome = await finish(second, work)
+
+    assert isinstance(outcome, ConflictError), outcome
+    assert outcome.code == "used_part_already_removed"
+    assert await stock_now(engines, part) == Decimal("5.000")
+
+
+@pytest.mark.asyncio
+async def test_a_part_is_not_removed_from_an_order_being_delivered(
+    engines: Engines, two_workshops: TwoWorkshops
+) -> None:
+    """Ana entrega el coche mientras Javier quita una pieza: quitar bloquea la
+    orden en compartido, así que espera a la entrega y la ve cerrada. Lo
+    entregado no cambia de piezas."""
+    from decimal import Decimal
+
+    from app.services import used_parts as used_service
+    from app.services import work_orders as order_service
+    from tests.test_work_orders import force_status
+
+    a, ana = two_workshops.a, two_workshops.admin_a
+    order, part = await order_with_battery(engines, two_workshops)
+    async with open_transaction(a) as setup:
+        used = await used_service.mount(
+            setup, a, ana, order, part_id=part, quantity=Decimal(1)
+        )
+        await setup.commit()
+    await force_status(str(order), "ready")
+    async with engines.platform.connect() as conn:
+        version = await conn.scalar(
+            text("SELECT version FROM work_orders WHERE id = :o"), {"o": order}
+        )
+
+    async with open_transaction(a) as first, open_transaction(a) as second:
+        await order_service.change_status(
+            first,
+            order,
+            ana,
+            "admin",
+            expected_version=version,
+            to_status="delivered",
+            note=None,
+        )
+        work = asyncio.create_task(
+            used_service.remove(second, ana, "admin", order, used)
+        )
+        await asyncio.sleep(GRACE)
+        assert not work.done(), "quitar debería esperar a la entrega"
+        await first.commit()
+        outcome = await finish(second, work)
+
+    assert isinstance(outcome, ConflictError), outcome
+    assert outcome.code == "work_order_closed"
+    assert await stock_now(engines, part) == Decimal("4.000")

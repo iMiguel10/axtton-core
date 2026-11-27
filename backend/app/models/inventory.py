@@ -149,7 +149,9 @@ class StockMovement(IdMixin, CreatedAtMixin, Base):
         CheckConstraint(
             "kind NOT IN ('adjustment', 'reversal')"
             " OR coalesce(length(btrim(note)), 0) > 0"
-            " OR (kind = 'adjustment' AND counted_stock IS NOT NULL)",
+            " OR (kind = 'adjustment' AND counted_stock IS NOT NULL)"
+            # Quitar una pieza usada: su origen es la pieza y su orden.
+            " OR (kind = 'reversal' AND used_part_id IS NOT NULL)",
             name="note",
         ),
         CheckConstraint(
@@ -157,6 +159,29 @@ class StockMovement(IdMixin, CreatedAtMixin, Base):
         ),
         CheckConstraint(
             "(kind = 'reversal') = (reverses_id IS NOT NULL)", name="reverses"
+        ),
+        ForeignKeyConstraint(
+            ["work_order_id", "workshop_id"],
+            ["work_orders.id", "work_orders.workshop_id"],
+        ),
+        ForeignKeyConstraint(
+            ["used_part_id", "workshop_id"],
+            ["used_parts.id", "used_parts.workshop_id"],
+        ),
+        # Una salida es siempre una pieza montada en una orden (RF-93, F7 paso
+        # 3), y lo que lleva una pieza usada es su salida o la anulación de esta.
+        CheckConstraint(
+            "(kind = 'out') <= (used_part_id IS NOT NULL)"
+            " AND (used_part_id IS NULL OR kind IN ('out', 'reversal'))"
+            " AND (used_part_id IS NULL) = (work_order_id IS NULL)",
+            name="used_part",
+        ),
+        # Una sola salida por pieza usada.
+        Index(
+            "uq_stock_movements_used_part_id_out",
+            "used_part_id",
+            unique=True,
+            postgresql_where=text("kind = 'out'"),
         ),
         # Un movimiento se anula una sola vez: dos anulaciones a la vez chocan
         # aquí (la comprobación previa no las ve).
@@ -185,3 +210,66 @@ class StockMovement(IdMixin, CreatedAtMixin, Base):
     reverses_id: Mapped[UUID | None]
     # Quién lo anotó.
     employee_id: Mapped[UUID]
+    # El origen de una salida y de su anulación (F7 paso 3, RF-96).
+    work_order_id: Mapped[UUID | None]
+    used_part_id: Mapped[UUID | None]
+
+
+class UsedPart(IdMixin, CreatedAtMixin, Base):
+    """Lo que de verdad se montó en el coche (RF-93, especificación §4).
+
+    Distinto de la línea del presupuesto: se presupuestan dos pastillas y se
+    monta una, o una marca y se monta otra. Copia de la pieza lo que sale en los
+    documentos (descripción, referencia, estado y garantía) tal como era al
+    montarla: cambiar después el catálogo no cambia lo montado.
+
+    No se borra: quitar una pieza usada por error la marca (`removed_at`) y, si
+    sacó stock, anota la anulación de su salida. Un trigger congela todo lo
+    demás, con cualquier rol, y no deja quitarla dos veces.
+    """
+
+    __tablename__ = "used_parts"
+    __table_args__ = (
+        UniqueConstraint("id", "workshop_id"),
+        ForeignKeyConstraint(
+            ["work_order_id", "workshop_id"],
+            ["work_orders.id", "work_orders.workshop_id"],
+        ),
+        ForeignKeyConstraint(
+            ["part_id", "workshop_id"], ["parts.id", "parts.workshop_id"]
+        ),
+        ForeignKeyConstraint(
+            ["employee_id", "workshop_id"],
+            ["employees.id", "employees.workshop_id"],
+        ),
+        ForeignKeyConstraint(
+            ["removed_by_employee_id", "workshop_id"],
+            ["employees.id", "employees.workshop_id"],
+        ),
+        CheckConstraint("quantity > 0", name="quantity"),
+        CheckConstraint(sql_in("part_condition", PartCondition), name="part_condition"),
+        CheckConstraint(
+            f"warranty_months BETWEEN {PART_WARRANTY_MIN_MONTHS}"
+            f" AND {PART_WARRANTY_MAX_MONTHS}",
+            name="warranty_months",
+        ),
+        CheckConstraint(
+            "(removed_at IS NULL) = (removed_by_employee_id IS NULL)",
+            name="removed_by_whom",
+        ),
+        Index("ix_used_parts_work_order_id", "work_order_id"),
+    )
+
+    workshop_id: Mapped[UUID] = mapped_column(ForeignKey("workshops.id"))
+    work_order_id: Mapped[UUID]
+    part_id: Mapped[UUID]
+    quantity: Mapped[Decimal] = mapped_column(Numeric(10, 3))
+    # Copiado de la pieza al montarla.
+    reference: Mapped[str] = mapped_column(String(100))
+    description: Mapped[str] = mapped_column(String(300))
+    part_condition: Mapped[str] = mapped_column(String(20))
+    warranty_months: Mapped[int | None] = mapped_column(SmallInteger)
+    # Quién la anotó.
+    employee_id: Mapped[UUID]
+    removed_at: Mapped[datetime | None]
+    removed_by_employee_id: Mapped[UUID | None]

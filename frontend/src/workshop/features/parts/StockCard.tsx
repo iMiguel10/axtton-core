@@ -1,6 +1,7 @@
 import { useInfiniteQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useState, type FormEvent } from "react";
 import { useTranslation } from "react-i18next";
+import { Link } from "react-router-dom";
 
 import { Field } from "@/shared/components/form/Field";
 import { TableSkeleton } from "@/shared/components/Loading";
@@ -271,6 +272,12 @@ function History({ part, refresh }: { part: Part; refresh: () => Promise<unknown
                 </TableCell>
                 <TableCell className="text-right tabular-nums">{formatSignedQuantity(movement.quantity)}</TableCell>
                 <TableCell className="text-sm">
+                  {/* El origen de una salida o de su anulación: la orden (RF-96). */}
+                  {movement.work_order_id !== null && (
+                    <Link to={`/orders/${movement.work_order_id}`} className="link mr-1">
+                      {movement.work_order_code}
+                    </Link>
+                  )}
                   {[
                     canViewCosts && movement.unit_cost_cents !== null
                       ? t("stock.atCost", { cost: formatEur(movement.unit_cost_cents) })
@@ -278,7 +285,7 @@ function History({ part, refresh }: { part: Part; refresh: () => Promise<unknown
                     movement.note,
                   ]
                     .filter(Boolean)
-                    .join(" · ") || "—"}
+                    .join(" · ") || (movement.work_order_id === null ? "—" : "")}
                 </TableCell>
                 <TableCell>{movement.employee_name}</TableCell>
                 <TableCell className="text-right">

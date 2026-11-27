@@ -47,6 +47,9 @@ export type Movement = {
   counted_stock: string | null;
   reverses_id: string | null;
   reversed_by_id: string | null;
+  /** La orden de una salida o de su anulación (RF-96). */
+  work_order_id: string | null;
+  work_order_code: string | null;
   employee_name: string;
   created_at: string;
 };

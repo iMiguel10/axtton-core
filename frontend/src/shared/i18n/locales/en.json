@@ -870,7 +870,10 @@
     "stock_changed": "The stock changed while you were counting (someone recorded a movement). Check the current stock and count again.",
     "stock_movement_not_found": "That movement does not exist in this workshop.",
     "stock_movement_not_reversible": "That movement is not reversed here: an outflow is undone by removing the part from its order, and a reversal is not reversed.",
-    "stock_movement_already_reversed": "That movement was already reversed."
+    "stock_movement_already_reversed": "That movement was already reversed.",
+    "used_part_not_found": "That part is not recorded in this order.",
+    "used_part_already_removed": "That part was already removed from the order.",
+    "work_order_has_parts": "The order has parts fitted: an order with parts cannot be cancelled. If they were recorded by mistake, remove them first."
   },
   "palette": {
     "open": "Search the workshop",
@@ -1274,5 +1277,23 @@
     "reverseHint": "The opposite movement is recorded; the original is not deleted. Say why.",
     "reversedDone": "Movement reversed.",
     "loadMore": "Show earlier"
+  },
+  "usedParts": {
+    "tab": "Parts",
+    "empty": "No parts fitted in this order yet.",
+    "search": "Search a catalog part",
+    "searchPlaceholder": "Find the part by reference, brand or description",
+    "noResults": "No catalog part matches. If it is missing, ask the administrator to add it.",
+    "inStock": "Stock: {{quantity}}",
+    "quantity": "Quantity",
+    "mount": "Record the part",
+    "pickAnother": "Pick another",
+    "mounted": "Part recorded in the order.",
+    "mountedBy": "Recorded by {{name}} on {{date}}",
+    "removedBy": "Removed by {{name}} on {{date}}",
+    "removedBadge": "Removed",
+    "remove": "Remove",
+    "confirmRemove": "Remove {{name}} from the order? It is marked as removed and, if counted, goes back to stock. Nothing is deleted.",
+    "removed": "Part removed from the order."
   }
 }

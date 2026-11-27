@@ -47,6 +47,7 @@ WORKSHOP_TABLES = {
     "reception_sheets": "workshop_id",
     "parts": "workshop_id",
     "stock_movements": "workshop_id",
+    "used_parts": "workshop_id",
 }
 
 # Tablas sobre las que axtton_app no tiene DELETE: no se borran nunca, ni por un
@@ -75,6 +76,8 @@ NO_DELETE = {
     "parts",
     # El libro de stock solo crece (0028stockmovements, RNF-12).
     "stock_movements",
+    # Una pieza usada se quita, no se borra (0029usedparts).
+    "used_parts",
 }
 # La columna que axtton_app puede actualizar, si no puede todas.
 UPDATABLE_COLUMN = {
@@ -95,6 +98,8 @@ UPDATABLE_COLUMN = {
     "reception_sheets": "signer_name",
     # De una pieza, lo que edita el administrador, no su taller (0027parts).
     "parts": "version",
+    # De una pieza usada, solo quitarla (0029usedparts).
+    "used_parts": "removed_at",
 }
 
 
@@ -238,6 +243,15 @@ async def seeded(engines: Engines, two_workshops: TwoWorkshops) -> Seeded:
                     " SELECT :w, id, 'in', 1, 100, :e FROM parts WHERE workshop_id = :w"
                 ),
                 {"w": workshop, "e": worklog["e"]},
+            )
+            await conn.execute(
+                text(
+                    "INSERT INTO used_parts (workshop_id, work_order_id, part_id,"
+                    " quantity, reference, description, part_condition, employee_id)"
+                    " SELECT :w, :o, id, 1, reference, description, 'new', :e"
+                    " FROM parts WHERE workshop_id = :w"
+                ),
+                worklog,
             )
             await conn.execute(
                 text(

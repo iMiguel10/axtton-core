@@ -17,6 +17,7 @@ import { useActiveWorkshop } from "../session/ActiveWorkshop";
 import { ordersApi, type OrderDetail, type ReceptionInput } from "./api";
 import { StatusBadge } from "./OrderBits";
 import { NoticesSection } from "./NoticesSection";
+import { UsedPartsSection, useUsedParts } from "./UsedPartsSection";
 import { ReceptionForm } from "./ReceptionForm";
 import { ReceptionSheetCard } from "./ReceptionSheetCard";
 import { ReceptionSummary } from "./ReceptionSummary";
@@ -26,7 +27,7 @@ import { useOrderNotices } from "./useOrderNotices";
 import { WorklogSection } from "./WorklogSection";
 
 const CLOSED = ["delivered", "cancelled"];
-const TABS = ["work", "diagnosis", "quotes", "notes", "notices", "reception", "history"] as const;
+const TABS = ["work", "parts", "diagnosis", "quotes", "notes", "notices", "reception", "history"] as const;
 
 /**
  * Ficha de una orden (RF-20 a RF-25): vehículo, cliente, recepción, responsable
@@ -45,6 +46,7 @@ export function OrderDetailPage() {
   const order = useQuery({ queryKey, queryFn: () => api.get(orderId) });
   // Para el contador de la pestaña; la pestaña usa la misma consulta.
   const notices = useOrderNotices(orderId);
+  const usedParts = useUsedParts(orderId);
 
   // También tras un 409: se recarga lo último guardado, con su versión.
   const refresh = () =>
@@ -126,6 +128,12 @@ export function OrderDetailPage() {
                   {t("worklog.workTab")}
                   {parts && <Count value={parts.counts.work} />}
                 </TabsTrigger>
+                <TabsTrigger value="parts">
+                  {t("usedParts.tab")}
+                  {usedParts.data && (
+                    <Count value={usedParts.data.filter((part) => part.removed_at === null).length} />
+                  )}
+                </TabsTrigger>
                 <TabsTrigger value="diagnosis">{t("worklog.diagnosisTab")}</TabsTrigger>
                 <TabsTrigger value="quotes">{t("quotes.tab")}</TabsTrigger>
                 <TabsTrigger value="notes">
@@ -142,6 +150,9 @@ export function OrderDetailPage() {
             </div>
             <TabsContent value="work" keepMounted>
               {parts?.work ?? <LinesSkeleton lines={4} />}
+            </TabsContent>
+            <TabsContent value="parts" keepMounted>
+              <UsedPartsSection orderId={current.id} closed={CLOSED.includes(current.status)} />
             </TabsContent>
             <TabsContent value="diagnosis" keepMounted>
               {parts?.diagnosis ?? <LinesSkeleton lines={4} />}

@@ -4,6 +4,15 @@ Lo mantiene [release-please](https://github.com/googleapis/release-please) a par
 
 Las dos primeras versiones se escribieron a mano, resumidas por fase, al empezar a versionar.
 
+## [0.8.0](https://github.com/iMiguel10/axtton-core/compare/v0.7.0...v0.8.0) (2026-11-27)
+
+
+### Novedades
+
+* **orders:** piezas usadas en la orden con su salida de stock (F7 paso 3, RF-93) ([#51](https://github.com/iMiguel10/axtton-core/issues/51)) ([807eb8b](https://github.com/iMiguel10/axtton-core/commit/807eb8b15e97bdbbb4fabc34365d8d496745b057))
+* **parts:** catálogo de piezas (F7 paso 1, RF-90) ([#48](https://github.com/iMiguel10/axtton-core/issues/48)) ([8435691](https://github.com/iMiguel10/axtton-core/commit/84356916b4827fa0098fcef22ae935f30f6524a9))
+* **stock:** libro de movimientos de stock (F7 paso 2, RF-91 a RF-96) ([#50](https://github.com/iMiguel10/axtton-core/issues/50)) ([d3b8e29](https://github.com/iMiguel10/axtton-core/commit/d3b8e29f045139fa1bb812da21618ccdf9129b25))
+
 ## [0.7.0](https://github.com/iMiguel10/axtton-core/compare/v0.6.0...v0.7.0) (2026-11-23)
 
 

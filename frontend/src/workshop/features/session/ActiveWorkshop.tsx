@@ -32,6 +32,8 @@ type ActiveWorkshopValue = {
   canExtendVehicleReport: boolean;
   /** Dar de alta piezas y fijar sus precios (RF-90): solo el administrador. */
   canManageParts: boolean;
+  /** Entradas, ajustes, recuentos y sus anulaciones (RF-91, RF-92): solo el administrador. */
+  canManageStock: boolean;
   /** Precios de coste y márgenes (especificación §3): solo el administrador. */
   canViewCosts: boolean;
   workshops: Membership[];
@@ -119,6 +121,7 @@ export function ActiveWorkshopProvider({ children }: { children: ReactNode }) {
     canManageQuotes: active.data.role === "admin",
     canExtendVehicleReport: active.data.role === "admin",
     canManageParts: active.data.role === "admin",
+    canManageStock: active.data.role === "admin",
     canViewCosts: active.data.role === "admin",
     workshops,
     select,

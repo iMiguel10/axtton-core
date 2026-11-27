@@ -15,6 +15,7 @@ from uuid import UUID
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.errors import ConflictError, NotFoundError
+from app.domain.inventory import stock_alert
 from app.domain.limits import Resource
 from app.models import AuditEntry, Part
 from app.repositories import parts as part_repo
@@ -57,6 +58,10 @@ class PartView:
     warranty_months: int | None
     tracks_stock: bool
     min_stock: Decimal | None
+    # La suma de sus movimientos (invariante 9); nulo si no se cuenta.
+    stock: Decimal | None
+    # En negativo (RF-94) o por debajo del mínimo (RF-95).
+    stock_alert: str | None
     archived_at: datetime | None
     created_at: datetime
     version: int
@@ -79,7 +84,9 @@ async def visibility(
     )
 
 
-def _view(part: Part, seen: Visibility) -> PartView:
+def _view(part: Part, stock: Decimal, seen: Visibility) -> PartView:
+    counted = part.tracks_stock
+    alert = stock_alert(stock, part.min_stock) if counted else None
     return PartView(
         id=part.id,
         reference=part.reference,
@@ -92,6 +99,8 @@ def _view(part: Part, seen: Visibility) -> PartView:
         warranty_months=part.warranty_months,
         tracks_stock=part.tracks_stock,
         min_stock=part.min_stock,
+        stock=stock if counted else None,
+        stock_alert=alert.value if alert else None,
         archived_at=part.archived_at,
         created_at=part.created_at,
         version=part.version,
@@ -148,19 +157,22 @@ async def list_parts(
     show_costs: bool,
     query: str | None,
     archived: bool,
+    alert: bool,
     limit: int,
     offset: int,
 ) -> tuple[list[PartView], bool]:
-    """Las piezas, y si sus precios de venta van ocultos para quien mira."""
+    """Las piezas con su stock, y si sus precios de venta van ocultos para quien
+    mira. Con `alert`, solo las que tienen una incidencia de stock."""
     seen = await visibility(session, workshop_id, role, show_costs=show_costs)
-    parts = await part_repo.list_page(
+    rows = await part_repo.list_page(
         session,
         query=query.strip() if query else None,
         archived=archived,
+        alert=alert,
         limit=limit,
         offset=offset,
     )
-    return [_view(part, seen) for part in parts], seen.prices_hidden
+    return [_view(part, stock, seen) for part, stock in rows], seen.prices_hidden
 
 
 async def get_part(
@@ -172,7 +184,10 @@ async def get_part(
     show_costs: bool,
 ) -> PartView:
     seen = await visibility(session, workshop_id, role, show_costs=show_costs)
-    return _view(await _get(session, part_id), seen)
+    found = await part_repo.get_with_stock(session, part_id)
+    if found is None:
+        raise NotFoundError("part_not_found")
+    return _view(*found, seen)
 
 
 async def create_part(

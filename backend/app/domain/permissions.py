@@ -73,6 +73,10 @@ class Action(StrEnum):
     # importes (`mechanics_see_sale_prices`).
     VIEW_PARTS = "view_parts"
     MANAGE_PARTS = "manage_parts"
+    # Registrar entradas, ajustes y recuentos de stock, y anularlos (RF-91,
+    # RF-92; especificación §3): solo el administrador. Ver el stock y su
+    # historial es de VIEW_PARTS.
+    MANAGE_STOCK = "manage_stock"
 
 
 ROLE_PERMISSIONS: dict[Role, frozenset[Action]] = {

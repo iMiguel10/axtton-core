@@ -30,6 +30,7 @@ async def list_parts(
     workshop: Viewer,
     q: Annotated[str | None, Query(max_length=100)] = None,
     archived: bool = False,
+    alert: bool = False,
     limit: Annotated[int, Query(ge=1, le=100)] = 50,
     offset: Annotated[int, Query(ge=0)] = 0,
 ) -> PartPage:
@@ -40,6 +41,7 @@ async def list_parts(
         show_costs=can(workshop.role, Action.VIEW_COSTS),
         query=q,
         archived=archived,
+        alert=alert,
         limit=limit,
         offset=offset,
     )

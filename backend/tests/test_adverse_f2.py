@@ -238,6 +238,8 @@ MECHANIC_ALLOWED = {
     # El catálogo de piezas (F7 paso 1): lo consulta, sin costes.
     ("GET", "/parts"),
     ("GET", "/parts/{part_id}"),
+    # El stock y su historial (F7 paso 2, RF-96), sin costes.
+    ("GET", "/parts/{part_id}/movements"),
 }
 # Lo que es solo del administrador: empleados, límites, auditoría, crear y
 # editar clientes y vehículos, el titular, anonimizar, abrir y editar órdenes,
@@ -291,6 +293,11 @@ ADMIN_ONLY = {
     ("PATCH", "/parts/{part_id}"),
     ("POST", "/parts/{part_id}/archive"),
     ("POST", "/parts/{part_id}/unarchive"),
+    # Entradas, ajustes, recuentos y anulaciones (F7 paso 2, RF-91, RF-92).
+    ("POST", "/parts/{part_id}/stock/entries"),
+    ("POST", "/parts/{part_id}/stock/adjustments"),
+    ("POST", "/parts/{part_id}/stock/count"),
+    ("POST", "/stock-movements/{movement_id}/reverse"),
 }
 
 

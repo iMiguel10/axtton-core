@@ -23,9 +23,11 @@ import { MobileCard, MobileCards } from "@/shared/components/table/MobileCards";
 import { errorMessage } from "@/shared/lib/errors";
 import { useDebouncedValue } from "@/shared/lib/useDebouncedValue";
 import { formatEur } from "@/shared/money";
+import { formatQuantity } from "@/shared/quantity";
 
 import { useActiveWorkshop } from "../session/ActiveWorkshop";
 import { PAGE_SIZE, partsApi, type Part } from "./api";
+import { StockAlertBadge } from "./StockCard";
 
 /** El catálogo de piezas del taller activo (RF-90). Lo consulta todo el
  * personal; darlas de alta y fijar sus precios, solo el administrador. */
@@ -35,7 +37,8 @@ export function PartsPage() {
   const api = partsApi(workshopId);
   const [search, setSearch] = useState("");
   const [archived, setArchived] = useState(false);
-  const filters = { q: useDebouncedValue(search), archived };
+  const [alert, setAlert] = useState(false);
+  const filters = { q: useDebouncedValue(search), archived, alert };
 
   // El taller va en la clave: al cambiar de taller nunca se enseña lo del anterior.
   const parts = useInfiniteQuery({
@@ -50,6 +53,8 @@ export function PartsPage() {
   const pricesHidden = parts.data?.pages[0]?.prices_hidden ?? false;
   const price = (part: Part) =>
     part.sale_price_cents === null ? "—" : formatEur(part.sale_price_cents);
+  const stock = (part: Part) =>
+    part.stock === null ? t("parts.noStockShort") : formatQuantity(part.stock);
 
   return (
     <section className="grid gap-4">
@@ -69,6 +74,7 @@ export function PartsPage() {
             onChange={(event) => setSearch(event.target.value)}
           />
           <SwitchFilter label={t("parts.showArchived")} checked={archived} onChange={setArchived} />
+          <SwitchFilter label={t("parts.onlyAlerts")} checked={alert} onChange={setAlert} />
           {pricesHidden && (
             <p className="text-muted-foreground text-xs">{t("parts.pricesHidden")}</p>
           )}
@@ -81,11 +87,20 @@ export function PartsPage() {
           ) : rows.length === 0 ? (
             <EmptyState
               icon={filters.q ? SearchX : Package}
-              title={t(filters.q ? "parts.noResults" : archived ? "parts.noArchived" : "parts.empty")}
+              title={t(
+                filters.q
+                  ? "parts.noResults"
+                  : alert
+                    ? "parts.noAlerts"
+                    : archived
+                      ? "parts.noArchived"
+                      : "parts.empty",
+              )}
               action={
                 canManageParts &&
                 !filters.q &&
-                !archived && (
+                !archived &&
+                !alert && (
                   <Link to="/parts/new" className={buttonVariants({ size: "sm" })}>
                     {t("parts.new")}
                   </Link>
@@ -101,7 +116,13 @@ export function PartsPage() {
                     to={`/parts/${part.id}`}
                     title={part.description}
                     aside={<span className="text-sm tabular-nums">{price(part)}</span>}
-                    lines={[[part.reference, part.brand].filter(Boolean).join(" · ")]}
+                    lines={[
+                      [part.reference, part.brand].filter(Boolean).join(" · "),
+                      <span key="stock" className="flex items-center gap-2">
+                        {t("parts.stockShort")}: {stock(part)}
+                        <StockAlertBadge alert={part.stock_alert} />
+                      </span>,
+                    ]}
                   />
                 ))}
               </MobileCards>
@@ -116,6 +137,7 @@ export function PartsPage() {
                         <TableHead className="text-right">{t("parts.costPriceShort")}</TableHead>
                       )}
                       <TableHead className="text-right">{t("parts.salePriceShort")}</TableHead>
+                      <TableHead className="text-right">{t("parts.stockShort")}</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -139,6 +161,12 @@ export function PartsPage() {
                           </TableCell>
                         )}
                         <TableCell className="text-right tabular-nums">{price(part)}</TableCell>
+                        <TableCell className="text-right tabular-nums">
+                          <span className="inline-flex items-center gap-2">
+                            <StockAlertBadge alert={part.stock_alert} />
+                            {stock(part)}
+                          </span>
+                        </TableCell>
                       </LinkRow>
                     ))}
                   </TableBody>

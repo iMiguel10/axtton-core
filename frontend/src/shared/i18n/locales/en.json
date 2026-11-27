@@ -183,7 +183,8 @@
     "validity": "Between 12 and 120 business days.",
     "delivery": "Between 1 and 250 business days, or empty.",
     "quantity": "Enter a quantity, for example 2 or 1.5 (three decimals at most).",
-    "warranty": "Between 4 and 120 months, or empty."
+    "warranty": "Between 4 and 120 months, or empty.",
+    "signedQuantity": "Enter a quantity other than 0, with a sign if it subtracts: -2 or 1.5."
   },
   "invitation": {
     "title": "Invitation",
@@ -864,7 +865,12 @@
     "part_reference_taken": "There is already a part with that reference in the catalog (it may be archived).",
     "part_archived": "The part is archived: unarchive it to change it.",
     "part_min_stock_without_stock": "A minimum stock only makes sense if the part's stock is counted.",
-    "part_limit_reached": "The workshop has reached its catalog part limit. To raise it, contact whoever runs the platform."
+    "part_limit_reached": "The workshop has reached its catalog part limit. To raise it, contact whoever runs the platform.",
+    "part_stock_not_tracked": "This part does not track its stock: turn it on in its card to record movements.",
+    "stock_changed": "The stock changed while you were counting (someone recorded a movement). Check the current stock and count again.",
+    "stock_movement_not_found": "That movement does not exist in this workshop.",
+    "stock_movement_not_reversible": "That movement is not reversed here: an outflow is undone by removing the part from its order, and a reversal is not reversed.",
+    "stock_movement_already_reversed": "That movement was already reversed."
   },
   "palette": {
     "open": "Search the workshop",
@@ -1210,6 +1216,63 @@
     "unarchive": "Unarchive",
     "confirmArchive": "Archive {{name}}? It will no longer be offered when picking parts, but nothing is deleted.",
     "pricesHidden": "The workshop does not show sale prices.",
-    "readOnly": "Only the administrator changes the catalog and its prices."
+    "readOnly": "Only the administrator changes the catalog and its prices.",
+    "onlyAlerts": "Only with a stock warning",
+    "noAlerts": "No part is negative or below its minimum.",
+    "stockShort": "Stock",
+    "noStockShort": "Not tracked"
+  },
+  "stock": {
+    "title": "Stock",
+    "minimum": "Minimum: {{quantity}}",
+    "alerts": {
+      "negative": "Negative",
+      "below_minimum": "Below minimum"
+    },
+    "actions": {
+      "entry": "Goods received",
+      "adjust": "Adjustment",
+      "count": "Count"
+    },
+    "hints": {
+      "entry": "Goods arrive: how many units and what each one cost.",
+      "adjust": "Breakage, a loss or something that turned up: negative if it subtracts. The reason is required.",
+      "count": "Enter how many there really are. The difference with the stock you see now will be adjusted."
+    },
+    "quantity": {
+      "entry": "Units received",
+      "adjust": "Quantity (with sign)",
+      "count": "Units counted"
+    },
+    "unitCost": "Unit cost before VAT",
+    "reason": "Reason",
+    "noteOptional": "Note (optional)",
+    "save": {
+      "entry": "Record the goods",
+      "adjust": "Record the adjustment",
+      "count": "Record the count"
+    },
+    "saved": "Movement recorded.",
+    "countMatches": "The count matches the stock: nothing to adjust.",
+    "history": "Movements",
+    "noMovements": "This part has no movements yet.",
+    "when": "When",
+    "what": "What",
+    "quantityShort": "Quantity",
+    "detail": "Detail",
+    "who": "Who",
+    "kinds": {
+      "in": "Goods in",
+      "out": "Outflow",
+      "adjustment": "Adjustment",
+      "reversal": "Reversal"
+    },
+    "counted": "count: {{quantity}}",
+    "atCost": "at {{cost}} each",
+    "reversed": "Reversed",
+    "reverse": "Reverse",
+    "reverseHint": "The opposite movement is recorded; the original is not deleted. Say why.",
+    "reversedDone": "Movement reversed.",
+    "loadMore": "Show earlier"
   }
 }
